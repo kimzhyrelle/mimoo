@@ -50,26 +50,26 @@ export default function Login({ canResetPassword, status }: LoginProps) {
 
             {/* Mobile header - simple mimoo title only */}
             <div className="lg:hidden w-full bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-[#6E5F8F]" />
+                <Link href="/" className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-[#3B1F6B]" />
                     <h1 className="text-base font-bold tracking-widest text-gray-900" style={fontSyncopate}>
                         mimoo
                     </h1>
-                </div>
+                </Link>
                 <span className="text-xs bg-[#F1EDFB] text-[#3B1F6B] px-3 py-1 rounded-full tracking-wide font-medium" style={fontSFCompact}>
                     {accountType === 'buyer' ? 'BUYER' : 'SELLER'}
                 </span>
             </div>
 
             {/* Desktop Sidebar - only visible on lg+ screens */}
-            <div className="hidden lg:flex lg:w-72 lg:h-screen lg:sticky lg:top-0 bg-gradient-to-b from-[#6E5F8F] to-[#19132A] text-white p-8 flex-col gap-6 lg:gap-0 lg:justify-between shrink-0">
+            <div className="hidden lg:flex lg:w-72 lg:h-screen lg:sticky lg:top-0 bg-gradient-to-b from-[#3B1F6B] to-[#19132A] text-white p-8 flex-col gap-6 lg:gap-0 lg:justify-between shrink-0">
                 <div>
-                    <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-purple-300" />
+                    <Link href="/" className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-[#9B5DE5]" />
                         <h1 className="text-lg font-bold tracking-widest" style={fontSyncopate}>
                             mimoo
                         </h1>
-                    </div>
+                    </Link>
 
                     <div className="mt-6">
                         <span
