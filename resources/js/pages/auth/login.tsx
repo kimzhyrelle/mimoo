@@ -34,7 +34,7 @@ export default function Login({ canResetPassword, status }: LoginProps) {
     };
 
     return (
-        <div className="flex h-screen overflow-hidden" style={fontPoppins}>
+        <div className="flex flex-col lg:flex-row min-h-screen overflow-hidden" style={fontPoppins}>
             <style>{`
                 @keyframes fadeSlideIn {
                     0%   { opacity: 0; transform: translateY(-4px); }
@@ -48,8 +48,21 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                 }
             `}</style>
 
-            {/* Sidebar - fixed, hindi scrollable, kaparehong pattern ng Registration */}
-            <div className="w-72 h-screen sticky top-0 bg-gradient-to-b from-[#6E5F8F] to-[#19132A] text-white p-8 flex flex-col justify-between shrink-0">
+            {/* Mobile header - simple mimoo title only */}
+            <div className="lg:hidden w-full bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-[#6E5F8F]" />
+                    <h1 className="text-base font-bold tracking-widest text-gray-900" style={fontSyncopate}>
+                        mimoo
+                    </h1>
+                </div>
+                <span className="text-xs bg-[#F1EDFB] text-[#3B1F6B] px-3 py-1 rounded-full tracking-wide font-medium" style={fontSFCompact}>
+                    {accountType === 'buyer' ? 'BUYER' : 'SELLER'}
+                </span>
+            </div>
+
+            {/* Desktop Sidebar - only visible on lg+ screens */}
+            <div className="hidden lg:flex lg:w-72 lg:h-screen lg:sticky lg:top-0 bg-gradient-to-b from-[#6E5F8F] to-[#19132A] text-white p-8 flex-col gap-6 lg:gap-0 lg:justify-between shrink-0">
                 <div>
                     <div className="flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-purple-300" />
@@ -97,10 +110,10 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                 </div>
             </div>
 
-            {/* Main content - ito lang ang mag-s-scroll */}
-            <div className="flex-1 h-screen overflow-y-auto bg-[#F8F6FC] p-12">
-                <div className="max-w-md">
-                    <h2 className="text-[28px] font-bold text-gray-900" style={fontSyncopate}>
+            {/* Main content - responsive padding */}
+            <div className="flex-1 min-h-screen lg:h-screen overflow-y-auto bg-[#F8F6FC] p-4 sm:p-6 md:p-8 lg:p-12 xl:p-16 2xl:p-24">
+                <div className="max-w-md lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl mx-auto lg:mx-0">
+                    <h2 className="text-2xl md:text-[28px] font-bold text-gray-900" style={fontSyncopate}>
                         log in to mimoo
                     </h2>
                     <p className="text-gray-500 mt-1 text-sm">
@@ -130,7 +143,7 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                                 key={type}
                                 type="button"
                                 onClick={() => setAccountType(type)}
-                                className={`relative z-10 py-3 text-sm font-semibold rounded-lg transition-colors capitalize ${
+                                className={`relative z-10 py-2.5 md:py-3 text-sm font-semibold rounded-lg transition-colors capitalize ${
                                     accountType === type ? 'text-gray-900' : 'text-gray-400'
                                 }`}
                             >
@@ -141,9 +154,9 @@ export default function Login({ canResetPassword, status }: LoginProps) {
 
                     <div
                         key={accountType}
-                        className="fade-slide-in flex items-start gap-2 bg-[#F1EDFB] border border-[#D9CCF2] text-[#3B1F6B] text-sm rounded-lg px-3.5 py-3 mt-4"
+                        className="fade-slide-in flex items-start gap-2 bg-[#F1EDFB] border border-[#D9CCF2] text-[#3B1F6B] text-xs sm:text-sm rounded-lg px-3 sm:px-3.5 py-2.5 sm:py-3 mt-4"
                     >
-                        <span className="mt-0.5">ⓘ</span>
+                        <span className="mt-0.5 shrink-0">ⓘ</span>
                         <span>
                             Logging in as a {accountType} takes you to your {accountType === 'buyer' ? 'shopping' : 'seller'} account.
                             Picked the wrong type? Switch above before signing in.
@@ -152,7 +165,7 @@ export default function Login({ canResetPassword, status }: LoginProps) {
 
                     <button
                         type="button"
-                        className="w-full flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-3 mt-5 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700"
+                        className="w-full flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-2.5 md:py-3 mt-5 bg-white hover:bg-gray-50 transition text-sm font-medium text-gray-700"
                     >
                         Continue with Google
                     </button>
@@ -175,7 +188,7 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                                 placeholder="you@example.com"
                                 value={data.email}
                                 onChange={(e) => setData('email', e.target.value)}
-                                className={`w-full rounded-xl border px-4 py-3 text-sm outline-none focus:ring-2 transition ${
+                                className={`w-full rounded-xl border px-3 md:px-4 py-2.5 md:py-3 text-sm outline-none focus:ring-2 transition ${
                                     errors.email
                                         ? 'border-red-300 focus:ring-red-100'
                                         : 'border-gray-200 focus:ring-[#E4DBF7] focus:border-[#8B72C4]'
@@ -193,7 +206,7 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                                     type={showPassword ? 'text' : 'password'}
                                     value={data.password}
                                     onChange={(e) => setData('password', e.target.value)}
-                                    className={`w-full rounded-xl border px-4 py-3 pr-12 text-sm outline-none focus:ring-2 transition ${
+                                    className={`w-full rounded-xl border px-3 md:px-4 py-2.5 md:py-3 pr-12 text-sm outline-none focus:ring-2 transition ${
                                         errors.password
                                             ? 'border-red-300 focus:ring-red-100'
                                             : 'border-gray-200 focus:ring-[#E4DBF7] focus:border-[#8B72C4]'
@@ -203,7 +216,7 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                                     type="button"
                                     onClick={() => setShowPassword((s) => !s)}
                                     aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-medium"
+                                    className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-medium"
                                 >
                                     {showPassword ? 'Hide' : 'Show'}
                                 </button>
@@ -211,7 +224,7 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                             {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
                         </div>
 
-                        <div className="flex items-center justify-between mb-6">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-3 sm:gap-2 mb-6">
                             <label className="flex items-center gap-2 text-sm text-gray-600">
                                 <input
                                     type="checkbox"
@@ -231,20 +244,20 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                         <button
                             type="submit"
                             disabled={processing}
-                            className="w-full bg-[#3B1F6B] text-white rounded-xl py-3.5 text-[15px] font-medium hover:bg-[#2E1854] transition disabled:opacity-60"
+                            className="w-full bg-[#3B1F6B] text-white rounded-xl py-3 md:py-3.5 text-sm md:text-[15px] font-medium hover:bg-[#2E1854] transition disabled:opacity-60"
                             style={fontSFCompact}
                         >
                             {processing ? 'Logging in…' : `Log in as ${accountType}`}
                         </button>
                     </form>
 
-                    <p className="text-center text-sm text-gray-500 mt-5">
+                    <p className="text-center text-xs sm:text-sm text-gray-500 mt-5">
                         New to mimoo?{' '}
                         <Link href="/register" className="text-[#3B1F6B] font-medium">
                             Create a buyer account
                         </Link>
                     </p>
-                    <p className="text-center text-sm text-gray-500 mt-1">
+                    <p className="text-center text-xs sm:text-sm text-gray-500 mt-1">
                         Want to sell instead?{' '}
                         <Link href="/register?type=seller" className="text-[#3B1F6B] font-medium">
                             Become a seller

@@ -61,7 +61,7 @@ export default function Registration() {
     };
 
     return (
-        <div className="flex h-screen overflow-hidden" style={fontPoppins}>
+        <div className="flex flex-col lg:flex-row min-h-screen overflow-hidden" style={fontPoppins}>
             <style>{`
                 @keyframes badgePop {
                     0%   { opacity: 0; transform: scale(0.7) translateY(-4px); }
@@ -87,8 +87,21 @@ export default function Registration() {
                 }
             `}</style>
 
-            {/* Sidebar - fixed, hindi scrollable */}
-            <div className="w-72 h-screen sticky top-0 bg-gradient-to-b from-[#6E5F8F] to-[#19132A] text-white p-8 flex flex-col justify-between shrink-0">
+            {/* Mobile header - simple mimoo title only */}
+            <div className="lg:hidden w-full bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-[#6E5F8F]" />
+                    <h1 className="text-base font-bold tracking-widest text-gray-900" style={fontSyncopate}>
+                        mimoo
+                    </h1>
+                </div>
+                <span className="text-xs bg-[#F1EDFB] text-[#3B1F6B] px-3 py-1 rounded-full tracking-wide font-medium" style={fontSFCompact}>
+                    STEP {step} OF {TOTAL_STEPS}
+                </span>
+            </div>
+
+            {/* Desktop Sidebar - only visible on lg+ screens */}
+            <div className="hidden lg:flex lg:w-72 lg:h-screen lg:sticky lg:top-0 bg-gradient-to-b from-[#6E5F8F] to-[#19132A] text-white p-8 flex-col justify-between shrink-0">
                 <div>
                     <div className="flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-purple-300" />
@@ -174,80 +187,82 @@ export default function Registration() {
                 </div>
             </div>
 
-            {/* Main content - ito lang ang mag-s-scroll */}
-            <div className="flex-1 h-screen overflow-y-auto bg-[#F8F6FC] p-12">
-                <h2 className="text-2xl font-bold text-gray-900" style={fontSyncopate}>
-                    create your account
-                </h2>
-                <p className="text-gray-500 mt-1 text-sm">
-                    It only takes a few minutes. Choose the account type that fits you.
-                </p>
-
-                <StepProgress currentStep={step} />
-
-                <form onSubmit={handleSubmit} className="mt-6 max-w-2xl">
-                    {step === 1 && (
-                        <StepDetails
-                            data={data}
-                            setData={setData}
-                            errors={errors}
-                            accountType={accountType}
-                            setAccountType={setAccountType}
-                            age={age}
-                        />
-                    )}
-
-                    {step === 2 && (
-                        <StepAddress
-                            data={data}
-                            setData={setData}
-                            errors={errors}
-                            onBack={goBack}
-                            onNext={goNext}
-                        />
-                    )}
-
-                    {step === 3 && (
-                        <StepVerification
-                            data={data}
-                            setData={setData}
-                            errors={errors}
-                            accountType={accountType}
-                            onBack={goBack}
-                            onNext={goNext}
-                        />
-                    )}
-
-                    {step === 4 && (
-                        <StepSecurity
-                            data={data}
-                            setData={setData}
-                            errors={errors}
-                            processing={processing}
-                            onBack={goBack}
-                            onSubmit={goNext}
-                        />
-                    )}
-
-                    {/* Step 1 has its own Continue button below since it has no Back */}
-                    {step === 1 && (
-                        <button
-                            type="submit"
-                            disabled={processing}
-                            className="w-full bg-[#3B1F6B] text-white rounded-xl py-3 mt-8 font-medium hover:bg-[#2E1854] transition"
-                            style={fontSFCompact}
-                        >
-                            Continue
-                        </button>
-                    )}
-
-                    <p className="text-center text-sm text-gray-500 mt-4">
-                        Already have an account?{' '}
-                        <Link href="/login" className="text-purple-800 font-medium">
-                            Log in
-                        </Link>
+            {/* Main content - responsive padding and scrolling */}
+            <div className="flex-1 min-h-screen lg:h-screen overflow-y-auto bg-[#F8F6FC] p-4 sm:p-6 md:p-8 lg:p-12 xl:p-16 2xl:p-24">
+                <div className="max-w-full lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl mx-auto lg:mx-0">
+                    <h2 className="text-xl md:text-2xl font-bold text-gray-900" style={fontSyncopate}>
+                        create your account
+                    </h2>
+                    <p className="text-gray-500 mt-1 text-sm">
+                        It only takes a few minutes. Choose the account type that fits you.
                     </p>
-                </form>
+
+                    <StepProgress currentStep={step} />
+
+                    <form onSubmit={handleSubmit} className="mt-6">
+                        {step === 1 && (
+                            <StepDetails
+                                data={data}
+                                setData={setData}
+                                errors={errors}
+                                accountType={accountType}
+                                setAccountType={setAccountType}
+                                age={age}
+                            />
+                        )}
+
+                        {step === 2 && (
+                            <StepAddress
+                                data={data}
+                                setData={setData}
+                                errors={errors}
+                                onBack={goBack}
+                                onNext={goNext}
+                            />
+                        )}
+
+                        {step === 3 && (
+                            <StepVerification
+                                data={data}
+                                setData={setData}
+                                errors={errors}
+                                accountType={accountType}
+                                onBack={goBack}
+                                onNext={goNext}
+                            />
+                        )}
+
+                        {step === 4 && (
+                            <StepSecurity
+                                data={data}
+                                setData={setData}
+                                errors={errors}
+                                processing={processing}
+                                onBack={goBack}
+                                onSubmit={goNext}
+                            />
+                        )}
+
+                        {/* Step 1 has its own Continue button below since it has no Back */}
+                        {step === 1 && (
+                            <button
+                                type="submit"
+                                disabled={processing}
+                                className="w-full bg-[#3B1F6B] text-white rounded-xl py-3 mt-8 font-medium hover:bg-[#2E1854] transition"
+                                style={fontSFCompact}
+                            >
+                                Continue
+                            </button>
+                        )}
+
+                        <p className="text-center text-xs sm:text-sm text-gray-500 mt-4">
+                            Already have an account?{' '}
+                            <Link href="/login" className="text-purple-800 font-medium">
+                                Log in
+                            </Link>
+                        </p>
+                    </form>
+                </div>
             </div>
         </div>
     );
