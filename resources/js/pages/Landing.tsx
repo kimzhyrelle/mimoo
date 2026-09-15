@@ -5,7 +5,15 @@ const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
 const fontPoppins = { fontFamily: 'Poppins, sans-serif' };
 const fontSFCompact = { fontFamily: "'SF Compact', -apple-system, BlinkMacSystemFont, sans-serif" };
 
-const navLinks = ['Home', 'Shop', 'Categories', 'Deals'];
+// href: '#' for links that don't have a page yet. Point 'Shop' at whatever
+// route actually serves Homepage.tsx on your backend (adjust if it isn't
+// literally "/homepage").
+const navLinks = [
+    { label: 'Home', href: '/' },
+    { label: 'Shop', href: '/homepage' },
+    { label: 'Categories', href: '#' },
+    { label: 'Deals', href: '#' },
+];
 
 const categories = [
     { name: 'Pet Supplies', count: '3 items', bg: '#EFEBF9' },
@@ -154,15 +162,15 @@ export default function Landing() {
                     </Link>
 
                     <div className="hidden md:flex items-center gap-7 text-sm font-medium text-gray-700">
-                        {navLinks.map((link) => (
-                            <a
-                                key={link}
-                                href="#"
+                        {navLinks.map(({ label, href }) => (
+                            <Link
+                                key={label}
+                                href={href}
                                 className="group relative py-1 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-0.5 hover:text-[#3B1F6B]"
                             >
-                                {link}
+                                {label}
                                 <span className="pointer-events-none absolute -bottom-0.5 left-0 h-0.5 w-0 bg-[#3B1F6B] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:w-full" />
-                            </a>
+                            </Link>
                         ))}
                     </div>
 

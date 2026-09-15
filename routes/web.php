@@ -15,5 +15,6 @@ Route::get('/register', function () {
     return Inertia::render('Register');
 });
 
+Route::get('/homepage', fn () => Inertia::render('Homepage'))->name('homepage');
 
 require __DIR__.'/settings.php';
