@@ -28,7 +28,7 @@ export default defineConfig({
         // Skip wayfinder generation on Cloudflare Pages (no PHP in build image).
         // Run `php artisan wayfinder:generate --with-form` locally and commit
         // the generated files instead.
-        ...(process.env.CF_PAGES ? [] : [wayfinder({ formVariants: true })]),
+        ...(process.env.SKIP_WAYFINDER ? [] : [wayfinder({ formVariants: true })]),
     ]),
     resolve: {
         alias: {
