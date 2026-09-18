@@ -21,7 +21,7 @@ export default function Header() {
           mimoo
         </Link>
 
-        <div className="flex flex-1 max-w-lg items-center gap-2 rounded-full bg-white px-3 py-1.5 sm:px-4 sm:py-2">
+        <div className="flex flex-1 max-w-2xl items-center gap-2 rounded-full bg-white px-3 py-1.5 sm:px-4 sm:py-2">
           <Search className="h-4 w-4 shrink-0 text-neutral-400" />
           <input
             type="text"
