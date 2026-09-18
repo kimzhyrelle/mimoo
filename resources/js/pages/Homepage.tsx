@@ -1,13 +1,12 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import { Link } from "@inertiajs/react";
 import {
-  Search,
-  ShoppingCart,
-  User,
   ChevronRight,
   ChevronLeft,
 } from "lucide-react";
+import Header from "@/components/Header";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -92,11 +91,11 @@ function SuperSeratusBanner() {
 function CategoryTile({ category }: { category: Category }) {
   return (
     <button
-      className="flex shrink-0 snap-start flex-col items-center gap-2 rounded-lg p-1 text-center transition-colors hover:bg-violet-50"
-      style={{ width: "calc((100% - 60px) / 6)" }}
+      className="flex shrink-0 snap-start flex-col items-center gap-1.5 rounded-lg p-1 text-center transition-colors hover:bg-violet-50 sm:gap-2"
+      style={{ width: "calc((100% - 40px) / 4)" }}
     >
       <div className="aspect-square w-full rounded-lg bg-neutral-200" />
-      <span className="text-xs font-medium text-neutral-700 line-clamp-1">
+      <span className="text-[10px] font-medium text-neutral-700 line-clamp-1 sm:text-xs">
         {category.label}
       </span>
     </button>
@@ -184,7 +183,10 @@ function CategoryCarousel({ categories }: { categories: Category[] }) {
 
 function ProductCard({ product, role }: { product: Product; role: UserRole }) {
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white transition-shadow hover:shadow-md">
+    <Link
+      href={`/product/${product.id}`}
+      className="flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white transition-shadow hover:shadow-md"
+    >
       <div className="aspect-square w-full bg-neutral-200" />
       <div className="flex flex-1 flex-col gap-1 p-3">
         <span className="text-sm text-neutral-800 line-clamp-2">
@@ -194,22 +196,39 @@ function ProductCard({ product, role }: { product: Product; role: UserRole }) {
           {product.price}
         </span>
         {role === "guest" && (
-          <button className="mt-2 rounded-md border border-violet-600 py-1.5 text-xs font-medium text-violet-600 transition-colors hover:bg-violet-50">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              // Handle login redirect
+            }}
+            className="mt-2 rounded-md border border-violet-600 py-1.5 text-xs font-medium text-violet-600 transition-colors hover:bg-violet-50"
+          >
             Log in to buy
           </button>
         )}
         {role === "buyer" && (
-          <button className="mt-2 rounded-md bg-violet-600 py-1.5 text-xs font-medium text-white transition-colors hover:bg-violet-700">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              // Handle add to cart
+            }}
+            className="mt-2 rounded-md bg-violet-600 py-1.5 text-xs font-medium text-white transition-colors hover:bg-violet-700"
+          >
             Add to cart
           </button>
         )}
         {role === "seller" && (
-          <button className="mt-2 rounded-md border border-neutral-300 py-1.5 text-xs font-medium text-neutral-500">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+            }}
+            className="mt-2 rounded-md border border-neutral-300 py-1.5 text-xs font-medium text-neutral-500"
+          >
             View as buyer to purchase
           </button>
         )}
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -218,46 +237,7 @@ function ProductCard({ product, role }: { product: Product; role: UserRole }) {
 // reference design. Role only changes downstream content (product CTAs).
 // ---------------------------------------------------------------------------
 
-function Header() {
-  return (
-    <header
-      className="sticky top-0 z-10 px-4 py-3 shadow-sm"
-      style={{
-        background: "linear-gradient(90deg, #19132A 0%, #6E5F8F 100%)",
-      }}
-    >
-      <div className="mx-auto flex max-w-6xl items-center gap-4">
-        <span className="shrink-0 text-lg font-bold tracking-tight text-white">
-          Mimoo
-        </span>
-
-        <div className="flex flex-1 items-center gap-2 rounded-full bg-white px-4 py-2">
-          <Search className="h-4 w-4 shrink-0 text-neutral-400" />
-          <input
-            type="text"
-            placeholder="Search products, brands, and stores"
-            className="w-full bg-transparent text-sm text-neutral-700 outline-none placeholder:text-neutral-400"
-          />
-        </div>
-
-        <nav className="flex shrink-0 items-center gap-1">
-          <button
-            aria-label="Cart"
-            className="relative rounded-full p-2 text-white hover:bg-white/10"
-          >
-            <ShoppingCart className="h-5 w-5" />
-          </button>
-          <button
-            aria-label="Account"
-            className="rounded-full p-2 text-white hover:bg-white/10"
-          >
-            <User className="h-5 w-5" />
-          </button>
-        </nav>
-      </div>
-    </header>
-  );
-}
+// Moved to components/Header.tsx for reusability
 
 // ---------------------------------------------------------------------------
 // Page
@@ -282,13 +262,13 @@ export default function Homepage() {
 
       <Header />
 
-      <main className="mx-auto max-w-6xl px-4 py-6">
+      <main className="mx-auto max-w-6xl px-4 py-4 sm:py-6">
         {/* Hero: big banner on top, 3-column row below it */}
-        <section className="flex flex-col gap-3">
+        <section className="flex flex-col gap-2 sm:gap-3">
           <HeroMainBanner />
 
-          <div className="grid grid-cols-3 gap-3">
-            <div className="grid grid-rows-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+            <div className="grid grid-rows-2 gap-2 sm:gap-3">
               <SmallPlaceholderBanner label="Perfume & makeup offers" />
               <SmallPlaceholderBanner label="iPhone offers" />
             </div>
@@ -298,12 +278,12 @@ export default function Homepage() {
         </section>
 
         {/* Browse by categories */}
-        <section className="mt-8">
+        <section className="mt-6 sm:mt-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-neutral-900">
+            <h2 className="text-sm font-semibold text-neutral-900 sm:text-base">
               Browse by categories
             </h2>
-            <button className="flex items-center text-sm text-violet-600 hover:underline">
+            <button className="flex items-center text-xs text-violet-600 hover:underline sm:text-sm">
               See all <ChevronRight className="h-4 w-4" />
             </button>
           </div>
@@ -311,16 +291,16 @@ export default function Homepage() {
         </section>
 
         {/* Top products */}
-        <section className="mt-8">
+        <section className="mt-6 sm:mt-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-neutral-900">
+            <h2 className="text-sm font-semibold text-neutral-900 sm:text-base">
               Top products
             </h2>
-            <button className="flex items-center text-sm text-violet-600 hover:underline">
+            <button className="flex items-center text-xs text-violet-600 hover:underline sm:text-sm">
               See all <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
             {PRODUCTS.map((p) => (
               <ProductCard key={p.id} product={p} role={role} />
             ))}
@@ -328,7 +308,7 @@ export default function Homepage() {
         </section>
 
         {/* Secondary banners */}
-        <section className="mt-8 grid grid-cols-2 gap-3">
+        <section className="mt-6 grid grid-cols-1 gap-2 sm:mt-8 sm:grid-cols-2 sm:gap-3">
           <div className="flex min-h-24 items-center justify-center rounded-xl bg-neutral-200 text-xs font-medium text-neutral-400">
             Promo banner
           </div>
@@ -338,15 +318,15 @@ export default function Homepage() {
         </section>
 
         {/* Discover something new */}
-        <section className="mt-10 text-center">
-          <h2 className="text-sm font-semibold tracking-wide text-neutral-800">
+        <section className="mt-8 text-center sm:mt-10">
+          <h2 className="text-xs font-semibold tracking-wide text-neutral-800 sm:text-sm">
             Discover something new!
           </h2>
           <div className="mx-auto mt-2 h-0.5 w-10 rounded-full bg-violet-600" />
         </section>
 
         {/* Recommended feed placeholder */}
-        <section className="mt-6 grid grid-cols-5 gap-3 pb-10">
+        <section className="mt-4 grid grid-cols-2 gap-2 pb-8 sm:mt-6 sm:grid-cols-3 sm:gap-3 sm:pb-10 lg:grid-cols-5">
           {PRODUCTS.map((p) => (
             <ProductCard key={`rec-${p.id}`} product={p} role={role} />
           ))}

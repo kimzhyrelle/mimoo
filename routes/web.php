@@ -17,4 +17,8 @@ Route::get('/register', function () {
 
 Route::get('/homepage', fn () => Inertia::render('Homepage'))->name('homepage');
 
+Route::get('/product/{id}', fn (string $id) => Inertia::render('ProductDetail', [
+    'productId' => $id,
+]))->name('product.show');
+
 require __DIR__.'/settings.php';
