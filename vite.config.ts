@@ -81,4 +81,4 @@ export default defineConfig({
             entryPoint: 'resources/css/app.css',
         },
     },
-});
+}); 
