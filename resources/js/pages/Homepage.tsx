@@ -92,9 +92,9 @@ function CategoryTile({ category }: { category: Category }) {
   return (
     <button
       className="flex shrink-0 snap-start flex-col items-center gap-1.5 rounded-lg p-1 text-center transition-colors hover:bg-violet-50 sm:gap-2"
-      style={{ width: "calc((100% - 40px) / 4)" }}
+      style={{ width: "calc((100% - 40px) / 5)" }}
     >
-      <div className="aspect-square w-full rounded-lg bg-neutral-200" />
+      <div className="aspect-square w-full rounded-full bg-neutral-200" />
       <span className="text-[10px] font-medium text-neutral-700 line-clamp-1 sm:text-xs">
         {category.label}
       </span>
