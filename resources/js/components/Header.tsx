@@ -3,6 +3,7 @@ import {
   ShoppingCart,
   User,
   X,
+  Bell,
 } from "lucide-react";
 import { Link } from "@inertiajs/react";
 import { useState } from "react";
@@ -10,6 +11,8 @@ import { useState } from "react";
 export default function Header() {
   const [showSignInModal, setShowSignInModal] = useState(false);
   const isAuthenticated = false; // TODO: Replace with actual auth check
+  const cartCount = 32; // TODO: Replace with actual cart count
+  const notificationCount = 5; // TODO: Replace with actual notification count
 
   const handleCartClick = () => {
     if (!isAuthenticated) {
@@ -22,12 +25,12 @@ export default function Header() {
   return (
     <>
       <header
-        className="sticky top-0 z-10 py-3 shadow-sm"
+        className="sticky top-0 z-10 py-4 shadow-sm"
         style={{
           background: "linear-gradient(90deg, #19132A 0%, #6E5F8F 100%)",
         }}
       >
-        <div className="flex items-center justify-between gap-3 px-4">
+        <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 sm:gap-6">
           <Link
             href="/homepage"
             className="shrink-0 text-base font-bold tracking-tight text-white hover:opacity-90 transition-opacity sm:text-lg"
@@ -35,28 +38,46 @@ export default function Header() {
             mimoo
           </Link>
 
-          <div className="flex flex-1 max-w-2xl items-center gap-2 rounded-full bg-white px-3 py-1.5 sm:px-4 sm:py-2">
+          <div className="flex flex-1 items-center gap-2 rounded-full bg-white px-4 py-2.5 sm:px-5 sm:py-3">
             <Search className="h-4 w-4 shrink-0 text-neutral-400" />
             <input
               type="text"
               placeholder="Search"
-              className="w-full bg-transparent text-xs text-neutral-700 outline-none placeholder:text-neutral-400 sm:text-sm"
+              className="w-full bg-transparent text-sm text-neutral-700 outline-none placeholder:text-neutral-400"
             />
           </div>
 
-          <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <nav className="flex shrink-0 flex-col items-end gap-0.5">
+            <div className="flex items-center gap-2">
+              <button
+                aria-label="Notifications"
+                className="relative text-white hover:opacity-80"
+              >
+                <Bell className="h-5 w-5" />
+                {notificationCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-semibold text-white">
+                    {notificationCount}
+                  </span>
+                )}
+              </button>
+              <button
+                aria-label="Account"
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition"
+              >
+                <User className="h-4 w-4 text-white" />
+              </button>
+            </div>
             <button
               onClick={handleCartClick}
               aria-label="Cart"
-              className="relative rounded-full p-1.5 text-white hover:bg-white/10 sm:p-2"
+              className="relative text-white hover:opacity-80"
             >
-              <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
-            </button>
-            <button
-              aria-label="Account"
-              className="rounded-full p-1.5 text-white hover:bg-white/10 sm:p-2"
-            >
-              <User className="h-4 w-4 sm:h-5 sm:w-5" />
+              <ShoppingCart className="h-5 w-5" />
+              {cartCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-semibold text-white">
+                  {cartCount}
+                </span>
+              )}
             </button>
           </nav>
         </div>

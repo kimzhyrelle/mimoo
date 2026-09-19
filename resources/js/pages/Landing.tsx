@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { ReactNode, useRef } from 'react';
+import { ReactNode, useRef, useState, useEffect } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
 const fontPoppins = { fontFamily: 'Poppins, sans-serif' };
@@ -16,18 +16,18 @@ const navLinks = [
 ];
 
 const categories = [
-    { name: 'Pet Supplies', count: '3 items', bg: '#EFEBF9' },
-    { name: 'Electronics and Gadgets', count: '3 items', bg: '#E8F0FB' },
-    { name: "Women's Apparel", count: '3 items', bg: '#FBEAF0' },
-    { name: "Men's Apparel", count: '3 items', bg: '#E8F7F5' },
-    { name: 'Kids and Baby', count: '3 items', bg: '#FBF0E6' },
-    { name: 'Home and Garden', count: '3 items', bg: '#EAF6E9' },
-    { name: 'Sports and Outdoors', count: '3 items', bg: '#FDEDEA' },
-    { name: 'Health and Beauty', count: '3 items', bg: '#F3EAFB' },
-    { name: 'Books and Media', count: '3 items', bg: '#E9F1FA' },
-    { name: 'Food and Gourmet', count: '3 items', bg: '#FBF3E3' },
-    { name: 'Furniture and Office Equipment', count: '3 items', bg: '#EDEFF6' },
-    { name: 'Jewelry and Watches', count: '3 items', bg: '#FBEAEE' },
+    { name: 'Pet Supplies', count: '3 items', icon: '/images/pet supplies.jpg' },
+    { name: 'Electronics and Gadgets', count: '3 items', icon: '/images/electronics.jpg' },
+    { name: "Women's Apparel", count: '3 items', icon: "/images/women's apparel.jpg" },
+    { name: "Men's Apparel", count: '3 items', icon: "/images/mens apparel.jpg" },
+    { name: 'Kids and Baby', count: '3 items', icon: '/images/kids and babies.jpg' },
+    { name: 'Home and Garden', count: '3 items', icon: '/images/home and garden.jpg' },
+    { name: 'Sports and Outdoors', count: '3 items', icon: '/images/sports.jpg' },
+    { name: 'Health and Beauty', count: '3 items', icon: '/images/health and beauty.jpg' },
+    { name: 'Books and Media', count: '3 items', icon: null },
+    { name: 'Food and Gourmet', count: '3 items', icon: null },
+    { name: 'Furniture and Office Equipment', count: '3 items', icon: null },
+    { name: 'Jewelry and Watches', count: '3 items', icon: null },
 ];
 
 function CategoryIcon() {
@@ -116,6 +116,32 @@ function BoxIcon() {
 
 export default function Landing() {
     const scrollerRef = useRef<HTMLDivElement>(null);
+    const [currentSlide, setCurrentSlide] = useState(0);
+    const [isPaused, setIsPaused] = useState(false);
+    const slides = [
+        {
+            badge: 'FOR BUYERS',
+            title: 'Shop from trusted local sellers, all in one place.',
+            description: 'Create a free buyer account to browse products, chat directly with sellers, and check out in minutes. Selling instead? You can register a seller account too.',
+            image: '/images/landing page bg 1.png',
+        },
+        {
+            badge: 'FOR SELLERS',
+            title: 'Start selling to local buyers today.',
+            description: 'Register as a seller and list your products in minutes. Reach thousands of buyers looking for items just like yours.',
+            image: '/images/landing page bg 2.png',
+        },
+    ];
+
+    useEffect(() => {
+        if (isPaused) return;
+        
+        const timer = setInterval(() => {
+            setCurrentSlide((prev) => (prev + 1) % slides.length);
+        }, 5000); // Auto-advance every 5 seconds
+
+        return () => clearInterval(timer);
+    }, [slides.length, isPaused]);
 
     const scrollByAmount = (amount: number) => {
         scrollerRef.current?.scrollBy({ left: amount, behavior: 'smooth' });
@@ -125,6 +151,7 @@ export default function Landing() {
         <div className="bg-white min-h-screen" style={fontPoppins}>
 
             <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&display=swap');
         .mimoo-logo:hover .mimoo-letter {
             animation: mimoo-wave 1.4s ease-in-out infinite;
         }
@@ -133,16 +160,6 @@ export default function Landing() {
             50% { transform: translateY(-4px); }
         }
     `}</style>
-            {/* Promo bar */}
-            <div className="bg-[#3B1F6B] text-white text-xs">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0">
-                    <span className="text-center sm:text-left">Get 15% + free shipping on your first order!</span>
-                    <Link href="/login" className="flex items-center gap-1.5 hover:underline whitespace-nowrap">
-                        Log in / Register
-                    </Link>
-                </div>
-            </div>
-
             {/* Navbar */}
             <nav className="bg-white border-b border-gray-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between gap-3 sm:gap-6">
@@ -204,44 +221,112 @@ export default function Landing() {
                 </div>
             </nav>
 
-            {/* Hero */}
-            <section className="relative overflow-hidden bg-gradient-to-br from-[#19132A] via-[#2B1F4A] to-[#6E5F8F]">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16 relative z-10">
-                    <span
-                        className="inline-block text-xs font-semibold text-white bg-[#3B1F6B] px-4 py-1.5 rounded-full mb-4 sm:mb-6 tracking-wide"
-                        style={fontSFCompact}
-                    >
-                        FOR BUYERS
-                    </span>
-
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight max-w-2xl mb-4 sm:mb-5">
-                        Shop from trusted local sellers, all in one place.
-                    </h1>
-
-                    <p className="text-sm text-white/70 max-w-lg mb-6 sm:mb-8 leading-relaxed">
-                        Create a free buyer account to browse products, chat directly with sellers, and
-                        check out in minutes. Selling instead? You can register a seller account too.
-                    </p>
-
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
-                        <Link
-                            href="/register"
-                            className="flex items-center justify-center gap-2 bg-[#9B5DE5] hover:bg-[#8B4FD1] text-white text-sm font-semibold px-5 py-2.5 rounded-full transition"
+            {/* Hero Carousel */}
+            <section className="bg-white px-4 sm:px-6 py-6">
+                <div className="relative overflow-hidden bg-gradient-to-br from-[#19132A] via-[#2B1F4A] to-[#6E5F8F] h-[400px] sm:h-[500px] lg:h-[600px] max-w-7xl mx-auto rounded-3xl">
+                {/* Carousel slides */}
+                <div className="relative h-full">
+                    {slides.map((slide, index) => (
+                        <div
+                            key={index}
+                            className={`absolute inset-0 transition-opacity duration-1000 ${
+                                index === currentSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                            }`}
                         >
-                            Create your account
-                            <span>→</span>
-                        </Link>
-                        <Link
-                            href="/login"
-                            className="bg-transparent border border-white/40 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-white/10 transition text-center"
-                        >
-                            Log in
-                        </Link>
+                            {/* Background image */}
+                            <div 
+                                className="absolute inset-0 bg-cover bg-right bg-no-repeat rounded-3xl"
+                                style={{ backgroundImage: `url('${slide.image}')` }}
+                            />
+                            
+                            {/* Dark overlay for better text readability on mobile */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-[#19132A]/80 via-[#19132A]/60 to-transparent sm:from-[#19132A]/60 sm:via-transparent" />
+                            
+                            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 lg:py-16 relative z-10 h-full flex flex-col justify-center">
+                                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight max-w-xl sm:max-w-2xl mb-3 sm:mb-4 lg:mb-5" style={{ fontFamily: "'Syne', sans-serif" }}>
+                                    {slide.title}
+                                </h1>
+
+                                <p className="text-xs sm:text-sm text-white/90 sm:text-white/70 max-w-md sm:max-w-lg mb-4 sm:mb-6 lg:mb-8 leading-relaxed">
+                                    {slide.description}
+                                </p>
+
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+                                    <Link
+                                        href="/register"
+                                        className="flex items-center justify-center gap-2 bg-[#9B5DE5] hover:bg-[#8B4FD1] text-white text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2 sm:py-2.5 rounded-full transition"
+                                    >
+                                        Create your account
+                                        <span>→</span>
+                                    </Link>
+                                    <Link
+                                        href="/login"
+                                        className="bg-transparent border border-white/40 text-white text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2 sm:py-2.5 rounded-full hover:bg-white/10 transition text-center"
+                                    >
+                                        Log in
+                                    </Link>
+                                </div>
+
+                                <p className="text-[10px] sm:text-xs text-white/50">
+                                    Already a member? Log in above — takes less than a minute.
+                                </p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Carousel indicators */}
+                {slides.length > 1 && (
+                    <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+                        {slides.map((_, index) => (
+                            <button
+                                key={index}
+                                onClick={() => setCurrentSlide(index)}
+                                className={`h-1.5 sm:h-2 rounded-full transition-all ${
+                                    index === currentSlide 
+                                        ? 'w-6 sm:w-8 bg-white' 
+                                        : 'w-1.5 sm:w-2 bg-white/50 hover:bg-white/70'
+                                }`}
+                                aria-label={`Go to slide ${index + 1}`}
+                            />
+                        ))}
                     </div>
+                )}
 
-                    <p className="text-xs text-white/50">
-                        Already a member? Log in above — takes less than a minute.
-                    </p>
+                {/* Navigation controls - bottom right */}
+                {slides.length > 1 && (
+                    <div className="absolute bottom-4 sm:bottom-6 right-4 sm:right-6 z-20 flex items-center gap-2">
+                        <button
+                            onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
+                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center text-[#3B1F6B] text-xl sm:text-2xl font-bold transition shadow-md"
+                            aria-label="Previous slide"
+                        >
+                            ‹
+                        </button>
+                        <button
+                            onClick={() => setIsPaused(!isPaused)}
+                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center text-[#3B1F6B] transition shadow-md"
+                            aria-label={isPaused ? 'Play' : 'Pause'}
+                        >
+                            {isPaused ? (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M8 5v14l11-7z"/>
+                                </svg>
+                            ) : (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                                </svg>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
+                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center text-[#3B1F6B] text-xl sm:text-2xl font-bold transition shadow-md"
+                            aria-label="Next slide"
+                        >
+                            ›
+                        </button>
+                    </div>
+                )}
                 </div>
             </section>
 
@@ -269,11 +354,18 @@ export default function Landing() {
                             <a
                                 key={`${cat.name}-${i}`}
                                 href="#"
-                                className="shrink-0 w-40 sm:w-44 rounded-2xl border border-gray-100 p-4 sm:p-5 hover:shadow-md transition text-center"
-                                style={{ backgroundColor: cat.bg }}
+                                className="shrink-0 w-40 sm:w-44 rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 hover:shadow-md transition text-center"
                             >
-                                <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto rounded-full bg-white/70 flex items-center justify-center mb-3">
-                                    <CategoryIcon />
+                                <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto rounded-full bg-gray-100 flex items-center justify-center mb-3 overflow-hidden">
+                                    {cat.icon ? (
+                                        <img 
+                                            src={cat.icon} 
+                                            alt={cat.name}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <CategoryIcon />
+                                    )}
                                 </div>
                                 <p className="text-xs sm:text-sm font-semibold text-gray-900 leading-snug min-h-[2.5rem] flex items-center justify-center">
                                     {cat.name}
@@ -359,10 +451,10 @@ export default function Landing() {
                                 <span className="text-2xl sm:text-3xl font-bold" style={fontSyncopate}>15%</span>
                             </div>
                             <div>
-                                <h3 className="text-lg sm:text-xl font-bold mb-1">
+                                <h3 className="text-lg sm:text-xl font-bold mb-1" style={{ fontFamily: "'Syne', sans-serif" }}>
                                     Pamper your first order with a welcome discount!
                                 </h3>
-                                <p className="text-sm text-white/80">
+                                <p className="text-sm text-white/80" style={{ fontFamily: "'Syne', sans-serif" }}>
                                     New shoppers get 15% off plus free shipping on orders over ₱500.
                                 </p>
                             </div>

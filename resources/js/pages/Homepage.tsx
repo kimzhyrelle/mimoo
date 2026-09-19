@@ -1,12 +1,14 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, type FormEvent } from "react";
 import { Link } from "@inertiajs/react";
 import {
   ChevronRight,
   ChevronLeft,
+  Bell,
+  Search,
+  ShoppingCart,
 } from "lucide-react";
-import Header from "@/components/Header";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -17,6 +19,7 @@ type UserRole = "guest" | "buyer" | "seller";
 interface Category {
   id: string;
   label: string;
+  icon?: string | null;
 }
 
 interface Product {
@@ -30,18 +33,18 @@ interface Product {
 // ---------------------------------------------------------------------------
 
 const CATEGORIES: Category[] = [
-  { id: "c1", label: "Electronics" },
-  { id: "c2", label: "Fashion" },
-  { id: "c3", label: "Home & Living" },
-  { id: "c4", label: "Beauty" },
-  { id: "c5", label: "Groceries" },
-  { id: "c6", label: "Gadgets" },
-  { id: "c7", label: "Toys & Kids" },
-  { id: "c8", label: "Sports" },
-  { id: "c9", label: "Automotive" },
-  { id: "c10", label: "Books" },
-  { id: "c11", label: "Pet Supplies" },
-  { id: "c12", label: "Health" },
+  { id: "c1", label: "Pet Supplies", icon: "/images/pet supplies.jpg" },
+  { id: "c2", label: "Electronics and Gadgets", icon: "/images/electronics.jpg" },
+  { id: "c3", label: "Women's Apparel", icon: "/images/women's apparel.jpg" },
+  { id: "c4", label: "Men's Apparel", icon: "/images/mens apparel.jpg" },
+  { id: "c5", label: "Kids and Baby", icon: "/images/kids and babies.jpg" },
+  { id: "c6", label: "Home and Garden", icon: "/images/home and garden.jpg" },
+  { id: "c7", label: "Sports and Outdoors", icon: "/images/sports.jpg" },
+  { id: "c8", label: "Health and Beauty", icon: "/images/health and beauty.jpg" },
+  { id: "c9", label: "Books and Media", icon: null },
+  { id: "c10", label: "Food and Gourmet", icon: null },
+  { id: "c11", label: "Furniture and Office Equipment", icon: null },
+  { id: "c12", label: "Jewelry and Watches", icon: null },
 ];
 
 const PRODUCTS: Product[] = [
@@ -57,33 +60,171 @@ const PRODUCTS: Product[] = [
 // ---------------------------------------------------------------------------
 
 function HeroMainBanner() {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  
+  const slides = [
+    {
+      title: 'Main promo banner 1',
+      bgColor: 'bg-violet-100',
+      image: '/images/main banner 1.jpg',
+    },
+    {
+      title: 'Main promo banner 2',
+      bgColor: 'bg-blue-100',
+      image: '/images/main banner 2.jpg',
+    },
+    {
+      title: 'Main promo banner 3',
+      bgColor: 'bg-pink-100',
+      image: null,
+    },
+  ];
+
+  useEffect(() => {
+    if (isPaused) return;
+    
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, [slides.length, isPaused]);
+
   return (
-    <div className="flex min-h-36 items-center justify-center rounded-xl bg-neutral-200 text-xs font-medium text-neutral-400 sm:min-h-44">
-      Main promo banner
+    <div className="relative overflow-hidden rounded-xl min-h-48 sm:min-h-56">
+      {/* Carousel slides */}
+      <div className="relative h-full min-h-48 sm:min-h-56">
+        {slides.map((slide, index) => (
+          <div
+            key={index}
+            className={`absolute inset-0 transition-opacity duration-1000 ${
+              index === currentSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+          >
+            {slide.image ? (
+              <div className="relative h-full w-full">
+                <img src={slide.image} alt={slide.title} className="w-full h-full object-cover rounded-xl" />
+              </div>
+            ) : (
+              <div className={`flex items-center justify-center rounded-xl ${slide.bgColor} text-xs font-medium text-neutral-400 h-full`}>
+                {slide.title}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Carousel indicators */}
+      {slides.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+          {slides.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentSlide(index)}
+              className={`h-1.5 sm:h-2 rounded-full transition-all ${
+                index === currentSlide 
+                  ? 'w-6 sm:w-8 bg-white' 
+                  : 'w-1.5 sm:w-2 bg-white/50 hover:bg-white/70'
+              }`}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Navigation controls - bottom right */}
+      {slides.length > 1 && (
+        <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
+          <button
+            onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
+            className="w-8 h-8 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center text-violet-600 text-xl font-bold transition shadow-md"
+            aria-label="Previous slide"
+          >
+            ‹
+          </button>
+          <button
+            onClick={() => setIsPaused(!isPaused)}
+            className="w-8 h-8 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center text-violet-600 transition shadow-md"
+            aria-label={isPaused ? 'Play' : 'Pause'}
+          >
+            {isPaused ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
+            className="w-8 h-8 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center text-violet-600 text-xl font-bold transition shadow-md"
+            aria-label="Next slide"
+          >
+            ›
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
+// Each banner box uses the real aspect ratio of its image file, so
+// object-fill never stretches. Images are absolutely positioned inside the
+// box, so they never push the row height around.
 function SmallPlaceholderBanner({ label }: { label: string }) {
+  let imageSrc: string | null = null;
+  let ratioClass = "min-h-24";
+  if (label === "Perfume & makeup offers") {
+    imageSrc = "/images/perfumes banner.jpg";
+    ratioClass = "aspect-[1199/439]"; // image is 1199 x 439
+  } else if (label === "iPhone offers") {
+    imageSrc = "/images/phones banner.jpg";
+    ratioClass = "aspect-[1200/600]"; // image is 1200 x 600
+  }
+
   return (
-    <div className="flex flex-1 items-center justify-center rounded-xl bg-neutral-200 text-xs font-medium text-neutral-400">
-      {label}
+    <div
+      className={`relative flex items-center justify-center overflow-hidden rounded-xl bg-neutral-200 text-xs font-medium text-neutral-400 ${ratioClass}`}
+    >
+      {imageSrc ? (
+        <img
+          src={imageSrc}
+          alt={label}
+          className="absolute inset-0 h-full w-full object-fill"
+        />
+      ) : (
+        label
+      )}
     </div>
   );
 }
 
+// Image is 415 x 356. On mobile it keeps its own ratio; from sm up it
+// stretches to the row height (which matches its ratio by design).
 function BuyOneGetOneBanner() {
   return (
-    <div className="flex h-full min-h-24 items-center justify-center rounded-xl bg-neutral-200 text-xs font-medium text-neutral-400">
-      Promo banner
+    <div className="relative aspect-[415/356] overflow-hidden rounded-xl bg-neutral-200 sm:aspect-auto">
+      <img
+        src="/images/payday sale.png"
+        alt="Payday sale"
+        className="absolute inset-0 h-full w-full object-fill"
+      />
     </div>
   );
 }
 
+// Image is 1080 x 1080 (square).
 function SuperSeratusBanner() {
   return (
-    <div className="flex h-full min-h-24 items-center justify-center rounded-xl bg-neutral-200 text-xs font-medium text-neutral-400">
-      Promo banner
+    <div className="relative aspect-square overflow-hidden rounded-xl bg-neutral-200 sm:aspect-auto">
+      <img
+        src="/images/sale banner.jpg"
+        alt="Sale Banner"
+        className="absolute inset-0 h-full w-full object-fill"
+      />
     </div>
   );
 }
@@ -94,7 +235,17 @@ function CategoryTile({ category }: { category: Category }) {
       className="flex shrink-0 snap-start flex-col items-center gap-1.5 rounded-lg p-1 text-center transition-colors hover:bg-violet-50 sm:gap-2"
       style={{ width: "calc((100% - 40px) / 5)" }}
     >
-      <div className="aspect-square w-full rounded-full bg-neutral-200" />
+      <div className="aspect-square w-full rounded-full bg-neutral-200 overflow-hidden">
+        {category.icon ? (
+          <img 
+            src={category.icon} 
+            alt={category.label}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full" />
+        )}
+      </div>
       <span className="text-[10px] font-medium text-neutral-700 line-clamp-1 sm:text-xs">
         {category.label}
       </span>
@@ -235,9 +386,125 @@ function ProductCard({ product, role }: { product: Product; role: UserRole }) {
 // ---------------------------------------------------------------------------
 // Header — search bar + cart/account icons always shown, matching the
 // reference design. Role only changes downstream content (product CTAs).
+//
+//   ┌──────────────────────────────────────────────────────────┐
+//   │                                              ◯ username   │
+//   │  mimoo   ( ───────── search ─────────────── ●)   🔔  🛒   │
+//   └──────────────────────────────────────────────────────────┘
 // ---------------------------------------------------------------------------
 
-// Moved to components/Header.tsx for reusability
+function CountBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-semibold leading-none text-white">
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
+function Header({
+  username = "username",
+  avatarUrl = null,
+  notificationCount = 5,
+  cartCount = 100,
+  onSearch,
+}: {
+  username?: string;
+  avatarUrl?: string | null;
+  notificationCount?: number;
+  cartCount?: number;
+  onSearch?: (query: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    onSearch?.(query.trim());
+  };
+
+  return (
+    <header
+      className="w-full text-white"
+      style={{
+        background:
+          "linear-gradient(90deg, #1c1430 0%, #3a2d5c 45%, #6a5a8a 100%)",
+      }}
+    >
+      <div className="mx-auto max-w-6xl px-4">
+        {/* Utility row: account, top right (sits above bell + cart) */}
+        <div className="flex h-7 items-center justify-end text-[10px] sm:text-[11px]">
+          <Link
+            href="/account"
+            className="flex items-center gap-1.5 text-white/90 transition-colors hover:text-white"
+          >
+            <span className="h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full bg-neutral-200">
+              {avatarUrl && (
+                <img
+                  src={avatarUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              )}
+            </span>
+            <span className="max-w-24 truncate">{username}</span>
+          </Link>
+        </div>
+
+        {/* Main row: logo · pill search · bell · cart */}
+        <div className="flex items-center gap-3 pb-3 pt-1 sm:gap-6 sm:pb-4">
+          <Link
+            href="/"
+            className="shrink-0 text-xl font-bold lowercase tracking-tight sm:text-2xl"
+          >
+            mimoo
+          </Link>
+
+          <form
+            onSubmit={handleSubmit}
+            role="search"
+            className="relative min-w-0 flex-1"
+          >
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search products"
+              aria-label="Search products"
+              className="h-8 w-full rounded-full bg-neutral-200 pl-4 pr-11 text-sm text-neutral-800 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-violet-300 sm:h-9"
+            />
+            <button
+              type="submit"
+              aria-label="Search"
+              className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-[#2a2340] text-white transition-colors hover:bg-[#3a2d5c] sm:h-7 sm:w-7"
+            >
+              <Search className="h-3.5 w-3.5" />
+            </button>
+          </form>
+
+          {/* Bell + cart, side by side on the same row as the search bar */}
+          <div className="flex shrink-0 items-center gap-4 sm:gap-5">
+            <button
+              aria-label="Notifications"
+              className="relative flex items-center text-white transition-colors hover:text-white/80"
+            >
+              <Bell className="h-5 w-5" />
+              <CountBadge count={notificationCount} />
+            </button>
+
+            <Link
+              href="/cart"
+              aria-label="Cart"
+              className="relative flex items-center text-white transition-colors hover:text-white/80"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              <CountBadge count={cartCount} />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Page
@@ -247,6 +514,7 @@ export default function Homepage() {
   // Swap this out for your real auth/session state later — guest, buyer,
   // or seller — to drive the product card CTAs below.
   const role: UserRole = "guest";
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   return (
     <div
@@ -263,12 +531,15 @@ export default function Homepage() {
       <Header />
 
       <main className="mx-auto max-w-6xl px-4 py-4 sm:py-6">
-        {/* Hero: big banner on top, 3-column row below it */}
+        {/* Hero: big banner on top, 3-column row below it.
+            Column widths (fr) are set from the image ratios so all three
+            columns come out the same height with no stretching:
+            perfume+phone stack : payday : sale  ≈  372 : 390 : 334 */}
         <section className="flex flex-col gap-2 sm:gap-3">
           <HeroMainBanner />
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
-            <div className="grid grid-rows-2 gap-2 sm:gap-3">
+          <div className="grid grid-cols-[162fr_173fr] gap-2 sm:grid-cols-[372fr_390fr_334fr] sm:gap-3">
+            <div className="flex flex-col gap-2 sm:gap-3">
               <SmallPlaceholderBanner label="Perfume & makeup offers" />
               <SmallPlaceholderBanner label="iPhone offers" />
             </div>
@@ -332,6 +603,27 @@ export default function Homepage() {
           ))}
         </section>
       </main>
+
+      {/* Chat Button */}
+      <button
+        onClick={() => setIsChatOpen(!isChatOpen)}
+        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-all hover:scale-110"
+        style={{ backgroundColor: '#1c1430' }}
+        aria-label="Open chat"
+      >
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+      </button>
     </div>
   );
 }
