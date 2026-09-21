@@ -47,7 +47,7 @@ export default function Registration() {
         if (step < TOTAL_STEPS) {
             setStep((s) => s + 1);
         } else {
-            post('/register');
+            post('/register', { forceFormData: true });
         }
     };
 

@@ -5,12 +5,9 @@ import { Head, Link, router, usePage } from "@inertiajs/react";
 import {
   ChevronRight,
   ChevronLeft,
-  Bell,
-  Search,
-  ShoppingCart,
-  LogOut,
 } from "lucide-react";
 import { SignupModal } from "@/components/signup-modal";
+import { BuyerHeader } from "@/components/buyer-header";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -395,154 +392,15 @@ function ProductCard({
 
 // ---------------------------------------------------------------------------
 // Header — search bar + cart/account icons always shown, matching the
-// reference design. Role only changes downstream content (product CTAs).
+// reference design. Role changes downstream content (product CTAs) AND
+// gates the cart/notification icons for guests, showing the signup modal
+// instead of navigating.
 //
 //   ┌──────────────────────────────────────────────────────────┐
 //   │                                              ◯ username   │
 //   │  mimoo   ( ───────── search ─────────────── ●)   🔔  🛒   │
 //   └──────────────────────────────────────────────────────────┘
 // ---------------------------------------------------------------------------
-
-function CountBadge({ count }: { count: number }) {
-  if (count <= 0) return null;
-  return (
-    <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-semibold leading-none text-white">
-      {count > 99 ? "99+" : count}
-    </span>
-  );
-}
-
-function Header({
-  username = "username",
-  avatarUrl = null,
-  notificationCount = 5,
-  cartCount = 100,
-  onSearch,
-  onLogout,
-}: {
-  username?: string;
-  avatarUrl?: string | null;
-  notificationCount?: number;
-  cartCount?: number;
-  onSearch?: (query: string) => void;
-  onLogout?: () => void;
-}) {
-  const [query, setQuery] = useState("");
-  const [showMenu, setShowMenu] = useState(false);
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    onSearch?.(query.trim());
-  };
-
-  return (
-    <header
-      className="w-full text-white"
-      style={{
-        background:
-          "linear-gradient(90deg, #1c1430 0%, #3a2d5c 45%, #6a5a8a 100%)",
-      }}
-    >
-      <div className="mx-auto max-w-6xl px-4">
-        {/* Utility row: account, top right (sits above bell + cart) */}
-        <div className="flex h-7 items-center justify-end text-[10px] sm:text-[11px]">
-          <div className="relative">
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="flex items-center gap-1.5 text-white/90 transition-colors hover:text-white"
-            >
-              <span className="h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full bg-neutral-200">
-                {avatarUrl && (
-                  <img
-                    src={avatarUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                )}
-              </span>
-              <span className="max-w-24 truncate">{username}</span>
-            </button>
-
-            {/* Dropdown menu */}
-            {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-white shadow-lg ring-1 ring-black/5 z-50">
-                <Link
-                  href="/settings/profile"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
-                  onClick={() => setShowMenu(false)}
-                >
-                  Settings
-                </Link>
-                <button
-                  onClick={() => {
-                    setShowMenu(false);
-                    onLogout?.();
-                  }}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 rounded-b-lg"
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                  Logout
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Main row: logo · pill search · bell · cart */}
-        <div className="flex items-center gap-3 pb-3 pt-1 sm:gap-6 sm:pb-4">
-          <Link
-            href="/homepage"
-            className="shrink-0 text-xl font-bold lowercase tracking-tight sm:text-2xl"
-          >
-            mimoo
-          </Link>
-
-          <form
-            onSubmit={handleSubmit}
-            role="search"
-            className="relative min-w-0 flex-1"
-          >
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search products"
-              aria-label="Search products"
-              className="h-8 w-full rounded-full bg-neutral-200 pl-4 pr-11 text-sm text-neutral-800 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-violet-300 sm:h-9"
-            />
-            <button
-              type="submit"
-              aria-label="Search"
-              className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-[#2a2340] text-white transition-colors hover:bg-[#3a2d5c] sm:h-7 sm:w-7"
-            >
-              <Search className="h-3.5 w-3.5" />
-            </button>
-          </form>
-
-          {/* Bell + cart, side by side on the same row as the search bar */}
-          <div className="flex shrink-0 items-center gap-4 sm:gap-5">
-            <button
-              aria-label="Notifications"
-              className="relative flex items-center text-white transition-colors hover:text-white/80"
-            >
-              <Bell className="h-5 w-5" />
-              <CountBadge count={notificationCount} />
-            </button>
-
-            <Link
-              href="/cart"
-              aria-label="Cart"
-              className="relative flex items-center text-white transition-colors hover:text-white/80"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              <CountBadge count={cartCount} />
-            </Link>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Page
@@ -551,7 +409,6 @@ function Header({
 export default function Homepage() {
   const { auth } = usePage<{ auth: { user: any } }>().props;
   const user = auth?.user;
-  
   const role: UserRole = user ? (user.account_type as UserRole) : "guest";
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showSignupModal, setShowSignupModal] = useState(false);
@@ -565,25 +422,19 @@ export default function Homepage() {
   }
 
   return (
-    <div
-      className="min-h-screen bg-neutral-50"
-      style={{ fontFamily: "'Syne', sans-serif" }}
-    >
+    <div className="min-h-screen bg-neutral-50 font-[Syne]">
       <Head title="Home" />
       
       {/* Loads Syne from Google Fonts. If you already load it globally
           (e.g. via next/font or a <link> in your root layout), remove this
           block and the inline fontFamily above to avoid loading it twice. */}
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&display=swap');
-      `}</style>
-
-      <Header 
-        username={user ? user.name : "Guest"} 
-        onLogout={user ? handleLogout : undefined}
+      <BuyerHeader
+        user={user}
+        onLogout={handleLogout}
+        onGuestAction={handleGuestAction}
       />
 
-      <main className="mx-auto max-w-6xl px-4 py-4 sm:py-6">
+      <main className="mx-auto max-w-[1100px] px-6 py-4 sm:py-6">
         {/* Hero: big banner on top, 3-column row below it.
             Column widths (fr) are set from the image ratios so all three
             columns come out the same height with no stretching:

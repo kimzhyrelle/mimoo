@@ -126,6 +126,7 @@ export default function StepDetails({ data, setData, errors, accountType, setAcc
                     <input
                         type="text"
                         placeholder="09XXXXXXXXX"
+                        maxLength={11}
                         value={data.contact_number}
                         onChange={(e) => setData('contact_number', e.target.value)}
                         className="w-full border border-gray-300 rounded-xl px-3 py-2.5 mt-1 text-[#8B72A8] focus:outline-none focus:ring-2 focus:ring-purple-300"

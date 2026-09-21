@@ -17,6 +17,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Admin Master Code
+    |--------------------------------------------------------------------------
+    |
+    | This code is used to access the hidden admin panel. Store a strong,
+    | random value in your .env file under ADMIN_MASTER_CODE.
+    | Never hard-code this value here.
+    |
+    */
+
+    'admin_master_code' => env('ADMIN_MASTER_CODE'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

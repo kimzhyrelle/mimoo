@@ -17,6 +17,12 @@ export default defineConfig({
                 bunny('Instrument Sans', {
                     weights: [400, 500, 600],
                 }),
+                bunny('Syncopate', {
+                    weights: [400, 700],
+                }),
+                bunny('Syne', {
+                    weights: [400, 500, 600, 700, 800],
+                }),
             ],
         }),
         inertia(),

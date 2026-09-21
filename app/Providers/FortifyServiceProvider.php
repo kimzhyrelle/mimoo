@@ -21,7 +21,20 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Override Fortify's default post-registration redirect.
+        // Since all new accounts start with status=pending, we log the user out
+        // and redirect them to a pending confirmation page instead of /dashboard.
+        $this->app->singleton(
+            \Laravel\Fortify\Contracts\RegisterResponse::class,
+            \App\Http\Responses\RegisterResponse::class
+        );
+
+        // Override Fortify's default post-login redirect.
+        // Buyers go to /homepage, sellers/others go to /dashboard.
+        $this->app->singleton(
+            \Laravel\Fortify\Contracts\LoginResponse::class,
+            \App\Http\Responses\LoginResponse::class
+        );
     }
 
     /**

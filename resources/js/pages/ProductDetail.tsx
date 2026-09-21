@@ -1,18 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import {
-  ShoppingCart,
-  ChevronRight,
-  Minus,
-  Plus,
-  Star,
-} from "lucide-react";
-import Header from "@/components/Header";
+import { Head, Link, router, usePage } from "@inertiajs/react";
+import { Star, ChevronRight, Minus, Plus, Package, ShoppingCart } from "lucide-react";
+import { BuyerHeader } from "@/components/buyer-header";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+type UserRole = "guest" | "buyer" | "seller";
 
 interface ColorOption {
   id: string;
@@ -64,10 +61,7 @@ function Breadcrumb() {
 function ProductImageGallery() {
   return (
     <div className="aspect-square w-full rounded-2xl bg-neutral-100 flex items-center justify-center">
-      <div className="text-center">
-        <div className="mx-auto h-32 w-32 rounded-lg bg-violet-200 opacity-50" />
-        <p className="mt-4 text-sm text-neutral-400">Product image placeholder</p>
-      </div>
+      <Package className="w-32 h-32 text-neutral-300" />
     </div>
   );
 }
@@ -237,18 +231,25 @@ function SellerInfo() {
 // ---------------------------------------------------------------------------
 
 export default function ProductDetail() {
+  const { auth } = usePage<{ auth: { user: any } }>().props;
+  const user = auth?.user;
+  const role: UserRole = user?.account_type ? (user.account_type as UserRole) : "guest";
+
+  function handleLogout() {
+    router.post('/logout');
+  }
+
   return (
-    <div
-      className="min-h-screen bg-neutral-50"
-      style={{ fontFamily: "'Syne', sans-serif" }}
-    >
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&display=swap');
-      `}</style>
+    <div className="min-h-screen bg-neutral-50 font-[Syne]">
+      <Head title="Product Detail" />
 
-      <Header />
+      <BuyerHeader
+        user={user}
+        onLogout={handleLogout}
+        cartCount={4}
+      />
 
-      <main className="mx-auto max-w-7xl bg-white px-4 py-6 sm:py-8">
+      <main className="mx-auto max-w-[1100px] bg-white px-6 py-6 sm:py-8">
         <Breadcrumb />
 
         <div className="mt-6 grid gap-8 lg:grid-cols-2 lg:gap-12">
