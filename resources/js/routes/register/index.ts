@@ -55,7 +55,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     
     store.form = storeForm
 /**
- * @see routes/web.php:19
+ * @see [serialized-closure]:2
  * @route '/register/pending'
  */
 export const pending = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -69,7 +69,7 @@ pending.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:19
+ * @see [serialized-closure]:2
  * @route '/register/pending'
  */
 pending.url = (options?: RouteQueryOptions) => {
@@ -77,7 +77,7 @@ pending.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:19
+ * @see [serialized-closure]:2
  * @route '/register/pending'
  */
 pending.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -85,7 +85,7 @@ pending.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     method: 'get',
 })
 /**
- * @see routes/web.php:19
+ * @see [serialized-closure]:2
  * @route '/register/pending'
  */
 pending.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -94,7 +94,7 @@ pending.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
     /**
- * @see routes/web.php:19
+ * @see [serialized-closure]:2
  * @route '/register/pending'
  */
     const pendingForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -103,7 +103,7 @@ pending.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     })
 
             /**
- * @see routes/web.php:19
+ * @see [serialized-closure]:2
  * @route '/register/pending'
  */
         pendingForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -111,7 +111,7 @@ pending.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             method: 'get',
         })
             /**
- * @see routes/web.php:19
+ * @see [serialized-closure]:2
  * @route '/register/pending'
  */
         pendingForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
