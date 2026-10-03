@@ -7,7 +7,14 @@ export default function AdminLogin() {
 
     function handleSubmit(e: FormEvent) {
         e.preventDefault();
-        post('/admin/verify', { preserveState: true });
+        post('/admin/verify', {
+            onSuccess: () => {
+                console.log('Login successful');
+            },
+            onError: (errors) => {
+                console.error('Login errors:', errors);
+            },
+        });
     }
 
     return (

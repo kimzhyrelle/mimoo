@@ -8,7 +8,7 @@ Route::get('/', function () {
     return Inertia::render('Landing');
 })->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
 });
 
@@ -49,6 +49,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware('admin.verified')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/manage-registrations', [AdminController::class, 'manageRegistrations'])->name('manage-registrations');
+        Route::post('/registrations/{userId}/approve', [AdminController::class, 'approveRegistration'])->name('registrations.approve');
+        Route::post('/registrations/{userId}/disapprove', [AdminController::class, 'disapproveRegistration'])->name('registrations.disapprove');
         Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
     });
 });

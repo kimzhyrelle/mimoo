@@ -11,16 +11,16 @@ class RegisterResponse implements RegisterResponseContract
     /**
      * Create an HTTP response that represents the object.
      *
-     * Buyers are auto-approved and redirected to /dashboard.
-     * Sellers are logged out and redirected to /register/pending since
-     * their account needs admin approval.
+     * All new accounts (both buyers and sellers) start as pending and require
+     * admin approval. After registration, users are logged out and redirected
+     * to the pending confirmation page.
      */
     public function toResponse($request): RedirectResponse|JsonResponse
     {
         $user = auth()->user();
 
-        // If seller, log out and send to pending page
-        if ($user && $user->account_type === 'seller') {
+        // All users (buyers and sellers) need approval
+        if ($user) {
             auth()->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -28,7 +28,7 @@ class RegisterResponse implements RegisterResponseContract
             return redirect()->route('register.pending');
         }
 
-        // Buyers go to the homepage (buyer shopping interface)
-        return redirect()->route('homepage');
+        // Fallback
+        return redirect()->route('home');
     }
 }

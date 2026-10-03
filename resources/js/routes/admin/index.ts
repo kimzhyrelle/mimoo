@@ -1,4 +1,5 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
+import registrations from './registrations'
 /**
 * @see \App\Http\Controllers\Admin\AdminController::login
  * @see app/Http/Controllers/Admin/AdminController.php:18
@@ -290,7 +291,7 @@ manageRegistrations.head = (options?: RouteQueryOptions): RouteDefinition<'head'
     manageRegistrations.form = manageRegistrationsForm
 /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:71
+ * @see app/Http/Controllers/Admin/AdminController.php:127
  * @route '/admin/logout'
  */
 export const logout = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -305,7 +306,7 @@ logout.definition = {
 
 /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:71
+ * @see app/Http/Controllers/Admin/AdminController.php:127
  * @route '/admin/logout'
  */
 logout.url = (options?: RouteQueryOptions) => {
@@ -314,7 +315,7 @@ logout.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:71
+ * @see app/Http/Controllers/Admin/AdminController.php:127
  * @route '/admin/logout'
  */
 logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -324,7 +325,7 @@ logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:71
+ * @see app/Http/Controllers/Admin/AdminController.php:127
  * @route '/admin/logout'
  */
     const logoutForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -334,7 +335,7 @@ logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:71
+ * @see app/Http/Controllers/Admin/AdminController.php:127
  * @route '/admin/logout'
  */
         logoutForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -348,6 +349,7 @@ const admin = {
 verify: Object.assign(verify, verify),
 dashboard: Object.assign(dashboard, dashboard),
 manageRegistrations: Object.assign(manageRegistrations, manageRegistrations),
+registrations: Object.assign(registrations, registrations),
 logout: Object.assign(logout, logout),
 }
 

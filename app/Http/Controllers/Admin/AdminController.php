@@ -37,9 +37,9 @@ class AdminController extends Controller
         ]);
 
         $masterCode = config('app.admin_master_code');
+        $inputCode = $request->input('code');
 
-        // hash_equals prevents timing-based side-channel attacks
-        if (! hash_equals((string) $masterCode, (string) $request->input('code'))) {
+        if (! hash_equals((string) $masterCode, (string) $inputCode)) {
             return back()->withErrors(['code' => 'Invalid code.']);
         }
 
@@ -62,11 +62,67 @@ class AdminController extends Controller
      */
     public function manageRegistrations(): Response
     {
-        return Inertia::render('admin/manage-registrations');
+        $registrations = \App\Models\User::query()
+            ->whereIn('status', ['pending', 'approved', 'disapproved'])
+            ->orderByRaw("FIELD(status, 'pending', 'approved', 'disapproved')")
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(fn ($user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'account_type' => $user->account_type,
+                'business_name' => $user->business_name,
+                'status' => $user->status,
+                'created_at' => $user->created_at->format('M d, Y'),
+                'approved_at' => $user->approved_at?->format('M d, Y'),
+            ]);
+
+        $stats = [
+            'total' => \App\Models\User::count(),
+            'pending' => \App\Models\User::where('status', 'pending')->count(),
+            'approved' => \App\Models\User::where('status', 'approved')->count(),
+            'disapproved' => \App\Models\User::where('status', 'disapproved')->count(),
+        ];
+
+        return Inertia::render('admin/manage-registrations', [
+            'registrations' => $registrations,
+            'stats' => $stats,
+        ]);
     }
 
     /**
-     * Clear the admin session flag and redirect back to the login form.
+     * Approve a user registration.
+     */
+    public function approveRegistration(Request $request, int $userId): RedirectResponse
+    {
+        $user = \App\Models\User::findOrFail($userId);
+        
+        $user->update([
+            'status' => 'approved',
+            'approved_at' => now(),
+        ]);
+
+        return back()->with('success', "Account for {$user->name} has been approved.");
+    }
+
+    /**
+     * Disapprove a user registration.
+     */
+    public function disapproveRegistration(Request $request, int $userId): RedirectResponse
+    {
+        $user = \App\Models\User::findOrFail($userId);
+        
+        $user->update([
+            'status' => 'disapproved',
+            'approved_at' => null,
+        ]);
+
+        return back()->with('success', "Account for {$user->name} has been disapproved.");
+    }
+
+    /**
+     * Clear the admin session flag and redirect to the landing page.
      */
     public function logout(Request $request): RedirectResponse
     {

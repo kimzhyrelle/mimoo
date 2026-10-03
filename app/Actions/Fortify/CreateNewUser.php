@@ -85,9 +85,9 @@ class CreateNewUser implements CreatesNewUsers
             'line_of_business'  => $input['line_of_business'] ?? null,
             'business_permit'   => $businessPermitPath,
             'password'          => $input['password'],
-            // Buyers are auto-approved, sellers need admin review
-            'status'            => $input['account_type'] === 'buyer' ? 'approved' : 'pending',
-            'approved_at'       => $input['account_type'] === 'buyer' ? now() : null,
+            // All accounts start as pending and require admin approval
+            'status'            => 'pending',
+            'approved_at'       => null,
         ]);
     }
 
