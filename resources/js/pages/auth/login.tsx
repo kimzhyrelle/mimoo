@@ -2,6 +2,7 @@ import { Link, useForm } from '@inertiajs/react';
 import { FormEvent, ReactNode, useState } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
+const fontCalibri = { fontFamily: 'Calibri, sans-serif' };
 const fontPoppins = { fontFamily: 'Poppins, sans-serif' };
 const fontSFCompact = { fontFamily: "'SF Compact', -apple-system, BlinkMacSystemFont, sans-serif" };
 
@@ -62,8 +63,20 @@ export default function Login({ canResetPassword, status }: LoginProps) {
             </div>
 
             {/* Desktop Sidebar - only visible on lg+ screens */}
-            <div className="hidden lg:flex lg:w-72 lg:h-screen lg:sticky lg:top-0 bg-gradient-to-b from-[#3B1F6B] to-[#19132A] text-white p-8 flex-col gap-6 lg:gap-0 lg:justify-between shrink-0">
-                <div>
+            <aside
+                className="hidden lg:flex lg:w-80 lg:h-screen lg:sticky lg:top-0 shrink-0 min-w-0 relative flex-col gap-9 px-8 pt-10 pb-10 text-[#F1EEFB]"
+                style={{ background: 'radial-gradient(120% 140% at 15% 0%, #2B2249 0%, #201A33 60%)' }}
+            >
+                {/* soft glow, bottom right */}
+                <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+                    <div
+                        className="absolute -bottom-[35%] -right-[30%] w-[420px] h-[420px] rounded-full"
+                        style={{ background: 'radial-gradient(circle, rgba(122,99,172,0.35), transparent 70%)' }}
+                    />
+                </div>
+
+                {/* Brand + badge */}
+                <div className="relative z-10">
                     <Link href="/" className="flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-[#9B5DE5]" />
                         <h1 className="text-lg font-bold tracking-widest" style={fontSyncopate}>
@@ -80,15 +93,16 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                         </span>
                     </div>
 
-                    <h2 className="mt-8 text-2xl font-semibold leading-snug">
+                    <h2 className="mt-8 text-[1.7rem] leading-tight font-black tracking-wide mb-2.5" style={fontCalibri}>
                         Good to see you again.
                     </h2>
-                    <p className="mt-3 text-sm text-white/60">
+                    <p className="text-[0.95rem] text-[#CEC6E6] max-w-[34ch]">
                         Log in to pick up where you left off — track orders, message sellers, and keep shopping.
                     </p>
                 </div>
 
-                <div>
+                {/* Perks list */}
+                <div className="relative z-10">
                     <p className="text-xs uppercase text-white/50 mb-3 tracking-wide" style={fontSFCompact}>
                         Why buyers stick around
                     </p>
@@ -108,7 +122,7 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                         </p>
                     </div>
                 </div>
-            </div>
+            </aside>
 
             {/* Main content - responsive padding */}
             <div className="flex-1 min-h-screen lg:h-screen overflow-y-auto bg-[#F8F6FC] p-4 sm:p-6 md:p-8 lg:p-12 xl:p-16 2xl:p-24">
@@ -185,10 +199,12 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                             </label>
                             <input
                                 type="email"
+                                name="email"
                                 placeholder="you@example.com"
                                 value={data.email}
                                 onChange={(e) => setData('email', e.target.value)}
-                                className={`w-full rounded-xl border px-3 md:px-4 py-2.5 md:py-3 text-sm outline-none focus:ring-2 transition ${
+                                autoComplete="email"
+                                className={`w-full rounded-xl border bg-white px-3 md:px-4 py-2.5 md:py-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 transition ${
                                     errors.email
                                         ? 'border-red-300 focus:ring-red-100'
                                         : 'border-gray-200 focus:ring-[#E4DBF7] focus:border-[#8B72C4]'
@@ -206,11 +222,11 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                                     type={showPassword ? 'text' : 'password'}
                                     value={data.password}
                                     onChange={(e) => setData('password', e.target.value)}
-                                    className={`w-full rounded-xl border px-3 md:px-4 py-2.5 md:py-3 pr-12 text-sm outline-none focus:ring-2 transition ${
-                                        errors.password
-                                            ? 'border-red-300 focus:ring-red-100'
-                                            : 'border-gray-200 focus:ring-[#E4DBF7] focus:border-[#8B72C4]'
-                                    }`}
+                                    className={`w-full rounded-xl border bg-white px-3 md:px-4 py-2.5 md:py-3 pr-12 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 transition ${
+                                    errors.password
+                                        ? 'border-red-300 focus:ring-red-100'
+                                        : 'border-gray-200 focus:ring-[#E4DBF7] focus:border-[#8B72C4]'
+                                }`}
                                 />
                                 <button
                                     type="button"
@@ -259,7 +275,7 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                     </p>
                     <p className="text-center text-xs sm:text-sm text-gray-500 mt-1">
                         Want to sell instead?{' '}
-                        <Link href="/register?type=seller" className="text-[#3B1F6B] font-medium">
+                        <Link href="/register/seller" className="text-[#3B1F6B] font-medium">
                             Become a seller
                         </Link>
                     </p>

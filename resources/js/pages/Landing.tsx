@@ -267,9 +267,14 @@ export default function Landing() {
                                     </Link>
                                 </div>
 
-                                <p className="text-[10px] sm:text-xs text-white/50">
-                                    Already a member? Log in above — takes less than a minute.
-                                </p>
+                                <div className="text-[10px] sm:text-xs text-white/60 leading-relaxed max-w-md space-y-1">
+                                    <p>
+                                        Selling instead? <a href="/register/seller" className="text-white underline hover:text-white/90">Register a seller account</a>. Want to ride or run a sorting hub? <a href="#" className="text-white underline hover:text-white/90">Apply as a logistics partner</a>.
+                                    </p>
+                                    <p>
+                                        Already a member? Log in above — takes less than a minute.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -513,6 +518,71 @@ export default function Landing() {
                                 <p className="text-xs text-gray-500 leading-relaxed">{feature.desc}</p>
                             </div>
                         ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* Want to grow with Mimoo */}
+            <section className="bg-[#F8F6FC] px-4 sm:px-6 py-12 sm:py-16">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-10">
+                        <h2 className="text-xl sm:text-2xl font-bold text-gray-900" style={fontSyncopate}>
+                            Want to grow with Mimoo?
+                        </h2>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Buyers get the spotlight, but there's room for your business or your delivery team too.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+                        {/* Sell on Mimoo Card */}
+                        <div className="bg-white rounded-2xl p-8 hover:shadow-lg transition">
+                            <div className="w-12 h-12 rounded-full bg-[#F1EDFB] flex items-center justify-center mb-4">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B1F6B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                                    <path d="M8 21h8" />
+                                    <path d="M12 17v4" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900 mb-3">
+                                Sell on Mimoo
+                            </h3>
+                            <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+                                List your products, chat with buyers directly, and reach customers across your area. Just your business details and a quick admin review to get started.
+                            </p>
+                            <Link
+                                href="/register/seller"
+                                className="inline-flex items-center gap-2 text-[#3B1F6B] font-semibold text-sm hover:gap-3 transition-all"
+                            >
+                                Register as a seller
+                                <span>→</span>
+                            </Link>
+                        </div>
+
+                        {/* Join logistics team Card */}
+                        <div className="bg-white rounded-2xl p-8 hover:shadow-lg transition">
+                            <div className="w-12 h-12 rounded-full bg-[#F1EDFB] flex items-center justify-center mb-4">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B1F6B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="1" y="3" width="15" height="13" />
+                                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                                    <circle cx="5.5" cy="18.5" r="2.5" />
+                                    <circle cx="18.5" cy="18.5" r="2.5" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900 mb-3">
+                                Join our logistics team
+                            </h3>
+                            <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+                                Ride for us or register your sorting center to help deliver orders across the community. We'll review your application before approving your account.
+                            </p>
+                            <Link
+                                href="#"
+                                className="inline-flex items-center gap-2 text-[#3B1F6B] font-semibold text-sm hover:gap-3 transition-all"
+                            >
+                                Apply as a logistics partner
+                                <span>→</span>
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </section>

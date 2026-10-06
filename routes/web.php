@@ -14,7 +14,11 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
 
 Route::get('/register', function () {
     return Inertia::render('Register');
-});
+})->name('register');
+
+Route::get('/register/seller', function () {
+    return Inertia::render('SellerRegistration');
+})->name('register.seller');
 
 Route::get('/register/pending', function () {
     return Inertia::render('register-pending');
@@ -27,6 +31,26 @@ Route::get('/homepage', function () {
 Route::get('/cart', function () {
     return Inertia::render('Cart');
 })->name('cart');
+
+Route::get('/messages', function () {
+    return view('messages');
+})->middleware(['auth', 'approved'])->name('messages');
+
+Route::get('/checkout', [App\Http\Controllers\OrderController::class, 'checkout'])
+    ->middleware(['auth', 'approved'])
+    ->name('checkout');
+
+Route::post('/orders', [App\Http\Controllers\OrderController::class, 'place'])
+    ->middleware(['auth', 'approved'])
+    ->name('orders.place');
+
+Route::get('/orders/success/{orderNo}', [App\Http\Controllers\OrderController::class, 'success'])
+    ->middleware(['auth', 'approved'])
+    ->name('order.success');
+
+Route::get('/orders', [App\Http\Controllers\OrderController::class, 'index'])
+    ->middleware(['auth', 'approved'])
+    ->name('orders.index');
 
 Route::get('/product/{id}', fn (string $id) => Inertia::render('ProductDetail', [
     'productId' => $id,

@@ -56,6 +56,77 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     store.form = storeForm
 /**
  * @see routes/web.php:19
+ * @route '/register/seller'
+ */
+export const seller = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: seller.url(options),
+    method: 'get',
+})
+
+seller.definition = {
+    methods: ["get","head"],
+    url: '/register/seller',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+ * @see routes/web.php:19
+ * @route '/register/seller'
+ */
+seller.url = (options?: RouteQueryOptions) => {
+    return seller.definition.url + queryParams(options)
+}
+
+/**
+ * @see routes/web.php:19
+ * @route '/register/seller'
+ */
+seller.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: seller.url(options),
+    method: 'get',
+})
+/**
+ * @see routes/web.php:19
+ * @route '/register/seller'
+ */
+seller.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: seller.url(options),
+    method: 'head',
+})
+
+    /**
+ * @see routes/web.php:19
+ * @route '/register/seller'
+ */
+    const sellerForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: seller.url(options),
+        method: 'get',
+    })
+
+            /**
+ * @see routes/web.php:19
+ * @route '/register/seller'
+ */
+        sellerForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: seller.url(options),
+            method: 'get',
+        })
+            /**
+ * @see routes/web.php:19
+ * @route '/register/seller'
+ */
+        sellerForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: seller.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    seller.form = sellerForm
+/**
+ * @see routes/web.php:23
  * @route '/register/pending'
  */
 export const pending = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -69,7 +140,7 @@ pending.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:19
+ * @see routes/web.php:23
  * @route '/register/pending'
  */
 pending.url = (options?: RouteQueryOptions) => {
@@ -77,7 +148,7 @@ pending.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:19
+ * @see routes/web.php:23
  * @route '/register/pending'
  */
 pending.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -85,7 +156,7 @@ pending.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     method: 'get',
 })
 /**
- * @see routes/web.php:19
+ * @see routes/web.php:23
  * @route '/register/pending'
  */
 pending.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -94,7 +165,7 @@ pending.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
     /**
- * @see routes/web.php:19
+ * @see routes/web.php:23
  * @route '/register/pending'
  */
     const pendingForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -103,7 +174,7 @@ pending.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     })
 
             /**
- * @see routes/web.php:19
+ * @see routes/web.php:23
  * @route '/register/pending'
  */
         pendingForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -111,7 +182,7 @@ pending.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             method: 'get',
         })
             /**
- * @see routes/web.php:19
+ * @see routes/web.php:23
  * @route '/register/pending'
  */
         pendingForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -127,6 +198,7 @@ pending.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     pending.form = pendingForm
 const register = {
     store: Object.assign(store, store),
+seller: Object.assign(seller, seller),
 pending: Object.assign(pending, pending),
 }
 

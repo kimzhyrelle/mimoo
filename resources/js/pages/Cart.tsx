@@ -322,6 +322,7 @@ export default function Cart() {
                 </div>
                 <button
                   disabled={selectedItems.length === 0}
+                  onClick={() => router.visit('/checkout')}
                   className="appearance-none border-none cursor-pointer bg-gradient-to-r from-[#2A1B4D] to-[#4B2E7E] text-white font-extrabold text-[0.92rem] px-9 py-3 rounded-full flex items-center gap-2 shadow-[0_4px_18px_rgba(75,46,126,0.45)] transition-all hover:translate-y-[-2px] hover:shadow-[0_8px_28px_rgba(75,46,126,0.55)] disabled:bg-[#E6DFF2] disabled:text-[#6E6570] disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none whitespace-nowrap"
                 >
                   Check Out

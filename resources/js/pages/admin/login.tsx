@@ -76,8 +76,8 @@ export default function AdminLogin() {
                                         }
                                         aria-invalid={!!errors.code}
                                         className={[
-                                            'w-full rounded-lg border bg-[#1A1A1F] px-4 py-2.5',
-                                            'text-sm text-white placeholder-white/20 outline-none',
+                                            'w-full rounded-lg border bg-white px-4 py-2.5',
+                                            'text-sm text-gray-900 placeholder-gray-400 outline-none',
                                             'transition-colors duration-150',
                                             'focus:ring-2 focus:ring-[#9B5DE5]/60 focus:border-[#9B5DE5]/60',
                                             errors.code

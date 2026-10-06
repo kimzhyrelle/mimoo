@@ -15,8 +15,19 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SIDEBAR_STEPS = [
     'Add your name, contact info and birthday',
     'Set your province, city, and street address',
-    'Upload a valid ID for verification',
+    'Add your store details, permit and valid ID',
     'Set a password to secure your account',
+];
+
+const BUSINESS_CATEGORIES = [
+    'Food & Beverage',
+    'Fashion & Apparel',
+    'Health & Beauty',
+    'Home & Living',
+    'Electronics & Gadgets',
+    'Pet Supplies',
+    'Arts & Crafts',
+    'Other',
 ];
 
 // PSGC API Types
@@ -37,6 +48,9 @@ type FormShape = {
     municipality_city: string;
     barangay: string;
     street_address: string;
+    business_name: string;
+    line_of_business: string;
+    business_permit: File | null;
     id_document: File | null;
     password: string;
     password_confirmation: string;
@@ -47,13 +61,14 @@ type Errs = Partial<Record<FieldName, string>>;
 const FIELD_STEP: Partial<Record<FieldName, number>> = {
     first_name: 1, last_name: 1, sex: 1, email: 1, contact_number: 1, birthday: 1,
     province: 2, municipality_city: 2, barangay: 2, street_address: 2,
-    id_document: 3,
+    business_name: 3, line_of_business: 3, business_permit: 3, id_document: 3,
     password: 4, password_confirmation: 4,
 };
 const FIELD_LABEL: Partial<Record<FieldName, string>> = {
     first_name: 'First name', last_name: 'Last name', sex: 'Sex', email: 'Email address',
     contact_number: 'Contact number', birthday: 'Birthday', province: 'Province',
     municipality_city: 'Municipality / City', barangay: 'Barangay', street_address: 'Street & house number',
+    business_name: 'Business name', line_of_business: 'Line of business', business_permit: 'Business permit',
     id_document: 'Valid ID', password: 'Password', password_confirmation: 'Confirm password',
 };
 
@@ -66,6 +81,13 @@ function calcAge(birthday: string): number | null {
     const m = today.getMonth() - dob.getMonth();
     if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
     return age;
+}
+
+function fileError(f: File | null, emptyMsg: string): string | undefined {
+    if (!f) return emptyMsg;
+    if (!/\.(pdf|jpe?g|png)$/i.test(f.name)) return 'Use a PDF, JPG or PNG file.';
+    if (f.size > MAX_FILE_MB * 1024 * 1024) return `File is too large. Max ${MAX_FILE_MB}MB.`;
+    return undefined;
 }
 
 function validate(step: number, d: FormShape): Errs {
@@ -85,10 +107,12 @@ function validate(step: number, d: FormShape): Errs {
         if (!d.street_address.trim()) e.street_address = 'Enter your street and house number.';
     }
     if (step === 3) {
-        const f = d.id_document;
-        if (!f) e.id_document = 'Upload a valid government-issued ID.';
-        else if (!/\.(pdf|jpe?g|png)$/i.test(f.name)) e.id_document = 'Use a PDF, JPG or PNG file.';
-        else if (f.size > MAX_FILE_MB * 1024 * 1024) e.id_document = `File is too large. Max ${MAX_FILE_MB}MB.`;
+        if (!d.business_name.trim()) e.business_name = 'Enter your business name.';
+        if (!d.line_of_business) e.line_of_business = 'Select the category that best fits your store.';
+        const permitErr = fileError(d.business_permit, 'Upload your business permit.');
+        if (permitErr) e.business_permit = permitErr;
+        const idErr = fileError(d.id_document, 'Upload a valid government-issued ID.');
+        if (idErr) e.id_document = idErr;
     }
     if (step === 4) {
         if (d.password.length < 8) e.password = 'Use at least 8 characters.';
@@ -168,12 +192,75 @@ function PasswordInput({
     );
 }
 
-export default function Registration() {
+function FileField({
+    id, label, kind, hint, buttonLabel, file, error, onPick,
+}: {
+    id: string; label: string; kind: 'id' | 'doc'; hint: string; buttonLabel: string;
+    file: File | null; error?: string; onPick: (f: File | null) => void;
+}) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    return (
+        <div className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-gray-800">
+                {label} <span className="text-red-600" aria-hidden="true">*</span>
+            </span>
+            <div className={`flex items-center gap-3 rounded-xl p-4 ${
+                file ? 'border border-[#B4A7D6] bg-white' : 'border-2 border-dashed border-[#DDD5EE] bg-[#F8F6FC]'
+            }`}>
+                <span className="shrink-0 w-10 h-10 rounded-lg bg-[#F1EDFB] text-[#3B1F6B] flex items-center justify-center" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth="1.6">
+                        {kind === 'id' ? (
+                            <>
+                                <rect x="3" y="6" width="18" height="12" rx="2" />
+                                <circle cx="8.5" cy="12" r="1.6" fill="currentColor" />
+                                <path d="M13 10.5h5M13 13.5h5" strokeLinecap="round" />
+                            </>
+                        ) : (
+                            <>
+                                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" strokeLinejoin="round" />
+                                <path d="M14 3v5h5" strokeLinejoin="round" />
+                            </>
+                        )}
+                    </svg>
+                </span>
+                <span className="flex-1 min-w-0" aria-live="polite">
+                    <span className="block text-sm font-medium text-gray-800 break-words">
+                        {file ? file.name : 'No file selected'}
+                    </span>
+                    <span className="block text-xs text-gray-500">
+                        {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : hint}
+                    </span>
+                </span>
+                <button
+                    id={id}
+                    type="button"
+                    onClick={() => inputRef.current?.click()}
+                    aria-describedby={error ? `${id}-err` : undefined}
+                    className="shrink-0 rounded-lg border border-[#DDD5EE] bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-800 hover:border-[#9B5DE5] hover:text-[#3B1F6B] transition"
+                >
+                    {file ? 'Change file' : buttonLabel}
+                </button>
+                <input
+                    ref={inputRef}
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    tabIndex={-1}
+                    className="sr-only"
+                    onChange={(e) => onPick(e.target.files?.[0] ?? null)}
+                />
+            </div>
+            {error && (
+                <span id={`${id}-err`} className="text-xs font-medium text-red-600" role="alert">{error}</span>
+            )}
+        </div>
+    );
+}
+
+export default function SellerRegistration() {
     const [step, setStep] = useState(1);
     const [clientErrors, setClientErrors] = useState<Errs>({});
     const [submitted, setSubmitted] = useState(false);
     const headingRef = useRef<HTMLHeadingElement>(null);
-    const fileRef = useRef<HTMLInputElement>(null);
 
     // PSGC API states
     const [provinces, setProvinces] = useState<Province[]>([]);
@@ -189,11 +276,14 @@ export default function Registration() {
         email: '',
         contact_number: '',
         birthday: '',
-        account_type: 'buyer',
+        account_type: 'seller',
         province: '',
         municipality_city: '',
         barangay: '',
         street_address: '',
+        business_name: '',
+        line_of_business: '',
+        business_permit: null,
         id_document: null,
         password: '',
         password_confirmation: '',
@@ -295,7 +385,7 @@ export default function Registration() {
 
     const focusField = (f: FieldName) => document.getElementById(f)?.focus();
 
-    const stepTitles = ['Your details', 'Address', 'Identity verification', 'Secure your account'];
+    const stepTitles = ['Your details', 'Address', 'Store & identity verification', 'Secure your account'];
 
     const btnPrimary =
         'flex-1 bg-[#3B1F6B] text-white rounded-xl py-3 font-medium hover:bg-[#2E1854] transition disabled:opacity-60';
@@ -364,9 +454,9 @@ export default function Registration() {
 
                 {/* Hero copy */}
                 <div className="relative z-10">
-                    <h2 className="text-[1.7rem] leading-tight font-black tracking-wide mb-2.5" style={fontCalibri}>Create your buyer account.</h2>
+                    <h2 className="text-[1.7rem] leading-tight font-black tracking-wide mb-2.5" style={fontCalibri}>Start selling on mimoo.</h2>
                     <p className="text-[0.95rem] text-[#CEC6E6] max-w-[34ch]">
-                        Browse products, chat with sellers, and check out in minutes.
+                        Selling means a quick review of your business details and ID before you go live.
                     </p>
                 </div>
 
@@ -425,11 +515,19 @@ export default function Registration() {
             <div className="flex-1 min-h-screen lg:h-screen overflow-y-auto bg-[#F8F6FC] p-4 sm:p-6 md:p-8 lg:p-12 xl:p-16 2xl:p-24">
                 <div className="max-w-full lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl mx-auto lg:mx-0">
                     <h2 className="text-xl md:text-2xl font-bold text-gray-900" style={fontSyncopate}>
-                        create your account
+                        create your seller account
                     </h2>
-                    <p className="text-gray-500 mt-1 text-sm">It only takes a few minutes.</p>
+                    <p className="text-gray-500 mt-1 text-sm">
+                        Tell us about yourself and your business. It only takes a few minutes.
+                    </p>
                     <p className="text-gray-500 mt-1 text-xs">
                         Fields marked <span className="text-red-600">*</span> are required.
+                    </p>
+                    <p className="text-gray-500 mt-2 text-xs sm:text-sm">
+                        Just want to shop?{' '}
+                        <Link href="/register" className="text-[#3B1F6B] font-semibold hover:underline">
+                            Register a buyer account
+                        </Link>
                     </p>
 
                     <StepProgress currentStep={step} />
@@ -576,41 +674,53 @@ export default function Registration() {
 
                         {/* STEP 3 */}
                         {step === 3 && (
-                            <div className="flex flex-col gap-1.5">
-                                <span className="text-sm font-medium text-gray-800">
-                                    Upload a valid ID <span className="text-red-600" aria-hidden="true">*</span>
-                                </span>
-                                <div className={`flex items-center gap-3 rounded-xl p-4 ${
-                                    data.id_document ? 'border border-[#B4A7D6] bg-white' : 'border-2 border-dashed border-[#DDD5EE] bg-[#F8F6FC]'
-                                }`}>
-                                    <span className="shrink-0 w-10 h-10 rounded-lg bg-[#F1EDFB] text-[#3B1F6B] flex items-center justify-center" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth="1.6">
-                                            <rect x="3" y="6" width="18" height="12" rx="2" />
-                                            <circle cx="8.5" cy="12" r="1.6" fill="currentColor" />
-                                            <path d="M13 10.5h5M13 13.5h5" strokeLinecap="round" />
-                                        </svg>
-                                    </span>
-                                    <span className="flex-1 min-w-0" aria-live="polite">
-                                        <span className="block text-sm font-medium text-gray-800 break-words">
-                                            {data.id_document ? data.id_document.name : 'No file selected'}
-                                        </span>
-                                        <span className="block text-xs text-gray-500">
-                                            {data.id_document
-                                                ? `${(data.id_document.size / 1024 / 1024).toFixed(2)} MB`
-                                                : `Government-issued ID · PDF, JPG or PNG · up to ${MAX_FILE_MB}MB`}
-                                        </span>
-                                    </span>
-                                    <button id="id_document" type="button" onClick={() => fileRef.current?.click()}
-                                        aria-describedby={err('id_document') ? 'id_document-err' : undefined}
-                                        className="shrink-0 rounded-lg border border-[#DDD5EE] bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-800 hover:border-[#9B5DE5] hover:text-[#3B1F6B] transition">
-                                        {data.id_document ? 'Change file' : 'Choose ID file'}
-                                    </button>
-                                    <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" tabIndex={-1} className="sr-only"
-                                        onChange={(e) => set('id_document', e.target.files?.[0] ?? null)} />
-                                </div>
-                                {err('id_document') && (
-                                    <span id="id_document-err" className="text-xs font-medium text-red-600" role="alert">{err('id_document')}</span>
-                                )}
+                            <div className="flex flex-col gap-8">
+                                <section aria-labelledby="store-details-label">
+                                    <p id="store-details-label" className="text-xs font-semibold uppercase tracking-wide text-[#7A63AC] mb-3" style={fontSFCompact}>
+                                        Store details
+                                    </p>
+                                    <div className="flex flex-col gap-4">
+                                        <Field label="Business name" htmlFor="business_name" required error={err('business_name')}>
+                                            <input id="business_name" placeholder="e.g. Hoppers Pet Supply" value={data.business_name}
+                                                onChange={(e) => set('business_name', e.target.value)}
+                                                aria-invalid={!!err('business_name')} className={inputCls(err('business_name'))} />
+                                        </Field>
+                                        <Field label="Line of business" htmlFor="line_of_business" required error={err('line_of_business')}>
+                                            <select id="line_of_business" value={data.line_of_business}
+                                                onChange={(e) => set('line_of_business', e.target.value)}
+                                                aria-invalid={!!err('line_of_business')} className={inputCls(err('line_of_business'))}>
+                                                <option value="">Select a category</option>
+                                                {BUSINESS_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                                            </select>
+                                        </Field>
+                                        <FileField
+                                            id="business_permit"
+                                            label="Business permit"
+                                            kind="doc"
+                                            hint={`PDF, JPG or PNG · up to ${MAX_FILE_MB}MB`}
+                                            buttonLabel="Choose permit file"
+                                            file={data.business_permit}
+                                            error={err('business_permit')}
+                                            onPick={(f) => set('business_permit', f)}
+                                        />
+                                    </div>
+                                </section>
+
+                                <section aria-labelledby="identity-label" className="border-t border-[#DDD5EE] pt-8">
+                                    <p id="identity-label" className="text-xs font-semibold uppercase tracking-wide text-[#7A63AC] mb-3" style={fontSFCompact}>
+                                        Identity verification
+                                    </p>
+                                    <FileField
+                                        id="id_document"
+                                        label="Upload a valid ID"
+                                        kind="id"
+                                        hint={`Government-issued ID · PDF, JPG or PNG · up to ${MAX_FILE_MB}MB`}
+                                        buttonLabel="Choose ID file"
+                                        file={data.id_document}
+                                        error={err('id_document')}
+                                        onPick={(f) => set('id_document', f)}
+                                    />
+                                </section>
                             </div>
                         )}
 
@@ -633,7 +743,7 @@ export default function Registration() {
                                         <path d="M3 7l9 6 9-6" strokeLinejoin="round" />
                                         <rect x="3" y="5" width="18" height="14" rx="2" />
                                     </svg>
-                                    <p>After submitting, please wait for the administrator's approval. We'll send it to your email.</p>
+                                    <p>After submitting, an administrator will review your business details and ID. We'll email you once your store is approved.</p>
                                 </div>
                             </>
                         )}
@@ -670,7 +780,7 @@ export default function Registration() {
                         </div>
                         <h2 id="success-heading" className="text-xl font-bold text-gray-900">Registration submitted</h2>
                         <p className="mt-2 text-sm text-gray-500">
-                            Please wait for the administrator's approval. We'll email you once your account is reviewed.
+                            Please wait for the administrator's approval. We'll email you once your seller account is reviewed.
                         </p>
                         <Link href="/login" className="mt-6 inline-block w-full rounded-xl bg-[#3B1F6B] py-3 font-medium text-white hover:bg-[#2E1854] transition">
                             Go to log in
@@ -682,4 +792,4 @@ export default function Registration() {
     );
 }
 
-Registration.layout = (page: ReactNode) => page;
+SellerRegistration.layout = (page: ReactNode) => page;
