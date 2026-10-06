@@ -8,6 +8,10 @@ Route::get('/', function () {
     return Inertia::render('Landing');
 })->name('home');
 
+Route::get('/seller', function () {
+    return Inertia::render('SellerLanding');
+})->name('seller.landing');
+
 Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
 });
@@ -19,6 +23,10 @@ Route::get('/register', function () {
 Route::get('/register/seller', function () {
     return Inertia::render('SellerRegistration');
 })->name('register.seller');
+
+Route::get('/register/logistics', function () {
+    return Inertia::render('LogisticsRegistration');
+})->name('register.logistics');
 
 Route::get('/register/pending', function () {
     return Inertia::render('register-pending');

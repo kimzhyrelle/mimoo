@@ -269,7 +269,7 @@ export default function Landing() {
 
                                 <div className="text-[10px] sm:text-xs text-white/60 leading-relaxed max-w-md space-y-1">
                                     <p>
-                                        Selling instead? <a href="/register/seller" className="text-white underline hover:text-white/90">Register a seller account</a>. Want to ride or run a sorting hub? <a href="#" className="text-white underline hover:text-white/90">Apply as a logistics partner</a>.
+                                        Selling instead? <a href="/seller" className="text-white underline hover:text-white/90">Register a seller account</a>. Want to ride or run a sorting hub? <a href="/register/logistics" className="text-white underline hover:text-white/90">Apply as a logistics partner</a>.
                                     </p>
                                     <p>
                                         Already a member? Log in above — takes less than a minute.
@@ -551,7 +551,7 @@ export default function Landing() {
                                 List your products, chat with buyers directly, and reach customers across your area. Just your business details and a quick admin review to get started.
                             </p>
                             <Link
-                                href="/register/seller"
+                                href="/seller"
                                 className="inline-flex items-center gap-2 text-[#3B1F6B] font-semibold text-sm hover:gap-3 transition-all"
                             >
                                 Register as a seller
@@ -576,7 +576,7 @@ export default function Landing() {
                                 Ride for us or register your sorting center to help deliver orders across the community. We'll review your application before approving your account.
                             </p>
                             <Link
-                                href="#"
+                                href="/register/logistics"
                                 className="inline-flex items-center gap-2 text-[#3B1F6B] font-semibold text-sm hover:gap-3 transition-all"
                             >
                                 Apply as a logistics partner

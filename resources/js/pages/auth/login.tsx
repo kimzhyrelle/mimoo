@@ -275,7 +275,7 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                     </p>
                     <p className="text-center text-xs sm:text-sm text-gray-500 mt-1">
                         Want to sell instead?{' '}
-                        <Link href="/register/seller" className="text-[#3B1F6B] font-medium">
+                        <Link href="/seller" className="text-[#3B1F6B] font-medium">
                             Become a seller
                         </Link>
                     </p>
