@@ -4,14 +4,29 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, MouseEvent, ReactNode } from 'react';
 import SellerShell from '@/layouts/seller/seller-shell';
 
+interface SellerProductsProps {
+    auth: {
+        user: {
+            id: number;
+            name: string;
+            email: string;
+            account_type: string;
+        };
+    };
+    seller: {
+        store_name: string;
+        business_name?: string;
+    };
+    products: Product[];
+}
+
 const fontPoppins = { fontFamily: 'Poppins, sans-serif' };
 const fontSyne = { fontFamily: "'Syne', sans-serif" };
 
-const STORE_KEY = 'mimoo_seller_products_v1';
-const BRAND = 'Tolentino Skin Studio';
 const PER_PAGE = 8;
 const MAX_IMAGE_MB = 5;
 const BORDER = 'border-[color-mix(in_srgb,#B9A6DE_44%,white)]';
+const STORE_KEY = 'mimoo_seller_products';
 
 const CATEGORIES = [
     'Pet Supplies',
@@ -63,40 +78,6 @@ type FormErrors = Partial<Record<keyof FormState, string>>;
 const emptyForm: FormState = {
     name: '', category: '', price: '', salePrice: '', stock: '', sku: '', weight: '', desc: '', image: '',
 };
-
-const mk = (
-    id: string,
-    name: string,
-    price: number,
-    salePrice: number | null,
-    stock: number,
-    sku: string,
-    status: Status,
-    desc = '',
-): Product => ({
-    id, name, price, salePrice, stock, sku, status, desc,
-    category: 'Health and Beauty',
-    brand: BRAND,
-    images: [],
-    mainIdx: 0,
-    weight: 0.3,
-    updated: Date.now(),
-});
-
-const seedProducts = (): Product[] => [
-    mk('p1', 'Organic Virgin Coconut Oil 250ml', 180, null, 40, 'TSS-VCO-250', 'published', 'Cold-pressed virgin coconut oil for skin, hair, and cooking.'),
-    mk('p2', 'Vitamin C Serum 30ml', 420, 378, 3, 'TSS-VCS-030', 'published', 'Brightening serum with 15% vitamin C.'),
-    mk('p3', 'Charcoal Soap Bar', 95, null, 6, 'TSS-CSB-100', 'published', 'Deep-cleansing activated charcoal soap.'),
-    mk('p4', 'Aloe Vera Gel 200ml', 210, null, 55, 'TSS-AVG-200', 'published', 'Soothing aloe gel for face and body.'),
-    mk('p5', 'Rosewater Toner 100ml', 260, null, 0, 'TSS-RWT-100', 'published', 'Alcohol-free hydrating rosewater toner.'),
-    mk('p6', 'Turmeric Face Mask 50g', 350, 299, 28, 'TSS-TFM-050', 'published', 'Brightening turmeric clay mask.'),
-    mk('p7', 'Tea Tree Cleanser 150ml', 320, null, 17, 'TSS-TTC-150', 'published', 'Gentle foaming cleanser for oily skin.'),
-    mk('p8', 'Sunscreen SPF50 60ml', 450, null, 22, 'TSS-SPF-060', 'published', 'Lightweight broad-spectrum sunscreen.'),
-    mk('p9', 'Shea Butter Body Cream 200g', 380, null, 0, 'TSS-SBC-200', 'draft'),
-    mk('p10', 'Argan Hair Oil 50ml', 340, null, 15, 'TSS-AHO-050', 'draft'),
-    mk('p11', 'Lip Balm Trio Set', 210, null, 40, 'TSS-LBT-003', 'draft'),
-    mk('p12', 'Kojic Acid Soap', 120, null, 60, 'TSS-KAS-100', 'draft'),
-];
 
 const peso = (n: number) =>
     '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -208,8 +189,11 @@ function Field({
 
 const TH = `text-left text-[0.68rem] font-semibold uppercase tracking-wide text-[#6E6570] px-4 py-3.5 border-b ${BORDER} bg-[color-mix(in_srgb,#B9A6DE_12%,white)] whitespace-nowrap`;
 
-export default function SellerProducts() {
-    const [products, setProducts] = useState<Product[]>(seedProducts);
+export default function SellerProducts({ auth, seller, products: initialProducts = [] }: SellerProductsProps) {
+    const storeName = seller.store_name || seller.business_name || 'Your Store';
+    
+    // Merge initial products from database with localStorage products
+    const [products, setProducts] = useState<Product[]>(initialProducts);
     const [loaded, setLoaded] = useState(false);
     const [tab, setTab] = useState<Status>('published');
     const [query, setQuery] = useState('');
@@ -231,11 +215,14 @@ export default function SellerProducts() {
 
     // Load saved products + initial tab from URL
     useEffect(() => {
-        try {
-            const raw = localStorage.getItem(STORE_KEY);
-            if (raw) setProducts(JSON.parse(raw));
-        } catch {
-            /* use seed */
+        // If no products from DB, try loading from localStorage, otherwise use empty array
+        if (initialProducts.length === 0) {
+            try {
+                const raw = localStorage.getItem(STORE_KEY);
+                if (raw) setProducts(JSON.parse(raw));
+            } catch {
+                /* use empty array */
+            }
         }
         if (new URLSearchParams(window.location.search).get('status') === 'draft') setTab('draft');
         setLoaded(true);
@@ -397,7 +384,7 @@ export default function SellerProducts() {
             id: editing?.id ?? 'p' + Date.now(),
             name: form.name.trim(),
             category: form.category,
-            brand: editing?.brand ?? BRAND,
+            brand: editing?.brand ?? storeName,
             desc: form.desc.trim(),
             images: form.image ? [form.image] : [],
             mainIdx: 0,
@@ -614,11 +601,13 @@ export default function SellerProducts() {
                             ) : (
                                 <>
                                     <b className="block text-base text-[#2A1B4D] mb-1" style={fontSyne}>
-                                        {tab === 'draft' ? 'No drafts yet' : 'No published products yet'}
+                                        {tab === 'draft' ? 'No drafts yet' : products.length === 0 ? 'No products yet' : 'No published products yet'}
                                     </b>
                                     <span className="text-sm">
                                         {tab === 'draft'
                                             ? 'Unfinished listings you save as a draft will appear here.'
+                                            : products.length === 0
+                                            ? 'Create your first product to start selling.'
                                             : 'Publish a product and it will appear here for buyers to see.'}
                                     </span>
                                 </>

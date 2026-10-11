@@ -4,56 +4,65 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import SellerShell from '@/layouts/seller/seller-shell';
 
+interface SellerDashboardProps {
+    auth: {
+        user: {
+            id: number;
+            name: string;
+            email: string;
+            account_type: string;
+        };
+    };
+    seller: {
+        store_name: string;
+        business_name?: string;
+    };
+    stats: {
+        total_sales: number;
+        sales_growth: number;
+        total_orders: number;
+        pending_orders: number;
+        store_rating: number;
+        total_reviews: number;
+        to_prepare: number;
+        low_stock_count: number;
+        new_messages: number;
+        new_reviews: number;
+    };
+    recentOrders: Array<{
+        id: string;
+        buyer_name: string;
+        item: string;
+        total: number;
+        status: 'To Ship' | 'In Transit' | 'Delivered';
+        date: string;
+    }>;
+    topProducts: Array<{
+        rank: number;
+        name: string;
+        units_sold: number;
+        revenue: number;
+        share_percent: number;
+    }>;
+    lowStockItems: Array<{
+        name: string;
+        reorder_point: number;
+        current_stock: number;
+        percentage: number;
+    }>;
+}
+
 const fontPoppins = { fontFamily: 'Poppins, sans-serif' };
 const fontSyne = { fontFamily: "'Syne', sans-serif" };
 
-interface RecentOrder {
-    id: string;
-    buyer: string;
-    item: string;
-    total: string;
-    status: 'To Ship' | 'In Transit' | 'Delivered';
-    date: string;
-}
-
-interface TopProduct {
-    rank: number;
-    name: string;
-    unitsSold: number;
-    revenue: string;
-    sharePercent: number;
-}
-
-interface LowStockItem {
-    name: string;
-    reorderPoint: number;
-    currentStock: number;
-    percentage: number;
-}
-
-const recentOrders: RecentOrder[] = [
-    { id: '#12489', buyer: 'Maria Clara Santos', item: 'Organic Virgin Coconut Oil 250ml ×2', total: '₱360.00', status: 'To Ship', date: 'Sep 16' },
-    { id: '#12470', buyer: 'Angela Bautista', item: 'Vitamin C Serum 30ml ×1', total: '₱420.00', status: 'In Transit', date: 'Sep 14' },
-    { id: '#12352', buyer: 'Miguel Cruz', item: 'Charcoal Soap Bar ×3', total: '₱285.00', status: 'Delivered', date: 'Sep 10' },
-    { id: '#12290', buyer: 'Maria Clara Santos', item: 'Aloe Vera Gel 200ml ×1', total: '₱210.00', status: 'Delivered', date: 'Sep 5' },
-];
-
-const topProducts: TopProduct[] = [
-    { rank: 1, name: 'Organic Virgin Coconut Oil 250ml', unitsSold: 820, revenue: '₱73,800', sharePercent: 40.5 },
-    { rank: 2, name: 'Vitamin C Serum 30ml', unitsSold: 410, revenue: '₱61,500', sharePercent: 33.7 },
-    { rank: 3, name: 'Charcoal Soap Bar', unitsSold: 520, revenue: '₱31,200', sharePercent: 17.1 },
-    { rank: 4, name: 'Aloe Vera Gel 200ml', unitsSold: 140, revenue: '₱15,900', sharePercent: 8.7 },
-];
-
-const lowStockItems: LowStockItem[] = [
-    { name: 'Charcoal Soap Bar', reorderPoint: 15, currentStock: 6, percentage: 40 },
-    { name: 'Vitamin C Serum 30ml', reorderPoint: 10, currentStock: 3, percentage: 30 },
-];
-
 const TH = 'text-left text-[0.7rem] font-semibold uppercase tracking-wide text-[#6E6570] pb-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)]';
 
-export default function SellerDashboard() {
+const peso = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export default function SellerDashboard({ auth, seller, stats, recentOrders, topProducts, lowStockItems }: SellerDashboardProps) {
     const [chartPeriod, setChartPeriod] = useState<'daily' | 'monthly' | 'yearly'>('monthly');
+    
+    const storeName = seller?.store_name || seller?.business_name || auth.user.name;
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -96,8 +105,8 @@ export default function SellerDashboard() {
 
             {/* Store Header */}
             <div className="mb-6">
-                <p className="text-[0.76rem] font-semibold text-[#4B2E7E] uppercase tracking-wider mb-1" style={fontPoppins}>Welcome back, Seller</p>
-                <h1 className="text-[1.8rem] font-semibold leading-tight" style={fontSyne}>Your Store Dashboard</h1>
+                <p className="text-[0.76rem] font-semibold text-[#4B2E7E] uppercase tracking-wider mb-1" style={fontPoppins}>Welcome back, {auth.user.name}</p>
+                <h1 className="text-[1.8rem] font-semibold leading-tight" style={fontSyne}>{storeName}</h1>
                 <p className="text-sm text-[#6E6570] mt-1">Here is how your store is performing this month.</p>
             </div>
 
@@ -112,8 +121,10 @@ export default function SellerDashboard() {
                             <span>Total Sales</span>
                         </div>
                         <div className="flex items-end gap-2">
-                            <span className="text-[1.7rem] font-extrabold leading-none" style={fontPoppins}>₱182,400</span>
-                            <span className="text-xs font-extrabold bg-white/20 px-2 py-1 rounded-full">▲ 6.1%</span>
+                            <span className="text-[1.7rem] font-extrabold leading-none" style={fontPoppins}>{peso(stats.total_sales)}</span>
+                            <span className="text-xs font-extrabold bg-white/20 px-2 py-1 rounded-full">
+                                {stats.sales_growth >= 0 ? '▲' : '▼'} {Math.abs(stats.sales_growth).toFixed(1)}%
+                            </span>
                         </div>
                         <p className="text-[0.76rem] opacity-75 mt-2">This month</p>
                     </div>
@@ -124,7 +135,7 @@ export default function SellerDashboard() {
                             <Box className="w-4 h-4 text-[#2f6f8f]" />
                             <span>Orders</span>
                         </div>
-                        <div className="text-[1.7rem] font-extrabold leading-none" style={fontPoppins}>1,240</div>
+                        <div className="text-[1.7rem] font-extrabold leading-none" style={fontPoppins}>{stats.total_orders.toLocaleString()}</div>
                         <p className="text-[0.76rem] text-[#6E6570] mt-2">Completed & in progress</p>
                     </div>
 
@@ -134,7 +145,7 @@ export default function SellerDashboard() {
                             <Package className="w-4 h-4 text-[#a9752b]" />
                             <span>Pending Orders</span>
                         </div>
-                        <div className="text-[1.7rem] font-extrabold leading-none" style={fontPoppins}>8</div>
+                        <div className="text-[1.7rem] font-extrabold leading-none" style={fontPoppins}>{stats.pending_orders}</div>
                         <p className="text-[0.76rem] text-[#6E6570] mt-2">Need packing today</p>
                     </div>
 
@@ -144,8 +155,10 @@ export default function SellerDashboard() {
                             <Star className="w-4 h-4 text-[#2c7a52]" />
                             <span>Store Rating</span>
                         </div>
-                        <div className="text-[1.7rem] font-extrabold leading-none" style={fontPoppins}>4.9</div>
-                        <p className="text-[0.76rem] text-[#6E6570] mt-2">From 312 reviews</p>
+                        <div className="text-[1.7rem] font-extrabold leading-none" style={fontPoppins}>
+                            {stats.store_rating > 0 ? stats.store_rating.toFixed(1) : 'N/A'}
+                        </div>
+                        <p className="text-[0.76rem] text-[#6E6570] mt-2">From {stats.total_reviews} reviews</p>
                     </div>
                 </div>
             </div>
@@ -270,7 +283,9 @@ export default function SellerDashboard() {
                     <a href="#" className="flex items-center gap-4 bg-white rounded-xl p-4 border-2 border-[color-mix(in_srgb,#B9A6DE_44%,white)] hover:border-[#B9A6DE] hover:-translate-y-0.5 hover:shadow-lg transition-all">
                         <div className="relative flex-none w-12 h-12 bg-[#f7ecd6] text-[#a9752b] rounded-xl flex items-center justify-center">
                             <Box className="w-5 h-5" />
-                            <span className="absolute -top-2 -right-2 min-w-[21px] h-5 px-1 bg-[#a9752b] text-white text-[0.7rem] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style={fontPoppins}>8</span>
+                            {stats.to_prepare > 0 && (
+                                <span className="absolute -top-2 -right-2 min-w-[21px] h-5 px-1 bg-[#a9752b] text-white text-[0.7rem] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style={fontPoppins}>{stats.to_prepare}</span>
+                            )}
                         </div>
                         <div>
                             <div className="text-sm font-semibold" style={fontSyne}>To Prepare</div>
@@ -282,7 +297,9 @@ export default function SellerDashboard() {
                     <a href="#" className="flex items-center gap-4 bg-white rounded-xl p-4 border-2 border-[color-mix(in_srgb,#B9A6DE_44%,white)] hover:border-[#B9A6DE] hover:-translate-y-0.5 hover:shadow-lg transition-all">
                         <div className="relative flex-none w-12 h-12 bg-[#f7ecd6] text-[#a9752b] rounded-xl flex items-center justify-center">
                             <AlertTriangle className="w-5 h-5" />
-                            <span className="absolute -top-2 -right-2 min-w-[21px] h-5 px-1 bg-[#a9752b] text-white text-[0.7rem] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style={fontPoppins}>2</span>
+                            {stats.low_stock_count > 0 && (
+                                <span className="absolute -top-2 -right-2 min-w-[21px] h-5 px-1 bg-[#a9752b] text-white text-[0.7rem] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style={fontPoppins}>{stats.low_stock_count}</span>
+                            )}
                         </div>
                         <div>
                             <div className="text-sm font-semibold" style={fontSyne}>Low Stock</div>
@@ -294,7 +311,9 @@ export default function SellerDashboard() {
                     <a href="#" className="flex items-center gap-4 bg-white rounded-xl p-4 border-2 border-[color-mix(in_srgb,#B9A6DE_44%,white)] hover:border-[#B9A6DE] hover:-translate-y-0.5 hover:shadow-lg transition-all">
                         <div className="relative flex-none w-12 h-12 bg-[#e4eef3] text-[#2f6f8f] rounded-xl flex items-center justify-center">
                             <MessageSquare className="w-5 h-5" />
-                            <span className="absolute -top-2 -right-2 min-w-[21px] h-5 px-1 bg-[#2f6f8f] text-white text-[0.7rem] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style={fontPoppins}>3</span>
+                            {stats.new_messages > 0 && (
+                                <span className="absolute -top-2 -right-2 min-w-[21px] h-5 px-1 bg-[#2f6f8f] text-white text-[0.7rem] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style={fontPoppins}>{stats.new_messages}</span>
+                            )}
                         </div>
                         <div>
                             <div className="text-sm font-semibold" style={fontSyne}>New Messages</div>
@@ -306,7 +325,9 @@ export default function SellerDashboard() {
                     <a href="#" className="flex items-center gap-4 bg-white rounded-xl p-4 border-2 border-[color-mix(in_srgb,#B9A6DE_44%,white)] hover:border-[#B9A6DE] hover:-translate-y-0.5 hover:shadow-lg transition-all">
                         <div className="relative flex-none w-12 h-12 bg-[#e7f5ec] text-[#2c7a52] rounded-xl flex items-center justify-center">
                             <Star className="w-5 h-5" />
-                            <span className="absolute -top-2 -right-2 min-w-[21px] h-5 px-1 bg-[#2c7a52] text-white text-[0.7rem] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style={fontPoppins}>1</span>
+                            {stats.new_reviews > 0 && (
+                                <span className="absolute -top-2 -right-2 min-w-[21px] h-5 px-1 bg-[#2c7a52] text-white text-[0.7rem] font-extrabold rounded-full flex items-center justify-center border-2 border-white" style={fontPoppins}>{stats.new_reviews}</span>
+                            )}
                         </div>
                         <div>
                             <div className="text-sm font-semibold" style={fontSyne}>New Reviews</div>
@@ -335,18 +356,22 @@ export default function SellerDashboard() {
                             </tr>
                         </thead>
                         <tbody>
-                            {recentOrders.map((order) => (
+                            {recentOrders.length > 0 ? recentOrders.map((order) => (
                                 <tr key={order.id}>
                                     <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)] font-bold" style={fontPoppins}>{order.id}</td>
-                                    <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)] text-[#6E6570] text-sm">{order.buyer}</td>
+                                    <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)] text-[#6E6570] text-sm">{order.buyer_name}</td>
                                     <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)] text-[#6E6570] text-sm">{order.item}</td>
-                                    <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)]" style={fontPoppins}>{order.total}</td>
+                                    <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)]" style={fontPoppins}>{peso(order.total)}</td>
                                     <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)]">
                                         <span className={`text-xs font-bold uppercase tracking-wide ${getStatusColor(order.status)}`} style={fontPoppins}>{order.status}</span>
                                     </td>
                                     <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)] text-[#6E6570] text-sm" style={fontPoppins}>{order.date}</td>
                                 </tr>
-                            ))}
+                            )) : (
+                                <tr>
+                                    <td colSpan={6} className="py-8 text-center text-sm text-[#6E6570]">No recent orders yet</td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -376,24 +401,28 @@ export default function SellerDashboard() {
                             </tr>
                         </thead>
                         <tbody>
-                            {topProducts.map((product) => (
+                            {topProducts.length > 0 ? topProducts.map((product) => (
                                 <tr key={product.rank}>
                                     <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)]">
                                         <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[color-mix(in_srgb,#B9A6DE_24%,white)] text-[#4B2E7E] text-xs font-extrabold" style={fontPoppins}>{product.rank}</span>
                                     </td>
                                     <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)] font-bold text-sm" style={fontPoppins}>{product.name}</td>
-                                    <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)]" style={fontPoppins}>{product.unitsSold}</td>
-                                    <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)]" style={fontPoppins}>{product.revenue}</td>
+                                    <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)]" style={fontPoppins}>{product.units_sold}</td>
+                                    <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)]" style={fontPoppins}>{peso(product.revenue)}</td>
                                     <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)] hidden md:table-cell">
                                         <div className="flex items-center gap-3 min-w-[150px]">
                                             <div className="flex-1 h-2 bg-[color-mix(in_srgb,#B9A6DE_24%,white)] rounded-full overflow-hidden">
-                                                <div className="h-full bg-gradient-to-r from-[#B9A6DE] to-[#4B2E7E] rounded-full" style={{ width: `${product.sharePercent}%` }}></div>
+                                                <div className="h-full bg-gradient-to-r from-[#B9A6DE] to-[#4B2E7E] rounded-full" style={{ width: `${product.share_percent}%` }}></div>
                                             </div>
-                                            <span className="text-xs text-[#6E6570] w-11 text-right" style={fontPoppins}>{product.sharePercent}%</span>
+                                            <span className="text-xs text-[#6E6570] w-11 text-right" style={fontPoppins}>{product.share_percent.toFixed(1)}%</span>
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                            )) : (
+                                <tr>
+                                    <td colSpan={5} className="py-8 text-center text-sm text-[#6E6570]">No products yet</td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -402,24 +431,28 @@ export default function SellerDashboard() {
                 <div className="bg-white rounded-xl border-2 border-[color-mix(in_srgb,#B9A6DE_44%,white)] p-6">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-base font-semibold" style={fontSyne}>Low stock alerts</h3>
-                        <span className="text-xs text-[#6E6570]">2 products are below their reorder point</span>
+                        <span className="text-xs text-[#6E6570]">{lowStockItems.length} products are below their reorder point</span>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-4">
-                        {lowStockItems.map((item, idx) => (
-                            <div key={idx} className="flex items-center justify-between gap-4">
-                                <div className="flex-1">
-                                    <div className="font-bold text-sm mb-1">{item.name}</div>
-                                    <div className="text-xs text-[#6E6570] mb-2">Reorder point: {item.reorderPoint} units</div>
-                                    <div className="h-1.5 bg-[color-mix(in_srgb,#B9A6DE_24%,white)] rounded-full overflow-hidden">
-                                        <div className={`h-full rounded-full ${item.currentStock <= 5 ? 'bg-[#b3384f]' : 'bg-[#a9752b]'}`} style={{ width: `${item.percentage}%` }}></div>
+                    {lowStockItems.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-4">
+                            {lowStockItems.map((item, idx) => (
+                                <div key={idx} className="flex items-center justify-between gap-4">
+                                    <div className="flex-1">
+                                        <div className="font-bold text-sm mb-1">{item.name}</div>
+                                        <div className="text-xs text-[#6E6570] mb-2">Reorder point: {item.reorder_point} units</div>
+                                        <div className="h-1.5 bg-[color-mix(in_srgb,#B9A6DE_24%,white)] rounded-full overflow-hidden">
+                                            <div className={`h-full rounded-full ${item.current_stock <= 5 ? 'bg-[#b3384f]' : 'bg-[#a9752b]'}`} style={{ width: `${item.percentage}%` }}></div>
+                                        </div>
+                                    </div>
+                                    <div className={`text-sm font-extrabold whitespace-nowrap ${item.current_stock <= 5 ? 'text-[#b3384f]' : 'text-[#a9752b]'}`} style={fontPoppins}>
+                                        {item.current_stock} left
                                     </div>
                                 </div>
-                                <div className={`text-sm font-extrabold whitespace-nowrap ${item.currentStock <= 5 ? 'text-[#b3384f]' : 'text-[#a9752b]'}`} style={fontPoppins}>
-                                    {item.currentStock} left
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center text-sm text-[#6E6570] py-8">All products are well stocked</div>
+                    )}
                 </div>
             </div>
             </div>

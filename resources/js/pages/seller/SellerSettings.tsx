@@ -2,10 +2,43 @@ import { Head } from '@inertiajs/react';
 import { BadgeCheck, Bell, Lock, Mail, Package, ShieldCheck, Store, Wallet } from 'lucide-react';
 import SellerShell from '@/layouts/seller/seller-shell';
 
+interface SellerSettingsProps {
+    auth: {
+        user: {
+            id: number;
+            name: string;
+            email: string;
+            account_type: string;
+        };
+    };
+    seller: {
+        store_name: string;
+        store_category?: string;
+        phone?: string;
+        address_line1?: string;
+        barangay?: string;
+        city?: string;
+        province?: string;
+        postal_code?: string;
+    };
+}
+
 const fontSyne = { fontFamily: 'Syne, sans-serif' };
 const fontPoppins = { fontFamily: 'Poppins, sans-serif' };
 
-export default function SellerSettings() {
+export default function SellerSettings({ auth, seller }: SellerSettingsProps) {
+    const storeName = seller?.store_name || auth.user.name;
+    const storeCategory = seller?.store_category || 'Not set';
+    const contactNumber = seller?.phone || 'Not set';
+    const fullAddress = [
+        seller?.address_line1,
+        seller?.barangay,
+        seller?.city,
+        seller?.province,
+        seller?.postal_code
+    ].filter(Boolean).join(', ') || 'Address not set';
+    
+    const memberSince = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     return (
         <SellerShell active="settings">
             <Head title="Account Settings" />
@@ -138,28 +171,28 @@ export default function SellerSettings() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="text-xs font-bold text-[#6E6570] uppercase tracking-wide mb-2 block">Store Name</label>
-                        <p className="text-sm font-semibold" style={fontPoppins}>Tolentino Skin Studio</p>
+                        <p className="text-sm font-semibold" style={fontPoppins}>{storeName}</p>
                     </div>
                     
                     <div>
                         <label className="text-xs font-bold text-[#6E6570] uppercase tracking-wide mb-2 block">Store Category</label>
-                        <p className="text-sm font-semibold" style={fontPoppins}>Health and Beauty</p>
+                        <p className="text-sm font-semibold" style={fontPoppins}>{storeCategory}</p>
                     </div>
                     
                     <div>
                         <label className="text-xs font-bold text-[#6E6570] uppercase tracking-wide mb-2 block">Email Address</label>
-                        <p className="text-sm font-semibold" style={fontPoppins}>kimzhyrelledd@gmail.com</p>
+                        <p className="text-sm font-semibold" style={fontPoppins}>{auth.user.email}</p>
                     </div>
                     
                     <div>
                         <label className="text-xs font-bold text-[#6E6570] uppercase tracking-wide mb-2 block">Contact Number</label>
-                        <p className="text-sm font-semibold" style={fontPoppins}>0917 123 4567</p>
+                        <p className="text-sm font-semibold" style={fontPoppins}>{contactNumber}</p>
                     </div>
                     
                     <div className="md:col-span-2">
                         <label className="text-xs font-bold text-[#6E6570] uppercase tracking-wide mb-2 block">Pickup Address</label>
                         <p className="text-sm font-semibold" style={fontPoppins}>
-                            Purok 4, Rizal Street, Apokon, Tagum City, Davao del Norte 8100
+                            {fullAddress}
                         </p>
                     </div>
                 </div>
@@ -167,7 +200,7 @@ export default function SellerSettings() {
                 <div className="flex items-center gap-2 mt-6 pt-6 border-t border-[color-mix(in_srgb,#B9A6DE_24%,white)]">
                     <Package className="w-4 h-4 text-[#6E6570]" />
                     <span className="text-xs text-[#6E6570]">
-                        Member since: <span className="font-bold">September 2024</span>
+                        Member since: <span className="font-bold">{memberSince}</span>
                     </span>
                 </div>
             </div>

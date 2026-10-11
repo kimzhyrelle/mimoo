@@ -39,22 +39,93 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     
     // Seller Dashboard - for approved sellers only
     Route::get('/seller/dashboard', function () {
-        return Inertia::render('seller/SellerDashboard');
+        $user = auth()->user();
+        
+        // TODO: Calculate actual stats from database
+        // For now, showing zeros for new sellers
+        return Inertia::render('seller/SellerDashboard', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'seller' => [
+                'store_name' => $user->business_name ?? $user->name,
+                'business_name' => $user->business_name,
+            ],
+            'stats' => [
+                'total_sales' => 0, // TODO: Sum from orders table
+                'sales_growth' => 0,
+                'total_orders' => 0, // TODO: Count from orders table
+                'pending_orders' => 0,
+                'store_rating' => 0, // TODO: Average from reviews table
+                'total_reviews' => 0,
+                'to_prepare' => 0,
+                'low_stock_count' => 0,
+                'new_messages' => 0,
+                'new_reviews' => 0,
+            ],
+            'recentOrders' => [], // TODO: Get recent orders from database
+            'topProducts' => [], // TODO: Get top products from database
+            'lowStockItems' => [], // TODO: Get low stock items from database
+        ]);
     })->name('seller.dashboard');
     
     // Seller Products page
     Route::get('/seller/products', function () {
-        return Inertia::render('seller/SellerProducts');
+        $user = Auth::user();
+        
+        return Inertia::render('seller/SellerProducts', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->first_name . ' ' . $user->last_name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'seller' => [
+                'store_name' => $user->business_name ?? 'Your Store',
+                'business_name' => $user->business_name,
+            ],
+            // TODO: When products table is created, fetch products from database:
+            // 'products' => Product::where('seller_id', $user->id)->get()
+            'products' => [], // Empty array for now - will show empty state for new sellers
+        ]);
     })->name('seller.products');
     
     // Seller Settings page
     Route::get('/seller/settings', function () {
-        return Inertia::render('seller/SellerSettings');
+        $user = auth()->user();
+        return Inertia::render('seller/SellerSettings', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'seller' => [
+                'store_name' => $user->business_name ?? $user->name,
+                'store_category' => $user->line_of_business ?? 'Health and Beauty',
+                'phone' => $user->contact_number ?? '',
+                'address_line1' => $user->street_address ?? '',
+                'barangay' => $user->barangay ?? '',
+                'city' => $user->municipality_city ?? '',
+                'province' => $user->province ?? '',
+                'postal_code' => '',
+            ],
+        ]);
     })->name('seller.settings');
     
     // Seller Account Management page
     Route::get('/seller/account', function () {
         $user = auth()->user();
+        
         return Inertia::render('seller/SellerAccount', [
             'auth' => [
                 'user' => [
@@ -65,16 +136,24 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
                 ],
             ],
             'seller' => [
-                'store_name' => $user->name, // For now, use user name as store name
-                'store_description' => '',
-                'store_category' => 'Health and Beauty',
-                'phone' => '',
-                'address_line1' => '',
-                'barangay' => '',
-                'city' => '',
-                'province' => '',
-                'postal_code' => '',
-                'store_logo' => '',
+                // From registration form
+                'store_name' => $user->business_name ?? $user->name,
+                'store_description' => $user->line_of_business ?? '',
+                'store_category' => 'Health and Beauty', // You can add this field to users table later
+                'phone' => $user->contact_number ?? '',
+                'address_line1' => $user->street_address ?? '',
+                'barangay' => $user->barangay ?? '',
+                'city' => $user->municipality_city ?? '',
+                'province' => $user->province ?? '',
+                'postal_code' => '', // Add postal_code field to users table if needed
+                'store_logo' => '', // Add store_logo field to users table if needed
+                
+                // Additional user info
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'middle_initial' => $user->middle_initial,
+                'sex' => $user->sex,
+                'birthday' => $user->birthday,
             ],
         ]);
     })->name('seller.account');
