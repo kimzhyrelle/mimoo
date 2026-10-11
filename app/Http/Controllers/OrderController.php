@@ -182,6 +182,8 @@ class OrderController extends Controller
                     'product_id' => $product->id,
                     'seller_id' => $product->seller_id,
                     'product_name' => $product->name, // Snapshot
+                    'variant_id' => $cartItem->variant_id ?? null,
+                    'variant_snapshot' => $cartItem->variant_snapshot ?? null,
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
                 ];
@@ -335,6 +337,8 @@ class OrderController extends Controller
                     'quantity' => $item->quantity,
                     'unit_price' => (float) $item->unit_price,
                     'subtotal' => (float) ($item->quantity * $item->unit_price),
+                    'variant_id' => $item->variant_id,
+                    'variant_snapshot' => $item->variant_snapshot,
                 ]),
             ])
             ->toArray();

@@ -34,6 +34,19 @@ interface ProductDetailProps {
     sku: string;
     seller_name: string;
     seller_id: number;
+    has_variants?: boolean;
+    variant_options?: Array<{
+      name: string;
+      values: string[];
+    }>;
+    variants?: Array<{
+      id: string;
+      combination: Record<string, string>;
+      sku: string;
+      price: number;
+      stock: number;
+      image?: string | null;
+    }>;
   };
 }
 
@@ -88,10 +101,42 @@ function Breadcrumb({ category, sellerName }: { category: string; sellerName: st
 // Product Image Gallery
 // ---------------------------------------------------------------------------
 
-function ProductImageGallery({ images, productName }: { images: string[]; productName: string }) {
+function ProductImageGallery({ 
+  images, 
+  productName, 
+  variantImage,
+  allVariantImages,
+}: { 
+  images: string[]; 
+  productName: string; 
+  variantImage?: string | null;
+  allVariantImages?: string[];
+}) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   
-  if (!images || images.length === 0) {
+  // Build display images: main images + ALL variant images by default
+  const displayImages = [...(images || [])];
+  
+  // Add all variant images to the gallery
+  if (allVariantImages && allVariantImages.length > 0) {
+    allVariantImages.forEach(img => {
+      if (img && !displayImages.includes(img)) {
+        displayImages.push(img);
+      }
+    });
+  }
+  
+  // When a variant is selected, auto-select that image
+  useEffect(() => {
+    if (variantImage) {
+      const variantIndex = displayImages.indexOf(variantImage);
+      if (variantIndex !== -1) {
+        setSelectedIndex(variantIndex);
+      }
+    }
+  }, [variantImage]);
+  
+  if (!displayImages || displayImages.length === 0) {
     return (
       <div className="aspect-square w-full rounded-2xl bg-neutral-100 flex items-center justify-center">
         <Package className="w-32 h-32 text-neutral-300" />
@@ -104,16 +149,16 @@ function ProductImageGallery({ images, productName }: { images: string[]; produc
       {/* Main image */}
       <div className="aspect-square w-full rounded-2xl bg-neutral-100 overflow-hidden">
         <img 
-          src={images[selectedIndex]} 
+          src={displayImages[selectedIndex]} 
           alt={productName} 
           className="w-full h-full object-cover"
         />
       </div>
       
       {/* Thumbnails */}
-      {images.length > 1 && (
+      {displayImages.length > 1 && (
         <div className="flex gap-2 overflow-x-auto">
-          {images.map((img, idx) => (
+          {displayImages.map((img, idx) => (
             <button
               key={idx}
               onClick={() => setSelectedIndex(idx)}
@@ -133,6 +178,51 @@ function ProductImageGallery({ images, productName }: { images: string[]; produc
 }
 
 // ---------------------------------------------------------------------------
+// Variant Selector Component
+// ---------------------------------------------------------------------------
+
+function VariantSelector({ 
+  options, 
+  selected, 
+  onChange 
+}: { 
+  options: Array<{name: string; values: string[]}>;
+  selected: Record<string, string>;
+  onChange: (selection: Record<string, string>) => void;
+}) {
+  const handleSelect = (optionName: string, value: string) => {
+    onChange({ ...selected, [optionName]: value });
+  };
+
+  return (
+    <div className="space-y-4">
+      {options.map((option) => (
+        <div key={option.name}>
+          <label className="text-sm font-semibold text-neutral-700 mb-2 block">
+            {option.name}
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {option.values.map((value) => (
+              <button
+                key={value}
+                onClick={() => handleSelect(option.name, value)}
+                className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                  selected[option.name] === value
+                    ? 'border-violet-900 bg-violet-50 text-violet-900'
+                    : 'border-neutral-200 text-neutral-700 hover:border-neutral-300'
+                }`}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Product Info
 // ---------------------------------------------------------------------------
 
@@ -140,13 +230,32 @@ function ProductInfo({
   product, 
   role,
   onAddToCart,
+  selectedVariant,
+  onVariantChange,
 }: { 
   product: ProductDetailProps['product']; 
   role: UserRole;
-  onAddToCart: (quantity: number) => void;
+  onAddToCart: (quantity: number, variantId?: string) => void;
+  selectedVariant: Record<string, string>;
+  onVariantChange: (selection: Record<string, string>) => void;
 }) {
   const [quantity, setQuantity] = useState(1);
-  const maxQuantity = Math.min(product.stock, 99);
+  
+  // Find selected variant from combinations
+  const currentVariant = product.has_variants && product.variants
+    ? product.variants.find(v => 
+        Object.entries(v.combination).every(([key, val]) => selectedVariant[key] === val)
+      )
+    : null;
+  
+  // Use variant price/stock if available
+  const effectivePrice = currentVariant?.price ?? product.effective_price;
+  const effectiveStock = currentVariant?.stock ?? product.stock;
+  const maxQuantity = Math.min(effectiveStock, 99);
+  
+  // Check if all variant options are selected
+  const isVariantComplete = !product.has_variants || 
+    (product.variant_options?.every(opt => selectedVariant[opt.name]) ?? false);
 
   const decreaseQuantity = () => {
     if (quantity > 1) setQuantity(quantity - 1);
@@ -161,7 +270,11 @@ function ProductInfo({
   };
 
   const handleAddToCart = () => {
-    onAddToCart(quantity);
+    if (product.has_variants && !isVariantComplete) {
+      toast.error('Please select all options');
+      return;
+    }
+    onAddToCart(quantity, currentVariant?.id);
   };
 
   return (
@@ -213,6 +326,25 @@ function ProductInfo({
         </div>
       )}
 
+      {/* Product Variants */}
+      {product.has_variants && product.variant_options && (
+        <VariantSelector
+          options={product.variant_options}
+          selected={selectedVariant}
+          onChange={onVariantChange}
+        />
+      )}
+
+      {/* Show variant-specific info if selected */}
+      {currentVariant && (
+        <div className="rounded-lg bg-violet-50 border border-violet-200 p-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-neutral-600">SKU: <strong className="text-neutral-900">{currentVariant.sku || 'N/A'}</strong></span>
+            <span className="text-neutral-600">Stock: <strong className="text-neutral-900">{currentVariant.stock}</strong></span>
+          </div>
+        </div>
+      )}
+
       {/* Weight */}
       {product.weight && (
         <div className="flex items-center gap-2 text-sm text-neutral-600">
@@ -224,16 +356,19 @@ function ProductInfo({
       {/* Stock status */}
       <div>
         <span className={`text-sm font-medium ${
-          product.is_in_stock 
-            ? product.is_low_stock ? 'text-orange-600' : 'text-green-600'
+          effectiveStock > 0
+            ? effectiveStock <= 10 ? 'text-orange-600' : 'text-green-600'
             : 'text-red-600'
         }`}>
-          {product.stock_status}
+          {effectiveStock > 0 
+            ? (effectiveStock <= 10 ? `Only ${effectiveStock} left in stock` : 'In Stock')
+            : 'Out of Stock'
+          }
         </span>
       </div>
 
       {/* Quantity selector - only show if in stock */}
-      {product.is_in_stock && role !== "seller" && (
+      {effectiveStock > 0 && role !== "seller" && (
         <div>
           <p className="mb-3 text-sm font-medium text-neutral-700">Quantity</p>
           <div className="flex items-center gap-3">
@@ -274,22 +409,26 @@ function ProductInfo({
         </div>
       )}
 
-      {role === "buyer" && product.is_in_stock && (
+      {role === "buyer" && effectiveStock > 0 && (
         <div className="flex gap-2">
           <button 
             onClick={handleAddToCart}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-violet-900 py-2.5 text-sm font-semibold text-violet-900 transition-colors hover:bg-violet-50"
+            disabled={!isVariantComplete}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-violet-900 py-2.5 text-sm font-semibold text-violet-900 transition-colors hover:bg-violet-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ShoppingCart className="h-4 w-4" />
             Add to cart
           </button>
-          <button className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-violet-900 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-800">
+          <button 
+            disabled={!isVariantComplete}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-violet-900 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             Buy now
           </button>
         </div>
       )}
 
-      {role === "buyer" && !product.is_in_stock && (
+      {role === "buyer" && effectiveStock <= 0 && (
         <div className="flex gap-2">
           <button disabled className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-neutral-300 py-2.5 text-sm font-semibold text-neutral-500 cursor-not-allowed">
             Out of stock
@@ -347,6 +486,27 @@ export default function ProductDetail({ auth, product }: ProductDetailProps) {
   const user = auth?.user;
   const role: UserRole = user?.account_type ? (user.account_type as UserRole) : "guest";
   const [cartCount, setCartCount] = useState(0);
+  const [selectedVariant, setSelectedVariant] = useState<Record<string, string>>({});
+  
+  // Find selected variant from combinations
+  const currentVariant = product.has_variants && product.variants
+    ? product.variants.find(v => 
+        Object.entries(v.combination).every(([key, val]) => selectedVariant[key] === val)
+      )
+    : null;
+
+  // Collect all variant images for display
+  const allVariantImages = product.has_variants && product.variants
+    ? product.variants.map(v => v.image).filter((img): img is string => !!img)
+    : [];
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Selected variant:', selectedVariant);
+    console.log('Current variant:', currentVariant);
+    console.log('Variant image:', currentVariant?.image);
+    console.log('All variant images:', allVariantImages);
+  }, [selectedVariant, currentVariant]);
 
   useEffect(() => {
     if (user && user.account_type === 'buyer') {
@@ -364,7 +524,7 @@ export default function ProductDetail({ auth, product }: ProductDetailProps) {
     }
   }
 
-  async function handleAddToCart(quantity: number) {
+  async function handleAddToCart(quantity: number, variantId?: string) {
     if (!user) {
       router.visit('/login');
       return;
@@ -385,6 +545,7 @@ export default function ProductDetail({ auth, product }: ProductDetailProps) {
         body: JSON.stringify({
           product_id: product.id,
           quantity: quantity,
+          variant_id: variantId,
         }),
       });
 
@@ -430,12 +591,16 @@ export default function ProductDetail({ auth, product }: ProductDetailProps) {
         <div className="mt-6 grid gap-8 lg:grid-cols-2 lg:gap-12">
           <ProductImageGallery 
             images={product.images} 
-            productName={product.name} 
+            productName={product.name}
+            variantImage={currentVariant?.image}
+            allVariantImages={allVariantImages}
           />
           <ProductInfo 
             product={product} 
             role={role}
             onAddToCart={handleAddToCart}
+            selectedVariant={selectedVariant}
+            onVariantChange={setSelectedVariant}
           />
         </div>
 

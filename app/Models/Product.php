@@ -27,6 +27,9 @@ class Product extends Model
         'main_image_index',
         'weight',
         'brand',
+        'has_variants',
+        'variant_options',
+        'variants',
     ];
 
     protected $casts = [
@@ -37,6 +40,9 @@ class Product extends Model
         'main_image_index' => 'integer',
         'weight' => 'decimal:2',
         'images' => 'array',
+        'has_variants' => 'boolean',
+        'variant_options' => 'array',
+        'variants' => 'array',
     ];
 
     /**

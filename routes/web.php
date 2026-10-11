@@ -237,6 +237,9 @@ Route::get('/product/{id}', function (string $id) {
             'sku' => $product->sku,
             'seller_name' => $product->seller->business_name ?? $product->seller->name,
             'seller_id' => $product->seller_id,
+            'has_variants' => $product->has_variants ?? false,
+            'variant_options' => $product->variant_options ?? null,
+            'variants' => $product->variants ?? null,
         ],
     ]);
 })->name('product.show');

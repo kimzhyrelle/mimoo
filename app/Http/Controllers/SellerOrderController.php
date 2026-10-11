@@ -52,6 +52,8 @@ class SellerOrderController extends Controller
                             'qty' => $item->quantity,
                             'price' => (float) $item->unit_price,
                             'stock_left' => $item->product ? $item->product->stock : null,
+                            'variant_id' => $item->variant_id,
+                            'variant_snapshot' => $item->variant_snapshot,
                         ];
                     }),
                 ];

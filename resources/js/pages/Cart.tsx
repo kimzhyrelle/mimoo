@@ -28,6 +28,14 @@ interface CartItem {
   stock_status: string;
   is_valid: boolean;
   validation_issue: string | null;
+  variant_id?: string | null;
+  variant_snapshot?: {
+    id: string;
+    combination: Record<string, string>;
+    sku: string;
+    price: number;
+    stock: number;
+  } | null;
   product: {
     id: number;
     name: string;
@@ -239,8 +247,20 @@ export default function Cart() {
                 <div className="min-w-0">
                   <div className="text-[0.88rem] font-bold text-[#2A1B4D] leading-snug">{item.product_name}</div>
                   <div className="text-[0.76rem] text-[#6E6570] mt-1">{item.seller_name}</div>
+                  
+                  {/* Variant info */}
+                  {item.variant_snapshot && item.variant_snapshot.combination && (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {Object.entries(item.variant_snapshot.combination).map(([key, val]) => (
+                        <span key={key} className="inline-flex items-center gap-1 text-[0.72rem] bg-violet-50 text-violet-700 border border-violet-200 rounded px-2 py-0.5">
+                          <strong>{key}:</strong> {val}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  
                   <div className="inline-block text-[0.72rem] text-[#4B2E7E] mt-1 bg-[#F9F7FC] border border-[#E6DFF2] rounded px-1.5 py-0.5">
-                    SKU: {item.product_sku}
+                    SKU: {item.variant_snapshot?.sku || item.product_sku}
                   </div>
                   <div className={`text-[0.72rem] mt-1.5 font-medium ${
                     !item.is_valid ? 'text-red-600' : item.max_quantity < 5 ? 'text-orange-600' : 'text-green-600'

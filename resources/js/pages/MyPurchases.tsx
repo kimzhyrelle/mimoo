@@ -30,6 +30,14 @@ interface OrderItem {
   quantity: number;
   unit_price: number;
   subtotal: number;
+  variant_id?: string | null;
+  variant_snapshot?: {
+    id: string;
+    combination: Record<string, string>;
+    sku: string;
+    price: number;
+    stock: number;
+  } | null;
 }
 
 interface Order {
@@ -370,6 +378,18 @@ export default function MyPurchases() {
                             <h4 className="text-[0.88rem] font-semibold text-[#2A1B4D] line-clamp-2 mb-1">
                               {item.product_name}
                             </h4>
+                            
+                            {/* Variant info */}
+                            {item.variant_snapshot && item.variant_snapshot.combination && (
+                              <div className="mb-1 flex flex-wrap gap-1">
+                                {Object.entries(item.variant_snapshot.combination).map(([key, val]) => (
+                                  <span key={key} className="inline-flex items-center gap-1 text-[0.7rem] bg-violet-50 text-violet-700 border border-violet-200 rounded px-1.5 py-0.5">
+                                    <strong>{key}:</strong> {val}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            
                             <p className="text-[0.76rem] text-[#6E6570] mb-1">
                               Seller: {item.seller_name}
                             </p>

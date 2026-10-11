@@ -71,6 +71,8 @@ class CartController extends Controller
                 'stock_status' => $product->stock_status,
                 'is_valid' => $item->isValid(),
                 'validation_issue' => $item->getValidationIssue(),
+                'variant_id' => $item->variant_id,
+                'variant_snapshot' => $item->variant_snapshot,
                 'product' => [
                     'id' => $product->id,
                     'name' => $product->name,
@@ -107,6 +109,7 @@ class CartController extends Controller
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|integer|min:1',
+            'variant_id' => 'nullable|string',
         ], [
             'product_id.required' => 'Product ID is required.',
             'product_id.exists' => 'Product not found.',
@@ -126,14 +129,26 @@ class CartController extends Controller
             return response()->json(['error' => 'This product is not available for purchase.'], 422);
         }
 
-        if ($product->stock == 0) {
+        // Determine stock to check (variant or product)
+        $stockToCheck = $product->stock;
+        $variantData = null;
+        
+        if ($validated['variant_id'] && $product->has_variants && $product->variants) {
+            $variant = collect($product->variants)->firstWhere('id', $validated['variant_id']);
+            if ($variant) {
+                $stockToCheck = $variant['stock'];
+                $variantData = $variant;
+            }
+        }
+
+        if ($stockToCheck == 0) {
             return response()->json(['error' => 'This product is out of stock.'], 422);
         }
 
         // Validate quantity doesn't exceed stock (CAP IT)
         $requestedQuantity = $validated['quantity'];
-        if ($requestedQuantity > $product->stock) {
-            $requestedQuantity = $product->stock;
+        if ($requestedQuantity > $stockToCheck) {
+            $requestedQuantity = $stockToCheck;
         }
 
         try {
@@ -142,16 +157,17 @@ class CartController extends Controller
             // Get or create cart
             $cart = Cart::getOrCreateForBuyer($user->id);
 
-            // Check if product already in cart
+            // Check if product+variant already in cart
             $cartItem = CartItem::where('cart_id', $cart->id)
                 ->where('product_id', $product->id)
+                ->where('variant_id', $validated['variant_id'] ?? null)
                 ->first();
 
             if ($cartItem) {
                 // Update existing item - cap to stock
                 $newQuantity = $cartItem->quantity + $requestedQuantity;
-                if ($newQuantity > $product->stock) {
-                    $newQuantity = $product->stock;
+                if ($newQuantity > $stockToCheck) {
+                    $newQuantity = $stockToCheck;
                 }
 
                 $cartItem->update(['quantity' => $newQuantity]);
@@ -161,8 +177,16 @@ class CartController extends Controller
                 $cartItem = CartItem::create([
                     'cart_id' => $cart->id,
                     'product_id' => $product->id,
+                    'variant_id' => $validated['variant_id'] ?? null,
                     'quantity' => $requestedQuantity,
                 ]);
+                
+                // Store variant snapshot if variant selected
+                if ($variantData) {
+                    $cartItem->variant_snapshot = $variantData;
+                    $cartItem->save();
+                }
+                
                 $message = 'Added to cart successfully.';
             }
 

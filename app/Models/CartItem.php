@@ -13,11 +13,13 @@ class CartItem extends Model
     protected $fillable = [
         'cart_id',
         'product_id',
+        'variant_id',
         'quantity',
     ];
 
     protected $casts = [
         'quantity' => 'integer',
+        'variant_snapshot' => 'array',
     ];
 
     /**

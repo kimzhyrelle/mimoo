@@ -225,6 +225,18 @@ class ProductController extends Controller
             'main_image_index' => 'nullable|integer|min:0',
             'weight' => 'nullable|numeric|min:0.01',
             'brand' => 'nullable|string|max:100',
+            // Variant validation
+            'has_variants' => 'nullable|boolean',
+            'variant_options' => 'nullable|array',
+            'variant_options.*.name' => 'required_with:variant_options|string|max:50',
+            'variant_options.*.values' => 'required_with:variant_options|array|min:1',
+            'variants' => 'nullable|array',
+            'variants.*.id' => 'required_with:variants|string',
+            'variants.*.combination' => 'required_with:variants|array',
+            'variants.*.sku' => 'nullable|string|max:100',
+            'variants.*.price' => 'required_with:variants|numeric|min:0',
+            'variants.*.stock' => 'required_with:variants|integer|min:0',
+            'variants.*.image' => 'nullable|string',
         ], [
             'price.required' => 'Price is required.',
             'price.min' => 'Price must be greater than 0.',
@@ -327,6 +339,18 @@ class ProductController extends Controller
             'main_image_index' => 'nullable|integer|min:0',
             'weight' => 'nullable|numeric|min:0.01',
             'brand' => 'nullable|string|max:100',
+            // Variant validation
+            'has_variants' => 'nullable|boolean',
+            'variant_options' => 'nullable|array',
+            'variant_options.*.name' => 'required_with:variant_options|string|max:50',
+            'variant_options.*.values' => 'required_with:variant_options|array|min:1',
+            'variants' => 'nullable|array',
+            'variants.*.id' => 'required_with:variants|string',
+            'variants.*.combination' => 'required_with:variants|array',
+            'variants.*.sku' => 'nullable|string|max:100',
+            'variants.*.price' => 'required_with:variants|numeric|min:0',
+            'variants.*.stock' => 'required_with:variants|integer|min:0',
+            'variants.*.image' => 'nullable|string',
         ]);
 
         // Validate sale_price is less than price if both are provided

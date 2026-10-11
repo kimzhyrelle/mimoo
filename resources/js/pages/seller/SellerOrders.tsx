@@ -16,6 +16,14 @@ interface OrderItem {
   qty: number;
   price: number;
   stock_left?: number; // remaining stock AFTER checkout deduction (info only)
+  variant_id?: string | null;
+  variant_snapshot?: {
+    id: string;
+    combination: Record<string, string>;
+    sku: string;
+    price: number;
+    stock: number;
+  } | null;
 }
 
 interface Tracking {
@@ -224,6 +232,16 @@ function OrderModal({
               <div className="oi-thumb"><IBox /></div>
               <div>
                 <div className="oi-name">{it.name}</div>
+                {it.variant_snapshot && it.variant_snapshot.combination && (
+                  <div className="oi-sub" style={{ marginBottom: '0.25rem' }}>
+                    {Object.entries(it.variant_snapshot.combination).map(([key, val], idx) => (
+                      <span key={key}>
+                        {idx > 0 && ', '}
+                        <strong>{key}:</strong> {val}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div className="oi-sub">Qty {it.qty} · {peso(it.price)} each</div>
               </div>
               <div className="oi-total">{peso(it.qty * it.price)}</div>

@@ -28,6 +28,8 @@ interface SellerDashboardProps {
         low_stock_count: number;
         new_messages: number;
         new_reviews: number;
+        current_month_sales: number;
+        current_month_orders: number;
     };
     recentOrders: Array<{
         id: string;
@@ -50,6 +52,12 @@ interface SellerDashboardProps {
         current_stock: number;
         percentage: number;
     }>;
+    chartData: {
+        monthly_sales: Array<{
+            month: string;
+            sales: number;
+        }>;
+    };
 }
 
 const fontPoppins = { fontFamily: 'Poppins, sans-serif' };
@@ -86,7 +94,7 @@ interface RealtimeStats {
     error?: string;
 }
 
-export default function SellerDashboard({ auth, seller, stats, recentOrders, topProducts, lowStockItems }: SellerDashboardProps) {
+export default function SellerDashboard({ auth, seller, stats, recentOrders, topProducts, lowStockItems, chartData }: SellerDashboardProps) {
     const [chartPeriod, setChartPeriod] = useState<'daily' | 'monthly' | 'yearly'>('monthly');
     const [realtimeStats, setRealtimeStats] = useState<RealtimeStats | null>(null);
     const [isConnected, setIsConnected] = useState(false);
@@ -331,11 +339,11 @@ export default function SellerDashboard({ auth, seller, stats, recentOrders, top
 
                         <div className="flex items-end gap-9 mb-4 flex-wrap">
                             <div>
-                                <div className="text-2xl font-extrabold" style={fontPoppins}>₱182,400</div>
+                                <div className="text-2xl font-extrabold" style={fontPoppins}>{peso(stats.current_month_sales)}</div>
                                 <div className="text-xs text-[#6E6570] mt-1">Sales this month</div>
                             </div>
                             <div>
-                                <div className="text-xl font-extrabold" style={fontPoppins}>1,240</div>
+                                <div className="text-xl font-extrabold" style={fontPoppins}>{stats.current_month_orders.toLocaleString()}</div>
                                 <div className="text-xs text-[#6E6570] mt-1">Orders this month</div>
                             </div>
                         </div>
@@ -354,7 +362,9 @@ export default function SellerDashboard({ auth, seller, stats, recentOrders, top
                                 <circle cx="600" cy="55" r="4.5" fill="#4B2E7E" />
                             </svg>
                             <div className="flex justify-between text-[0.7rem] text-[#6E6570] font-semibold mt-2 px-1">
-                                <span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span>
+                                {chartData.monthly_sales.map((data, index) => (
+                                    <span key={index}>{data.month}</span>
+                                ))}
                             </div>
                         </div>
 

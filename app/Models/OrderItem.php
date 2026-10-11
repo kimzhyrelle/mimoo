@@ -15,6 +15,7 @@ class OrderItem extends Model
         'product_id',
         'seller_id',
         'product_name',
+        'variant_id',
         'quantity',
         'unit_price',
     ];
@@ -22,6 +23,7 @@ class OrderItem extends Model
     protected $casts = [
         'quantity' => 'integer',
         'unit_price' => 'decimal:2',
+        'variant_snapshot' => 'array',
     ];
 
     /**
