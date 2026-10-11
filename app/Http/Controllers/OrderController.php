@@ -288,7 +288,31 @@ class OrderController extends Controller
      */
     public function index(): Response
     {
-        $orders = Order::where('buyer_id', Auth::id())
+        $orders = $this->getOrdersData();
+
+        return Inertia::render('MyPurchases', [
+            'orders' => $orders,
+        ]);
+    }
+
+    /**
+     * Get orders data as JSON (for refresh).
+     */
+    public function getData(): JsonResponse
+    {
+        $orders = $this->getOrdersData();
+
+        return response()->json([
+            'orders' => $orders,
+        ]);
+    }
+
+    /**
+     * Get formatted orders data.
+     */
+    private function getOrdersData(): array
+    {
+        return Order::where('buyer_id', Auth::id())
             ->with(['items.product', 'items.seller'])
             ->orderBy('created_at', 'desc')
             ->get()
@@ -312,11 +336,8 @@ class OrderController extends Controller
                     'unit_price' => (float) $item->unit_price,
                     'subtotal' => (float) ($item->quantity * $item->unit_price),
                 ]),
-            ]);
-
-        return Inertia::render('MyPurchases', [
-            'orders' => $orders,
-        ]);
+            ])
+            ->toArray();
     }
 
     /**

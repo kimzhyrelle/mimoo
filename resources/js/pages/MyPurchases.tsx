@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import {
   ClipboardList,
@@ -12,6 +12,7 @@ import {
   X,
   Search,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { BuyerHeader } from "@/components/buyer-header";
 import { toast } from "sonner";
@@ -107,6 +108,42 @@ export default function MyPurchases() {
   const [tab, setTab] = useState<TabKey>(readTabFromUrl(page.url));
   const [query, setQuery] = useState("");
   const [cancelling, setCancelling] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Auto-refresh orders every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchOrders();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch fresh orders from backend
+  async function fetchOrders() {
+    try {
+      setRefreshing(true);
+      const response = await fetch('/orders/data', {
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setOrders(data.orders || []);
+        toast.success('Orders updated');
+      } else {
+        toast.error('Failed to refresh orders');
+      }
+    } catch (error) {
+      console.error('Failed to refresh orders:', error);
+      toast.error('Failed to refresh orders');
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   // Count per tab (badges)
   const counts = useMemo(() => {
@@ -172,10 +209,20 @@ export default function MyPurchases() {
       <BuyerHeader user={user} onLogout={handleLogout} cartCount={cartCount ?? 0} />
 
       <main className="max-w-[1000px] mx-auto px-4 sm:px-6 py-6 pb-16">
-        <div className="mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <h1 className="text-[1.3rem] font-bold text-[#2A1B4D]" style={{ fontFamily: "'Syne', sans-serif" }}>
             My Purchases
           </h1>
+          <button
+            type="button"
+            onClick={fetchOrders}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 px-3 py-2 text-[0.82rem] font-semibold text-[#4B2E7E] hover:bg-[#F9F7FC] rounded-lg border border-[#B9A6DE] transition disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh orders"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
         </div>
 
         {/* Status navigation */}

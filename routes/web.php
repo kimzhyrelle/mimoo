@@ -265,6 +265,9 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     // Orders
     Route::post('/api/orders', [\App\Http\Controllers\OrderController::class, 'store']);
     Route::post('/api/orders/{id}/cancel', [\App\Http\Controllers\OrderController::class, 'cancel']);
+    
+    // Orders data refresh endpoint
+    Route::get('/orders/data', [\App\Http\Controllers\OrderController::class, 'getData']);
 });
 
 // Protected seller product routes

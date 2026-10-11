@@ -235,7 +235,7 @@ success.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     success.form = successForm
 /**
 * @see \App\Http\Controllers\OrderController::show
- * @see app/Http/Controllers/OrderController.php:325
+ * @see app/Http/Controllers/OrderController.php:346
  * @route '/orders/{id}'
  */
 export const show = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -250,7 +250,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\OrderController::show
- * @see app/Http/Controllers/OrderController.php:325
+ * @see app/Http/Controllers/OrderController.php:346
  * @route '/orders/{id}'
  */
 show.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -278,7 +278,7 @@ show.url = (args: { id: string | number } | [id: string | number ] | string | nu
 
 /**
 * @see \App\Http\Controllers\OrderController::show
- * @see app/Http/Controllers/OrderController.php:325
+ * @see app/Http/Controllers/OrderController.php:346
  * @route '/orders/{id}'
  */
 show.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -287,7 +287,7 @@ show.get = (args: { id: string | number } | [id: string | number ] | string | nu
 })
 /**
 * @see \App\Http\Controllers\OrderController::show
- * @see app/Http/Controllers/OrderController.php:325
+ * @see app/Http/Controllers/OrderController.php:346
  * @route '/orders/{id}'
  */
 show.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -297,7 +297,7 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
 
     /**
 * @see \App\Http\Controllers\OrderController::show
- * @see app/Http/Controllers/OrderController.php:325
+ * @see app/Http/Controllers/OrderController.php:346
  * @route '/orders/{id}'
  */
     const showForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -307,7 +307,7 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
 
             /**
 * @see \App\Http\Controllers\OrderController::show
- * @see app/Http/Controllers/OrderController.php:325
+ * @see app/Http/Controllers/OrderController.php:346
  * @route '/orders/{id}'
  */
         showForm.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -316,7 +316,7 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
         })
             /**
 * @see \App\Http\Controllers\OrderController::show
- * @see app/Http/Controllers/OrderController.php:325
+ * @see app/Http/Controllers/OrderController.php:346
  * @route '/orders/{id}'
  */
         showForm.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -387,7 +387,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     store.form = storeForm
 /**
 * @see \App\Http\Controllers\OrderController::cancel
- * @see app/Http/Controllers/OrderController.php:363
+ * @see app/Http/Controllers/OrderController.php:384
  * @route '/api/orders/{id}/cancel'
  */
 export const cancel = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -402,7 +402,7 @@ cancel.definition = {
 
 /**
 * @see \App\Http\Controllers\OrderController::cancel
- * @see app/Http/Controllers/OrderController.php:363
+ * @see app/Http/Controllers/OrderController.php:384
  * @route '/api/orders/{id}/cancel'
  */
 cancel.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -430,7 +430,7 @@ cancel.url = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\OrderController::cancel
- * @see app/Http/Controllers/OrderController.php:363
+ * @see app/Http/Controllers/OrderController.php:384
  * @route '/api/orders/{id}/cancel'
  */
 cancel.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -440,7 +440,7 @@ cancel.post = (args: { id: string | number } | [id: string | number ] | string |
 
     /**
 * @see \App\Http\Controllers\OrderController::cancel
- * @see app/Http/Controllers/OrderController.php:363
+ * @see app/Http/Controllers/OrderController.php:384
  * @route '/api/orders/{id}/cancel'
  */
     const cancelForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -450,7 +450,7 @@ cancel.post = (args: { id: string | number } | [id: string | number ] | string |
 
             /**
 * @see \App\Http\Controllers\OrderController::cancel
- * @see app/Http/Controllers/OrderController.php:363
+ * @see app/Http/Controllers/OrderController.php:384
  * @route '/api/orders/{id}/cancel'
  */
         cancelForm.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -459,6 +459,84 @@ cancel.post = (args: { id: string | number } | [id: string | number ] | string |
         })
     
     cancel.form = cancelForm
-const OrderController = { checkout, index, success, show, store, cancel }
+/**
+* @see \App\Http\Controllers\OrderController::getData
+ * @see app/Http/Controllers/OrderController.php:301
+ * @route '/orders/data'
+ */
+export const getData = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: getData.url(options),
+    method: 'get',
+})
+
+getData.definition = {
+    methods: ["get","head"],
+    url: '/orders/data',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+* @see \App\Http\Controllers\OrderController::getData
+ * @see app/Http/Controllers/OrderController.php:301
+ * @route '/orders/data'
+ */
+getData.url = (options?: RouteQueryOptions) => {
+    return getData.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\OrderController::getData
+ * @see app/Http/Controllers/OrderController.php:301
+ * @route '/orders/data'
+ */
+getData.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: getData.url(options),
+    method: 'get',
+})
+/**
+* @see \App\Http\Controllers\OrderController::getData
+ * @see app/Http/Controllers/OrderController.php:301
+ * @route '/orders/data'
+ */
+getData.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: getData.url(options),
+    method: 'head',
+})
+
+    /**
+* @see \App\Http\Controllers\OrderController::getData
+ * @see app/Http/Controllers/OrderController.php:301
+ * @route '/orders/data'
+ */
+    const getDataForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: getData.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\OrderController::getData
+ * @see app/Http/Controllers/OrderController.php:301
+ * @route '/orders/data'
+ */
+        getDataForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: getData.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\OrderController::getData
+ * @see app/Http/Controllers/OrderController.php:301
+ * @route '/orders/data'
+ */
+        getDataForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: getData.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    getData.form = getDataForm
+const OrderController = { checkout, index, success, show, store, cancel, getData }
 
 export default OrderController
