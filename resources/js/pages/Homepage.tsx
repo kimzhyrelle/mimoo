@@ -23,6 +23,7 @@ interface Category {
   id: string;
   label: string;
   icon?: string | null;
+  subcategories?: string[]; // shown in the header hover menu
 }
 
 interface Product {
@@ -46,18 +47,78 @@ interface Product {
 // ---------------------------------------------------------------------------
 
 const CATEGORIES: Category[] = [
-  { id: "c1", label: "Pet Supplies", icon: "/images/pet supplies.jpg" },
-  { id: "c2", label: "Electronics and Gadgets", icon: "/images/electronics.jpg" },
-  { id: "c3", label: "Women's Apparel", icon: "/images/women's apparel.jpg" },
-  { id: "c4", label: "Men's Apparel", icon: "/images/mens apparel.jpg" },
-  { id: "c5", label: "Kids and Baby", icon: "/images/kids and babies.jpg" },
-  { id: "c6", label: "Home and Garden", icon: "/images/home and garden.jpg" },
-  { id: "c7", label: "Sports and Outdoors", icon: "/images/sports.jpg" },
-  { id: "c8", label: "Health and Beauty", icon: "/images/health and beauty.jpg" },
-  { id: "c9", label: "Books and Media", icon: null },
-  { id: "c10", label: "Food and Gourmet", icon: null },
-  { id: "c11", label: "Furniture and Office Equipment", icon: null },
-  { id: "c12", label: "Jewelry and Watches", icon: null },
+  {
+    id: "c1",
+    label: "Pet Supplies",
+    icon: "/images/pet supplies.jpg",
+    subcategories: ["Dog Food", "Cat Food", "Dog Treats", "Cat Litter", "Pet Toys", "Grooming & Shampoo", "Beds & Crates", "Leashes & Collars", "Pet Clothing", "Feeding Bowls", "Pet Health & Vitamins", "Aquarium & Fish", "Bird Supplies", "Small Animal Supplies"],
+  },
+  {
+    id: "c2",
+    label: "Electronics and Gadgets",
+    icon: "/images/electronics.jpg",
+    subcategories: ["Mobile Phones", "Tablets", "Laptops", "Desktop PCs", "Audio & Earbuds", "Speakers", "Cameras", "Smartwatches", "Chargers & Cables", "Power Banks", "Phone Cases", "Gaming Consoles", "Monitors", "Keyboards & Mice", "Smart Home", "Drones"],
+  },
+  {
+    id: "c3",
+    label: "Women's Apparel",
+    icon: "/images/women's apparel.jpg",
+    subcategories: ["Dresses", "Tops & Blouses", "T-Shirts", "Pants & Jeans", "Skirts", "Shorts", "Jackets & Cardigans", "Activewear", "Sleepwear", "Lingerie", "Swimwear", "Handbags", "Sandals & Flats", "Heels", "Sneakers", "Scarves & Hats"],
+  },
+  {
+    id: "c4",
+    label: "Men's Apparel",
+    icon: "/images/mens apparel.jpg",
+    subcategories: ["T-Shirts", "Polo Shirts", "Button-Down Shirts", "Pants & Jeans", "Shorts", "Jackets & Hoodies", "Underwear", "Sleepwear", "Activewear", "Swim Trunks", "Sneakers", "Formal Shoes", "Sandals & Slippers", "Belts & Wallets", "Caps & Hats", "Backpacks"],
+  },
+  {
+    id: "c5",
+    label: "Kids and Baby",
+    icon: "/images/kids and babies.jpg",
+    subcategories: ["Baby Clothing", "Kids' Clothing", "Diapers & Wipes", "Baby Formula", "Feeding & Nursing", "Bath & Skincare", "Strollers", "Car Seats", "Cribs & Bedding", "Toys & Games", "Educational Toys", "Building Blocks", "School Bags", "School Supplies", "Kids' Shoes", "Maternity"],
+  },
+  {
+    id: "c6",
+    label: "Home and Garden",
+    icon: "/images/home and garden.jpg",
+    subcategories: ["Cookware", "Kitchen Appliances", "Dinnerware", "Food Storage", "Bedding & Pillows", "Curtains & Blinds", "Rugs & Carpets", "Home Decor", "Lighting", "Bath Essentials", "Laundry & Cleaning", "Organizers", "Plants & Pots", "Garden Tools", "Fans & Aircon", "Tools & Hardware"],
+  },
+  {
+    id: "c7",
+    label: "Sports and Outdoors",
+    icon: "/images/sports.jpg",
+    subcategories: ["Gym Equipment", "Yoga & Pilates", "Running", "Cycling", "Camping & Hiking", "Fishing", "Basketball", "Badminton & Tennis", "Volleyball", "Football", "Swimming", "Martial Arts", "Skateboards & Scooters", "Sportswear", "Sports Shoes", "Water Bottles & Hydration"],
+  },
+  {
+    id: "c8",
+    label: "Health and Beauty",
+    icon: "/images/health and beauty.jpg",
+    subcategories: ["Face Care", "Body Care", "Sunscreen", "Makeup - Face", "Makeup - Lips", "Makeup - Eyes", "Perfume & Cologne", "Hair Care", "Hair Tools", "Nail Care", "Vitamins & Supplements", "Feminine Care", "Men's Grooming", "Oral Care", "Medical Supplies", "Massage & Wellness"],
+  },
+  {
+    id: "c9",
+    label: "Books and Media",
+    icon: null,
+    subcategories: ["Fiction", "Non-Fiction", "Self-Help", "Children's Books", "Textbooks", "Comics & Manga", "Magazines", "Religious Books", "Cookbooks", "Vinyl & CDs", "Musical Instruments", "Movies & DVDs", "Video Games", "Board Games", "Puzzles", "Art & Craft Supplies"],
+  },
+  {
+    id: "c10",
+    label: "Food and Gourmet",
+    icon: null,
+    subcategories: ["Chips & Crackers", "Biscuits & Cookies", "Chocolates", "Candies", "Coffee", "Tea", "Juices & Soft Drinks", "Rice & Grains", "Canned Goods", "Noodles & Pasta", "Condiments & Sauces", "Cooking Oil & Spices", "Local Delicacies", "Dried Fish & Seafood", "Baking Supplies", "Gift Baskets"],
+  },
+  {
+    id: "c11",
+    label: "Furniture and Office Equipment",
+    icon: null,
+    subcategories: ["Sofas", "Dining Sets", "Beds & Mattresses", "Wardrobes & Cabinets", "Shelves & Bookcases", "TV Stands", "Coffee Tables", "Office Desks", "Office Chairs", "Filing Cabinets", "Printers & Ink", "Paper & Notebooks", "Pens & Markers", "Desk Lamps", "Whiteboards", "Outdoor Furniture"],
+  },
+  {
+    id: "c12",
+    label: "Jewelry and Watches",
+    icon: null,
+    subcategories: ["Necklaces", "Pendants", "Rings", "Wedding Bands", "Earrings", "Bracelets", "Anklets", "Brooches", "Gold Jewelry", "Silver Jewelry", "Pearls & Gemstones", "Men's Watches", "Women's Watches", "Smart & Digital Watches", "Watch Straps", "Jewelry Boxes"],
+  },
 ];
 
 interface HomepageProps {
@@ -446,12 +507,113 @@ function ProductCard({
 }
 
 // ---------------------------------------------------------------------------
+// CategoryNav — plain-text category row under the header. Hovering a
+// category (desktop) or tapping it (touch devices) opens a full-width panel
+// with that category's subcategories.
+// ---------------------------------------------------------------------------
+
+function CategoryNav({ categories }: { categories: Category[] }) {
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const active = categories.find((c) => c.id === activeId);
+
+  // Close when clicking/tapping outside the nav
+  useEffect(() => {
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) {
+        setActiveId(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, []);
+
+  const categoryHref = (c: Category, sub?: string) =>
+    `/category/${encodeURIComponent(c.label)}${
+      sub ? `?sub=${encodeURIComponent(sub)}` : ""
+    }`;
+
+  const isTouch = () =>
+    typeof window !== "undefined" &&
+    window.matchMedia("(hover: none)").matches;
+
+  return (
+    <nav
+      ref={navRef}
+      onMouseLeave={() => setActiveId(null)}
+      className="relative border-t border-white/10 bg-black/10"
+      aria-label="Categories"
+    >
+      <div className="mx-auto max-w-6xl px-4">
+        <ul
+          className="flex gap-1 overflow-x-auto whitespace-nowrap py-1 text-xs sm:text-[13px]"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          {categories.map((c) => (
+            <li key={c.id} onMouseEnter={() => setActiveId(c.id)}>
+              <Link
+                href={categoryHref(c)}
+                onClick={(e) => {
+                  // On touch devices the first tap opens the menu instead of navigating
+                  if (isTouch() && c.subcategories?.length) {
+                    e.preventDefault();
+                    setActiveId(activeId === c.id ? null : c.id);
+                  }
+                }}
+                className={`block rounded px-3 py-2 text-white/90 transition-colors hover:text-white ${
+                  activeId === c.id ? "bg-white/15 text-white" : ""
+                }`}
+              >
+                {c.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Subcategory panel */}
+      {active?.subcategories && active.subcategories.length > 0 && (
+        <div className="absolute left-0 right-0 top-full z-40 border-b border-neutral-200 bg-white text-neutral-800 shadow-lg">
+          <div className="mx-auto max-w-6xl px-4 py-4">
+            <Link
+              href={categoryHref(active)}
+              onClick={() => setActiveId(null)}
+              className="mb-3 inline-block text-sm font-bold text-violet-700 hover:underline"
+            >
+              {active.label}
+            </Link>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-3 lg:grid-cols-4">
+              {active.subcategories.map((sub) => (
+                <Link
+                  key={sub}
+                  href={categoryHref(active, sub)}
+                  onClick={() => setActiveId(null)}
+                  className="rounded px-2 py-1 text-neutral-700 transition-colors hover:bg-violet-50 hover:text-violet-700"
+                >
+                  {sub}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </nav>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Header — search bar + cart/account icons always shown, matching the
 // reference design. Role only changes downstream content (product CTAs).
+// The category nav sits in its own row below the logo/search row.
 //
 //   ┌──────────────────────────────────────────────────────────┐
 //   │                                              ◯ username   │
 //   │  mimoo   ( ───────── search ─────────────── ●)   🔔  🛒   │
+//   │  Pet Supplies  Electronics  Women's Apparel  ...         │
 //   └──────────────────────────────────────────────────────────┘
 // ---------------------------------------------------------------------------
 
@@ -469,6 +631,7 @@ function Header({
   avatarUrl = null,
   notificationCount = 5,
   cartCount = 0,
+  categories = [],
   onSearch,
   onLogout,
 }: {
@@ -476,6 +639,7 @@ function Header({
   avatarUrl?: string | null;
   notificationCount?: number;
   cartCount?: number;
+  categories?: Category[];
   onSearch?: (query: string) => void;
   onLogout?: () => void;
 }) {
@@ -599,6 +763,9 @@ function Header({
           </div>
         </div>
       </div>
+
+      {/* Category nav row (full width so the hover panel can span the header) */}
+      {categories.length > 0 && <CategoryNav categories={categories} />}
     </header>
   );
 }
@@ -719,6 +886,7 @@ export default function Homepage({ auth, initialProducts = [] }: HomepageProps) 
         username={user ? user.name : "Guest"} 
         onLogout={user ? handleLogout : undefined}
         cartCount={cartCount}
+        categories={CATEGORIES}
         onSearch={handleSearch}
       />
 

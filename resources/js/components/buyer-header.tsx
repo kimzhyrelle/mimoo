@@ -9,7 +9,23 @@ interface BuyerHeaderProps {
   onSearch?: (query: string) => void;
   onLogout?: () => void;
   onGuestAction?: () => void;
+  currentCategory?: string; // NEW: to highlight active category
 }
+
+const CATEGORIES = [
+  "Pet Supplies",
+  "Electronics and Gadgets",
+  "Women's Apparel",
+  "Men's Apparel",
+  "Kids and Baby",
+  "Home and Garden",
+  "Sports and Outdoors",
+  "Health and Beauty",
+  "Books and Media",
+  "Food and Gourmet",
+  "Furniture and Decor",
+  "Jewelry and Watches",
+];
 
 function CountBadge({ count }: { count: number }) {
   if (count <= 0) return null;
@@ -27,6 +43,7 @@ export function BuyerHeader({
   onSearch,
   onLogout,
   onGuestAction,
+  currentCategory,
 }: BuyerHeaderProps) {
   const [query, setQuery] = useState("");
   const [showMenu, setShowMenu] = useState(false);
@@ -168,6 +185,26 @@ export function BuyerHeader({
                 <CountBadge count={cartCount} />
               </button>
             )}
+          </div>
+        </div>
+
+        {/* Category Navigation Row */}
+        <div className="border-t border-white/10">
+          <div className="category-scroll flex gap-6 overflow-x-auto py-2">
+            <style>{`.category-scroll::-webkit-scrollbar { display: none; }`}</style>
+            {CATEGORIES.map((cat) => (
+              <Link
+                key={cat}
+                href={`/category/${encodeURIComponent(cat)}`}
+                className={`shrink-0 text-xs font-medium transition-colors whitespace-nowrap ${
+                  currentCategory === cat
+                    ? 'text-white border-b-2 border-white pb-0.5'
+                    : 'text-white/70 hover:text-white'
+                }`}
+              >
+                {cat}
+              </Link>
+            ))}
           </div>
         </div>
       </div>

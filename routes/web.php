@@ -244,6 +244,33 @@ Route::get('/product/{id}', function (string $id) {
     ]);
 })->name('product.show');
 
+Route::get('/category/{category}', function (string $category) {
+    $products = \App\Models\Product::with('seller:id,business_name,name')
+        ->where('category', $category)
+        ->where('status', 'active')
+        ->orderBy('created_at', 'desc')
+        ->get()
+        ->map(function ($product) {
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'price' => (float) $product->price,
+                'sale_price' => $product->sale_price ? (float) $product->sale_price : null,
+                'effective_price' => (float) ($product->sale_price ?? $product->price),
+                'is_on_sale' => $product->sale_price !== null,
+                'main_image' => $product->main_image,
+                'stock' => $product->stock,
+                'category' => $product->category,
+                'seller_name' => $product->seller->business_name ?? $product->seller->name,
+            ];
+        });
+
+    return Inertia::render('CategoryPage', [
+        'category' => $category,
+        'products' => $products,
+    ]);
+})->name('category.show');
+
 // Google OAuth routes
 Route::get('/auth/google', [SocialiteController::class, 'redirectToGoogle'])->name('auth.google');
 Route::get('/auth/google/callback', [SocialiteController::class, 'handleGoogleCallback'])->name('auth.google.callback');
