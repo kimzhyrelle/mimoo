@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
-import { ArrowLeft, Package, X, ChevronRight } from "lucide-react";
+import { ArrowLeft, Package, X, ChevronRight, AlertCircle } from "lucide-react";
 import { BuyerHeader } from "@/components/buyer-header";
+import { toast } from "sonner";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -13,25 +14,34 @@ type UserRole = "guest" | "buyer" | "seller";
 
 interface CartItem {
   id: number;
-  checked: boolean;
-  name: string;
-  seller: string;
-  variation: string;
-  unitPrice: number;
-  qty: number;
-  stock: number;
+  product_id: number;
+  product_name: string;
+  product_image: string | null;
+  product_sku: string;
+  seller_name: string;
+  unit_price: number;
+  regular_price: number;
+  is_on_sale: boolean;
+  quantity: number;
+  line_total: number;
+  max_quantity: number;
+  stock_status: string;
+  is_valid: boolean;
+  validation_issue: string | null;
+  product: {
+    id: number;
+    name: string;
+    status: string;
+    stock: number;
+  };
 }
 
-interface Address {
-  name: string;
-  phone: string;
-  addr: string;
-}
-
-interface Voucher {
-  code: string;
-  amount: number;
-  type?: string;
+interface CartData {
+  items: CartItem[];
+  subtotal: number;
+  total: number;
+  total_items: number;
+  has_invalid_items: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -44,79 +54,111 @@ export default function Cart() {
   const role: UserRole = user?.account_type ? (user.account_type as UserRole) : "guest";
 
   // State
-  const [items, setItems] = useState<CartItem[]>([
-    { id: 1, checked: true, name: 'Handwoven Rattan Basket (Medium)', seller: 'Reyes Craft Corner', variation: 'Color: Natural', unitPrice: 450, qty: 1, stock: 8 },
-    { id: 2, checked: true, name: 'Organic Virgin Coconut Oil 250ml', seller: 'Tolentino Skin Studio', variation: 'Size: 250ml', unitPrice: 180, qty: 2, stock: 25 },
-    { id: 3, checked: true, name: 'Dried Mango Strips 500g', seller: 'Cabrera Fresh Market', variation: 'Pack: 500g', unitPrice: 120, qty: 3, stock: 40 },
-    { id: 4, checked: false, name: 'Macrame Wall Hanging', seller: 'Reyes Craft Corner', variation: 'Color: Cream', unitPrice: 650, qty: 1, stock: 3 },
-  ]);
-
-  const [address, setAddress] = useState<Address>({
-    name: 'Miguel Angelo Cruz',
-    phone: '0918 552 7734',
-    addr: '3 Purok 5, Apokon, Tagum City, Davao del Norte',
-  });
-
-  const [voucher, setVoucher] = useState<Voucher | null>(null);
-  const [voucherInput, setVoucherInput] = useState('');
-  const [showVoucherModal, setShowVoucherModal] = useState(false);
-  const [selectedVoucher, setSelectedVoucher] = useState<string | null>(null);
-
-  const FREE_SHIP = 999;
-  const SHIP_FEE = 58;
+  const [cart, setCart] = useState<CartData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState<number | null>(null);
 
   const peso = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  // Calculations
-  const selectedItems = items.filter(i => i.checked);
-  const subtotal = selectedItems.reduce((s, i) => s + i.unitPrice * i.qty, 0);
-  const discount = voucher ? Math.min(voucher.amount, subtotal) : 0;
-  const shipping = selectedItems.length === 0 ? 0 : (subtotal >= FREE_SHIP ? 0 : SHIP_FEE);
-  const total = Math.max(subtotal - discount + shipping, 0);
+  // Fetch cart on mount
+  useEffect(() => {
+    fetchCart();
+  }, []);
+
+  async function fetchCart() {
+    try {
+      const response = await fetch('/api/cart');
+      const data = await response.json();
+      setCart(data);
+    } catch (error) {
+      console.error('Failed to fetch cart:', error);
+      toast.error('Failed to load cart');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function updateQuantity(itemId: number, newQty: number) {
+    if (newQty < 1) return;
+    
+    setUpdating(itemId);
+    try {
+      const response = await fetch(`/api/cart/items/${itemId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+        body: JSON.stringify({ quantity: newQty }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        await fetchCart(); // Refresh cart
+      } else {
+        toast.error(data.error || 'Failed to update quantity');
+      }
+    } catch (error) {
+      console.error('Update quantity error:', error);
+      toast.error('Failed to update quantity');
+    } finally {
+      setUpdating(null);
+    }
+  }
+
+  async function removeItem(itemId: number) {
+    try {
+      const response = await fetch(`/api/cart/items/${itemId}`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(data.message || 'Item removed');
+        await fetchCart(); // Refresh cart
+      } else {
+        toast.error('Failed to remove item');
+      }
+    } catch (error) {
+      console.error('Remove item error:', error);
+      toast.error('Failed to remove item');
+    }
+  }
 
   function handleLogout() {
     router.post('/logout');
   }
 
-  function handleSelectAll(checked: boolean) {
-    setItems(items.map(i => ({ ...i, checked })));
-  }
-
-  function handleItemCheck(id: number, checked: boolean) {
-    setItems(items.map(i => i.id === id ? { ...i, checked } : i));
-  }
-
-  function handleQtyChange(id: number, delta: number) {
-    setItems(items.map(i => {
-      if (i.id !== id) return i;
-      const newQty = Math.max(1, Math.min(i.stock, i.qty + delta));
-      return { ...i, qty: newQty };
-    }));
-  }
-
-  function handleRemoveItem(id: number) {
-    setItems(items.filter(i => i.id !== id));
-  }
-
-  function handleRemoveSelected() {
-    setItems(items.filter(i => !i.checked));
-  }
-
-  function applyVoucher() {
-    const code = voucherInput.trim().toUpperCase();
-    if (!code) return;
-    if (code === 'MIMOO50') {
-      setVoucher({ code, amount: 50 });
-      setVoucherInput('');
+  function handleCheckout() {
+    if (cart?.has_invalid_items) {
+      toast.error('Please fix invalid items before checkout');
+      return;
     }
+    router.visit('/checkout');
   }
 
-  function removeVoucher() {
-    setVoucher(null);
-    setVoucherInput('');
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f5f4f8] font-[Syne]">
+        <Head title="My Cart" />
+        <BuyerHeader user={user} onLogout={handleLogout} cartCount={0} />
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-700 mx-auto"></div>
+            <p className="mt-4 text-neutral-600">Loading cart...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  const allChecked = items.length > 0 && items.every(i => i.checked);
+  const items = cart?.items || [];
+  const isEmpty = items.length === 0;
 
   return (
     <div className="min-h-screen bg-[#f5f4f8] font-[Syne]">
@@ -125,29 +167,10 @@ export default function Cart() {
       <BuyerHeader
         user={user}
         onLogout={handleLogout}
-        cartCount={items.length}
+        cartCount={cart?.total_items || 0}
       />
 
       <main className="max-w-[1100px] mx-auto px-6 py-6 pb-16">
-        {/* Delivery address bar */}
-        <div className="bg-white rounded-[14px] border-l-4 border-[#4B2E7E] p-4 mb-4 shadow-sm flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-start gap-3">
-            <svg className="w-[17px] h-[17px] text-[#4B2E7E] flex-none mt-1" viewBox="0 0 24 24" fill="none">
-              <path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-              <circle cx="12" cy="9.5" r="2.4" stroke="currentColor" strokeWidth="1.5" />
-            </svg>
-            <div>
-              <div className="text-[0.7rem] font-extrabold uppercase tracking-wider text-[#4B2E7E] mb-1">Deliver to</div>
-              <div className="text-[0.84rem] text-[#2A1B4D]">
-                <strong>{address.name}</strong> · {address.phone} — {address.addr}
-              </div>
-            </div>
-          </div>
-          <button className="text-[0.8rem] font-bold text-[#4B2E7E] hover:underline flex-none whitespace-nowrap">
-            Change
-          </button>
-        </div>
-
         {/* Cart header */}
         <div className="flex items-end justify-between gap-4 mb-4 flex-wrap">
           <div>
@@ -162,18 +185,21 @@ export default function Cart() {
           </Link>
         </div>
 
+        {/* Invalid items warning */}
+        {cart?.has_invalid_items && (
+          <div className="bg-orange-50 border-l-4 border-orange-500 rounded-lg p-4 mb-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-orange-600 flex-none mt-0.5" />
+            <div>
+              <h3 className="text-sm font-bold text-orange-900 mb-1">Some items need attention</h3>
+              <p className="text-sm text-orange-800">Please fix invalid items before checkout</p>
+            </div>
+          </div>
+        )}
+
         {/* Cart items card */}
         <div className="bg-white rounded-[14px] shadow-sm border border-[rgba(185,166,222,0.18)] p-5 mb-4">
           {/* Column headers */}
-          <div className="grid grid-cols-[22px_72px_1fr_110px_132px_110px_60px] items-center gap-x-6 pb-3 mb-1 border-b-[1.5px] border-[#E6DFF2] text-[0.72rem] font-bold text-[#6E6570] uppercase tracking-wide">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                checked={allChecked}
-                onChange={(e) => handleSelectAll(e.target.checked)}
-                className="w-[17px] h-[17px] accent-[#4B2E7E] cursor-pointer"
-              />
-            </div>
+          <div className="grid grid-cols-[72px_1fr_110px_132px_110px_60px] items-center gap-x-6 pb-3 mb-1 border-b-[1.5px] border-[#E6DFF2] text-[0.72rem] font-bold text-[#6E6570] uppercase tracking-wide">
             <span></span>
             <span>Product</span>
             <span className="text-right">Unit Price</span>
@@ -182,55 +208,71 @@ export default function Cart() {
             <span className="text-center">Actions</span>
           </div>
 
-          {/* Items */}
-          {items.length === 0 ? (
-            <div className="py-12 text-center text-[0.88rem] text-[#6E6570]">Your cart is empty.</div>
+          {/* Empty state */}
+          {isEmpty ? (
+            <div className="py-12 text-center">
+              <Package className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
+              <p className="text-[0.88rem] text-[#6E6570] mb-4">Your cart is empty</p>
+              <Link
+                href="/homepage"
+                className="inline-flex items-center gap-2 bg-[#4B2E7E] text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#3a2360] transition"
+              >
+                Start Shopping
+              </Link>
+            </div>
           ) : (
+            // Cart items
             items.map((item) => (
               <div
                 key={item.id}
-                className="grid grid-cols-[22px_72px_1fr_110px_132px_110px_60px] items-center gap-x-6 py-4 border-b border-[#E6DFF2] last:border-b-0"
+                className={`grid grid-cols-[72px_1fr_110px_132px_110px_60px] items-center gap-x-6 py-4 border-b border-[#E6DFF2] last:border-b-0 ${
+                  !item.is_valid ? 'bg-red-50/30' : ''
+                }`}
               >
-                <input
-                  type="checkbox"
-                  checked={item.checked}
-                  onChange={(e) => handleItemCheck(item.id, e.target.checked)}
-                  className="w-[17px] h-[17px] accent-[#4B2E7E] cursor-pointer"
-                />
-                <div className="w-[72px] h-[72px] rounded-[10px] bg-[#F9F7FC] border border-[#E6DFF2] flex items-center justify-center text-[#B9A6DE]">
-                  <Package className="w-[26px] h-[26px]" />
+                <div className="w-[72px] h-[72px] rounded-[10px] bg-[#F9F7FC] border border-[#E6DFF2] flex items-center justify-center text-[#B9A6DE] overflow-hidden">
+                  {item.product_image ? (
+                    <img src={item.product_image} alt={item.product_name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Package className="w-[26px] h-[26px]" />
+                  )}
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[0.88rem] font-bold text-[#2A1B4D] leading-snug">{item.name}</div>
-                  <div className="text-[0.76rem] text-[#6E6570] mt-1">{item.seller}</div>
+                  <div className="text-[0.88rem] font-bold text-[#2A1B4D] leading-snug">{item.product_name}</div>
+                  <div className="text-[0.76rem] text-[#6E6570] mt-1">{item.seller_name}</div>
                   <div className="inline-block text-[0.72rem] text-[#4B2E7E] mt-1 bg-[#F9F7FC] border border-[#E6DFF2] rounded px-1.5 py-0.5">
-                    {item.variation}
+                    SKU: {item.product_sku}
                   </div>
-                  <div className={`text-[0.72rem] mt-1.5 ${item.stock < 5 ? 'text-[#b3384f]' : 'text-[#2c7a52]'}`}>
-                    {item.stock} in stock
+                  <div className={`text-[0.72rem] mt-1.5 font-medium ${
+                    !item.is_valid ? 'text-red-600' : item.max_quantity < 5 ? 'text-orange-600' : 'text-green-600'
+                  }`}>
+                    {item.is_valid ? `${item.max_quantity} in stock` : item.validation_issue}
                   </div>
                 </div>
                 <div className="text-right whitespace-nowrap">
                   <span className="text-[0.88rem] font-extrabold text-[#2A1B4D]" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                    {peso(item.unitPrice)}
+                    {peso(item.unit_price)}
                   </span>
-                  <span className="block text-[0.7rem] text-[#6E6570] mt-0.5">each</span>
+                  {item.is_on_sale && (
+                    <span className="block text-[0.7rem] text-[#6E6570] line-through mt-0.5">
+                      {peso(item.regular_price)}
+                    </span>
+                  )}
                 </div>
                 <div className="flex justify-center">
                   <div className="inline-flex items-center border-[1.5px] border-[#E6DFF2] rounded-lg overflow-hidden shadow-sm">
                     <button
-                      onClick={() => handleQtyChange(item.id, -1)}
-                      disabled={item.qty <= 1}
+                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      disabled={item.quantity <= 1 || updating === item.id}
                       className="w-[30px] h-[30px] flex items-center justify-center text-[#2A1B4D] text-base font-bold bg-white hover:bg-[#F3EFFA] disabled:text-[#E6DFF2] disabled:cursor-not-allowed transition"
                     >
                       −
                     </button>
                     <span className="w-[32px] text-center text-[0.85rem] font-bold border-l border-r border-[#E6DFF2]" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                      {item.qty}
+                      {item.quantity}
                     </span>
                     <button
-                      onClick={() => handleQtyChange(item.id, 1)}
-                      disabled={item.qty >= item.stock}
+                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      disabled={item.quantity >= item.max_quantity || updating === item.id}
                       className="w-[30px] h-[30px] flex items-center justify-center text-[#2A1B4D] text-base font-bold bg-white hover:bg-[#F3EFFA] disabled:text-[#E6DFF2] disabled:cursor-not-allowed transition"
                     >
                       +
@@ -238,11 +280,11 @@ export default function Cart() {
                   </div>
                 </div>
                 <div className="text-right whitespace-nowrap text-[0.92rem] font-extrabold text-[#4B2E7E]" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                  {peso(item.unitPrice * item.qty)}
+                  {peso(item.line_total)}
                 </div>
                 <div className="flex justify-center">
                   <button
-                    onClick={() => handleRemoveItem(item.id)}
+                    onClick={() => removeItem(item.id)}
                     className="w-[34px] h-[34px] border-[1.5px] border-[#E6DFF2] bg-white rounded-lg flex items-center justify-center text-[#6E6570] hover:bg-[#fbeced] hover:border-[#b3384f] hover:text-[#b3384f] transition shadow-sm"
                   >
                     <X className="w-[15px] h-[15px]" />
@@ -253,118 +295,36 @@ export default function Cart() {
           )}
         </div>
 
-        {/* Platform voucher + checkout bar */}
-        <div className="bg-white rounded-[14px] shadow-sm border border-[rgba(185,166,222,0.18)] overflow-hidden mb-4">
-          {/* Platform voucher */}
-          <div>
-            <div className="flex items-center justify-end px-6 py-2 border-b border-[#f0eef5] gap-6">
-              <div className="flex items-center gap-2 text-[0.83rem] text-[#2A1B4D] mr-auto">
-                <span className="inline-flex items-center justify-center w-[26px] h-[18px] border-2 border-dashed border-[#4B2E7E] rounded text-[0.6rem] font-extrabold text-[#4B2E7E]">
-                  🎫
-                </span>
-                <span>Platform Voucher</span>
+        {/* Checkout summary */}
+        {!isEmpty && (
+          <div className="bg-white rounded-[14px] shadow-sm border border-[rgba(185,166,222,0.18)] p-6">
+            <div className="flex items-center justify-between gap-6 flex-wrap">
+              <div>
+                <div className="text-[0.83rem] text-[#6E6570] mb-2">
+                  Total (<span style={{ fontFamily: "'Poppins', sans-serif" }}>{items.length}</span> items):
+                </div>
+                <div className="text-[1.8rem] font-extrabold text-[#4B2E7E]" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  {peso(cart?.total || 0)}
+                </div>
               </div>
               <button
-                onClick={() => setShowVoucherModal(true)}
-                className="text-[0.82rem] font-bold text-[#4B2E7E] hover:underline whitespace-nowrap cursor-pointer"
+                disabled={isEmpty || cart?.has_invalid_items}
+                onClick={handleCheckout}
+                className="appearance-none border-none cursor-pointer bg-gradient-to-r from-[#2A1B4D] to-[#4B2E7E] text-white font-extrabold text-[0.92rem] px-9 py-3 rounded-full flex items-center gap-2 shadow-[0_4px_18px_rgba(75,46,126,0.45)] transition-all hover:translate-y-[-2px] hover:shadow-[0_8px_28px_rgba(75,46,126,0.55)] disabled:bg-[#E6DFF2] disabled:text-[#6E6570] disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none whitespace-nowrap"
               >
-                {selectedVoucher || 'Select or enter code'}
+                Proceed to Checkout
               </button>
             </div>
-            <div className="flex items-center justify-end px-6 py-2 gap-6">
-              <div className="flex items-center gap-2 text-[0.83rem] text-[#aaa] mr-auto">
-                <input type="checkbox" disabled className="w-[15px] h-[15px] accent-[#ccc] cursor-not-allowed opacity-50" />
-                <span className="w-5 h-5 rounded-full bg-[#ddd] flex items-center justify-center text-[0.6rem] font-extrabold text-[#aaa]">
-                  🪙
-                </span>
-                <span>Mimoo Coins</span>
-                <span className="text-[0.8rem]">Insufficient Coin Balance ⓘ</span>
-              </div>
-              <span className="text-[0.8rem] text-[#aaa]">−₱0</span>
-            </div>
           </div>
-
-          {/* Bottom bar */}
-          <div className="border-t-[1.5px] border-[#E6DFF2] px-6 py-3.5">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div className="flex items-center gap-6 flex-wrap">
-                <label className="flex items-center gap-2.5 text-[0.85rem] font-bold text-[#2A1B4D] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={allChecked}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="w-[17px] h-[17px] accent-[#4B2E7E] cursor-pointer"
-                  />
-                  Select All
-                </label>
-                <button
-                  onClick={handleRemoveSelected}
-                  disabled={!items.some(i => i.checked)}
-                  className="text-[0.8rem] font-bold text-[#b3384f] disabled:text-[#6E6570] disabled:cursor-not-allowed hover:underline p-1"
-                >
-                  Delete
-                </button>
-                <button className="text-[0.8rem] font-bold text-[#4B2E7E] hover:underline p-1">
-                  Move to My Likes
-                </button>
-              </div>
-              <div className="flex items-center gap-6 flex-wrap">
-                <div>
-                  <div className="text-[0.83rem] text-[#6E6570]">
-                    Total (<span style={{ fontFamily: "'Poppins', sans-serif" }}>{selectedItems.length}</span> items):
-                  </div>
-                  {discount > 0 && (
-                    <div className="text-[0.75rem] text-[#2c7a52] mt-0.5">Saved {peso(discount)}</div>
-                  )}
-                </div>
-                <div className="text-[1.35rem] font-extrabold text-[#4B2E7E]" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                  {peso(total)}
-                </div>
-                <button
-                  disabled={selectedItems.length === 0}
-                  onClick={() => router.visit('/checkout')}
-                  className="appearance-none border-none cursor-pointer bg-gradient-to-r from-[#2A1B4D] to-[#4B2E7E] text-white font-extrabold text-[0.92rem] px-9 py-3 rounded-full flex items-center gap-2 shadow-[0_4px_18px_rgba(75,46,126,0.45)] transition-all hover:translate-y-[-2px] hover:shadow-[0_8px_28px_rgba(75,46,126,0.55)] disabled:bg-[#E6DFF2] disabled:text-[#6E6570] disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none whitespace-nowrap"
-                >
-                  Check Out
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Voucher card */}
-        <div className="bg-white rounded-[14px] shadow-sm border border-[rgba(185,166,222,0.18)] p-5 mb-4">
-          <h2 className="text-[0.95rem] font-bold mb-3" style={{ fontFamily: "'Syne', sans-serif" }}>Apply voucher</h2>
-          <div className="flex gap-2.5">
-            <input
-              type="text"
-              value={voucherInput}
-              onChange={(e) => setVoucherInput(e.target.value)}
-              placeholder="Enter voucher code"
-              className="flex-1 border-[1.5px] border-[#E6DFF2] rounded-lg px-3.5 py-2.5 text-[0.82rem] text-[#2A1B4D] transition bg-[#F9F7FC] focus:border-[#4B2E7E] focus:outline-none focus:bg-white shadow-sm"
-            />
-            <button
-              onClick={applyVoucher}
-              className="appearance-none border-2 border-[#4B2E7E] bg-white text-[#4B2E7E] font-extrabold text-[0.82rem] px-5 py-2.5 rounded-lg cursor-pointer whitespace-nowrap transition hover:bg-[#4B2E7E] hover:text-white shadow-sm"
-            >
-              Apply
-            </button>
-          </div>
-          {voucher && (
-            <div className="flex items-center justify-between mt-3 px-3.5 py-2.5 bg-[#e7f5ec] rounded-lg text-[0.8rem] text-[#2c7a52] font-bold">
-              <span>{voucher.code} applied — {peso(voucher.amount)} off</span>
-              <button onClick={removeVoucher} className="underline text-[0.76rem]">Remove</button>
-            </div>
-          )}
-        </div>
+        )}
 
         {/* You may also like */}
         <div className="mt-7">
           <div className="flex items-center justify-between mb-3.5">
             <h2 className="text-[1.05rem] font-bold" style={{ fontFamily: "'Syne', sans-serif" }}>You may also like</h2>
-            <button className="inline-flex items-center gap-1 text-[0.82rem] font-bold text-[#4B2E7E] hover:underline">
+            <Link href="/homepage" className="inline-flex items-center gap-1 text-[0.82rem] font-bold text-[#4B2E7E] hover:underline">
               See All <ChevronRight className="w-[14px] h-[14px]" />
-            </button>
+            </Link>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -391,116 +351,6 @@ export default function Cart() {
           </div>
         </div>
       </main>
-
-      {/* Voucher Modal */}
-      {showVoucherModal && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/45 z-[200] flex items-center justify-center"
-            onClick={() => setShowVoucherModal(false)}
-          />
-          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[200] bg-white rounded-xl w-[92%] max-w-[480px] max-h-[88vh] flex flex-col shadow-[0_20px_60px_rgba(0,0,0,0.22)]">
-            {/* Modal header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#f0eef5]">
-              <h3 className="text-base font-bold" style={{ fontFamily: "'Syne', sans-serif" }}>Select Mimoo Voucher</h3>
-              <button className="text-[0.78rem] text-[#aaa] hover:underline">Voucher Help ⓘ</button>
-            </div>
-
-            {/* Add voucher row */}
-            <div className="flex items-center gap-0 px-5 py-3.5 border-b border-[#f0eef5]">
-              <span className="text-[0.82rem] font-semibold text-[#2A1B4D] whitespace-nowrap pr-3 mr-3 border-r border-[#e0dcea]">
-                Add Voucher
-              </span>
-              <input
-                type="text"
-                placeholder="Mimoo voucher code"
-                className="flex-1 border-none outline-none text-[0.84rem] text-[#2A1B4D] bg-transparent placeholder:text-[#bbb]"
-              />
-              <button className="appearance-none border-none bg-none text-[0.82rem] font-bold text-[#ccc] cursor-pointer px-2 py-1 transition uppercase tracking-wider">
-                APPLY
-              </button>
-            </div>
-
-            {/* Modal body */}
-            <div className="flex-1 overflow-y-auto px-5 py-3.5">
-              <div className="text-[0.78rem] font-extrabold text-[#2A1B4D] mb-1">Free Shipping</div>
-              <div className="text-[0.75rem] text-[#888] mb-3.5">1 voucher can be selected</div>
-
-              {/* Voucher item (disabled) */}
-              <div className="relative flex items-stretch border-[1.5px] border-[#e0dcea] rounded-lg mb-3 overflow-hidden opacity-65 cursor-not-allowed">
-                <div className="w-[90px] min-h-[80px] flex-none bg-gradient-to-br from-[#4ecdc4] to-[#26a69a] flex flex-col items-center justify-center text-white text-[0.62rem] font-extrabold gap-1">
-                  <span className="text-2xl">🚚</span>
-                  <span className="bg-white text-[#26a69a] text-[0.65rem] font-extrabold px-2 py-0.5 rounded">FREE</span>
-                </div>
-                <div className="flex-1 px-3.5 py-3 border-l border-dashed border-[#e0dcea]">
-                  <div className="text-[0.85rem] font-bold text-[#2A1B4D] mb-1">Shipping Discount up to ₱200 Off</div>
-                  <div className="text-[0.76rem] text-[#777] mb-0.5">Min. Spend ₱0</div>
-                  <div className="text-[0.73rem] text-[#aaa]">Valid Till: 27.02.2027</div>
-                </div>
-                <div className="flex items-center justify-center px-3.5">
-                  <input type="radio" name="voucher" disabled className="w-[18px] h-[18px] accent-[#4B2E7E]" />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 bg-[#fff8e6] border border-[#ffe082] rounded px-3 py-2 text-[0.75rem] text-[#b8860b] mb-3">
-                <span>⚠️</span>
-                <span>Current device does not meet voucher T&C</span>
-              </div>
-
-              {/* Voucher item (active) */}
-              <div
-                className={`relative flex items-stretch border-[1.5px] rounded-lg mb-3 overflow-hidden cursor-pointer transition ${
-                  selectedVoucher === 'MIMOO50' ? 'border-[#4B2E7E] bg-[#F9F7FC]' : 'border-[#e0dcea] hover:border-[#4B2E7E]'
-                }`}
-                onClick={() => setSelectedVoucher('MIMOO50')}
-              >
-                <div className="w-[90px] min-h-[80px] flex-none bg-gradient-to-br from-[#4B2E7E] to-[#2A1B4D] flex flex-col items-center justify-center text-white text-[0.62rem] font-extrabold gap-1">
-                  <span className="text-2xl">🏷️</span>
-                  <span className="bg-white text-[#4B2E7E] text-[0.65rem] font-extrabold px-2 py-0.5 rounded">50 OFF</span>
-                </div>
-                <div className="flex-1 px-3.5 py-3 border-l border-dashed border-[#e0dcea]">
-                  <div className="text-[0.85rem] font-bold text-[#2A1B4D] mb-1">₱50 Off on Your Order</div>
-                  <div className="text-[0.76rem] text-[#777] mb-0.5">Min. Spend ₱300</div>
-                  <div className="text-[0.73rem] text-[#aaa]">Valid Till: 31.12.2025</div>
-                </div>
-                <div className="flex items-center justify-center px-3.5">
-                  <input
-                    type="radio"
-                    name="voucher"
-                    checked={selectedVoucher === 'MIMOO50'}
-                    onChange={() => setSelectedVoucher('MIMOO50')}
-                    className="w-[18px] h-[18px] accent-[#4B2E7E] cursor-pointer"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Modal footer */}
-            <div className="flex items-center gap-3 px-5 py-3.5 border-t border-[#f0eef5]">
-              <button
-                onClick={() => {
-                  setShowVoucherModal(false);
-                  setSelectedVoucher(null);
-                }}
-                className="flex-1 appearance-none border-[1.5px] border-[#ccc] bg-white text-[#2A1B4D] font-bold text-[0.88rem] px-4 py-3 rounded cursor-pointer uppercase tracking-wider transition hover:bg-[#f5f4f8]"
-              >
-                CANCEL
-              </button>
-              <button
-                onClick={() => {
-                  if (selectedVoucher === 'MIMOO50') {
-                    setVoucher({ code: 'MIMOO50', amount: 50 });
-                  }
-                  setShowVoucherModal(false);
-                }}
-                className="flex-1 appearance-none border-none bg-gradient-to-br from-[#2A1B4D] to-[#4B2E7E] text-white font-bold text-[0.88rem] px-4 py-3 rounded cursor-pointer uppercase tracking-wider shadow-[0_4px_14px_rgba(75,46,126,0.4)] transition hover:translate-y-[-1px] hover:shadow-[0_7px_20px_rgba(75,46,126,0.5)]"
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import { Star, ChevronRight, Minus, Plus, Package, ShoppingCart } from "lucide-react";
 import { BuyerHeader } from "@/components/buyer-header";
+import { toast } from "sonner";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -14,7 +15,7 @@ type UserRole = "guest" | "buyer" | "seller";
 interface ProductDetailProps {
   auth?: { user: any };
   product: {
-    id: string;
+    id: number;
     name: string;
     description: string;
     category: string;
@@ -137,10 +138,12 @@ function ProductImageGallery({ images, productName }: { images: string[]; produc
 
 function ProductInfo({ 
   product, 
-  role 
+  role,
+  onAddToCart,
 }: { 
   product: ProductDetailProps['product']; 
   role: UserRole;
+  onAddToCart: (quantity: number) => void;
 }) {
   const [quantity, setQuantity] = useState(1);
   const maxQuantity = Math.min(product.stock, 99);
@@ -155,6 +158,10 @@ function ProductInfo({
 
   const formatPrice = (price: number) => {
     return '₱' + price.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const handleAddToCart = () => {
+    onAddToCart(quantity);
   };
 
   return (
@@ -269,7 +276,10 @@ function ProductInfo({
 
       {role === "buyer" && product.is_in_stock && (
         <div className="flex gap-2">
-          <button className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-violet-900 py-2.5 text-sm font-semibold text-violet-900 transition-colors hover:bg-violet-50">
+          <button 
+            onClick={handleAddToCart}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-violet-900 py-2.5 text-sm font-semibold text-violet-900 transition-colors hover:bg-violet-50"
+          >
             <ShoppingCart className="h-4 w-4" />
             Add to cart
           </button>
@@ -336,6 +346,66 @@ function SellerInfo({ sellerName }: { sellerName: string }) {
 export default function ProductDetail({ auth, product }: ProductDetailProps) {
   const user = auth?.user;
   const role: UserRole = user?.account_type ? (user.account_type as UserRole) : "guest";
+  const [cartCount, setCartCount] = useState(0);
+
+  useEffect(() => {
+    if (user && user.account_type === 'buyer') {
+      fetchCartCount();
+    }
+  }, []);
+
+  async function fetchCartCount() {
+    try {
+      const response = await fetch('/api/cart/count');
+      const data = await response.json();
+      setCartCount(data.count || 0);
+    } catch (error) {
+      console.error('Failed to fetch cart count:', error);
+    }
+  }
+
+  async function handleAddToCart(quantity: number) {
+    if (!user) {
+      router.visit('/login');
+      return;
+    }
+
+    if (user.account_type !== 'buyer') {
+      toast.error('Only buyers can add items to cart');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/cart/items', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+        body: JSON.stringify({
+          product_id: product.id,
+          quantity: quantity,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(data.message || 'Added to cart!', {
+          action: {
+            label: 'View Cart',
+            onClick: () => router.visit('/cart'),
+          },
+        });
+        setCartCount(data.cart_count || 0);
+      } else {
+        toast.error(data.error || 'Failed to add to cart');
+      }
+    } catch (error) {
+      console.error('Add to cart error:', error);
+      toast.error('Failed to add to cart');
+    }
+  }
 
   function handleLogout() {
     router.post('/logout');
@@ -348,7 +418,7 @@ export default function ProductDetail({ auth, product }: ProductDetailProps) {
       <BuyerHeader
         user={user}
         onLogout={handleLogout}
-        cartCount={0}
+        cartCount={cartCount}
       />
 
       <main className="mx-auto max-w-[1100px] bg-white px-6 py-6 sm:py-8">
@@ -364,7 +434,8 @@ export default function ProductDetail({ auth, product }: ProductDetailProps) {
           />
           <ProductInfo 
             product={product} 
-            role={role} 
+            role={role}
+            onAddToCart={handleAddToCart}
           />
         </div>
 

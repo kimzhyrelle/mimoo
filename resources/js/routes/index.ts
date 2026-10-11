@@ -495,77 +495,6 @@ cart.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     
     cart.form = cartForm
 /**
- * @see routes/web.php:232
- * @route '/messages'
- */
-export const messages = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
-    url: messages.url(options),
-    method: 'get',
-})
-
-messages.definition = {
-    methods: ["get","head"],
-    url: '/messages',
-} satisfies RouteDefinition<["get","head"]>
-
-/**
- * @see routes/web.php:232
- * @route '/messages'
- */
-messages.url = (options?: RouteQueryOptions) => {
-    return messages.definition.url + queryParams(options)
-}
-
-/**
- * @see routes/web.php:232
- * @route '/messages'
- */
-messages.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
-    url: messages.url(options),
-    method: 'get',
-})
-/**
- * @see routes/web.php:232
- * @route '/messages'
- */
-messages.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
-    url: messages.url(options),
-    method: 'head',
-})
-
-    /**
- * @see routes/web.php:232
- * @route '/messages'
- */
-    const messagesForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: messages.url(options),
-        method: 'get',
-    })
-
-            /**
- * @see routes/web.php:232
- * @route '/messages'
- */
-        messagesForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: messages.url(options),
-            method: 'get',
-        })
-            /**
- * @see routes/web.php:232
- * @route '/messages'
- */
-        messagesForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: messages.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    messages.form = messagesForm
-/**
 * @see \App\Http\Controllers\OrderController::checkout
  * @see app/Http/Controllers/OrderController.php:16
  * @route '/checkout'
@@ -643,3 +572,74 @@ checkout.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
     
     checkout.form = checkoutForm
+/**
+ * @see routes/web.php:236
+ * @route '/messages'
+ */
+export const messages = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: messages.url(options),
+    method: 'get',
+})
+
+messages.definition = {
+    methods: ["get","head"],
+    url: '/messages',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+ * @see routes/web.php:236
+ * @route '/messages'
+ */
+messages.url = (options?: RouteQueryOptions) => {
+    return messages.definition.url + queryParams(options)
+}
+
+/**
+ * @see routes/web.php:236
+ * @route '/messages'
+ */
+messages.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: messages.url(options),
+    method: 'get',
+})
+/**
+ * @see routes/web.php:236
+ * @route '/messages'
+ */
+messages.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: messages.url(options),
+    method: 'head',
+})
+
+    /**
+ * @see routes/web.php:236
+ * @route '/messages'
+ */
+    const messagesForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: messages.url(options),
+        method: 'get',
+    })
+
+            /**
+ * @see routes/web.php:236
+ * @route '/messages'
+ */
+        messagesForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: messages.url(options),
+            method: 'get',
+        })
+            /**
+ * @see routes/web.php:236
+ * @route '/messages'
+ */
+        messagesForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: messages.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    messages.form = messagesForm

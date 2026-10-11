@@ -11,6 +11,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { SignupModal } from "@/components/signup-modal";
+import { toast } from "sonner";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,17 +26,19 @@ interface Category {
 }
 
 interface Product {
-  id: string;
+  id: number;
   name: string;
-  price: string;
-  raw_price?: number;
-  regular_price?: string | null;
+  price: number;
+  sale_price?: number | null;
+  effective_price?: number;
   is_on_sale?: boolean;
   stock?: number;
   stock_status?: string;
   is_in_stock?: boolean;
-  image?: string | null;
+  is_low_stock?: boolean;
+  main_image?: string | null;
   seller_name?: string;
+  category?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -57,17 +60,9 @@ const CATEGORIES: Category[] = [
   { id: "c12", label: "Jewelry and Watches", icon: null },
 ];
 
-const PRODUCTS: Product[] = [
-  { id: "p1", name: "Wireless Earbuds", price: "₱799" },
-  { id: "p2", name: "Ceramic Mug Set", price: "₱349" },
-  { id: "p3", name: "Running Shoes", price: "₱1,499" },
-  { id: "p4", name: "Skincare Bundle", price: "₱649" },
-  { id: "p5", name: "Desk Lamp", price: "₱499" },
-];
-
 interface HomepageProps {
   auth?: { user: any };
-  products?: Product[];
+  initialProducts?: Product[];
 }
 
 // ---------------------------------------------------------------------------
@@ -351,19 +346,25 @@ function ProductCard({
   product, 
   role,
   onGuestAction,
+  onAddToCart,
 }: { 
   product: Product; 
   role: UserRole;
   onGuestAction?: () => void;
+  onAddToCart?: (productId: number) => void;
 }) {
+  const formatPrice = (price: number) => {
+    return '₱' + price.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
   return (
     <Link
       href={`/product/${product.id}`}
       className="flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white transition-shadow hover:shadow-md"
     >
       <div className="aspect-square w-full bg-neutral-200 overflow-hidden">
-        {product.image ? (
-          <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+        {product.main_image ? (
+          <img src={product.main_image} alt={product.name} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-neutral-400 text-xs">
             No image
@@ -375,25 +376,25 @@ function ProductCard({
           {product.name}
         </span>
         <div className="flex items-center gap-2">
-          {product.is_on_sale && product.regular_price ? (
+          {product.is_on_sale && product.sale_price ? (
             <>
               <span className="text-sm font-semibold text-violet-700">
-                {product.price}
+                {formatPrice(product.effective_price || product.sale_price)}
               </span>
               <span className="text-xs text-neutral-500 line-through">
-                {product.regular_price}
+                {formatPrice(product.price)}
               </span>
             </>
           ) : (
             <span className="text-sm font-semibold text-violet-700">
-              {product.price}
+              {formatPrice(product.price)}
             </span>
           )}
         </div>
         {product.stock_status && (
           <span className={`text-xs ${
             product.is_in_stock 
-              ? product.stock && product.stock <= 10 ? 'text-orange-600' : 'text-green-600'
+              ? product.is_low_stock ? 'text-orange-600' : 'text-green-600'
               : 'text-red-600'
           }`}>
             {product.stock_status}
@@ -414,7 +415,7 @@ function ProductCard({
           <button
             onClick={(e) => {
               e.preventDefault();
-              // Handle add to cart (Step 2)
+              onAddToCart?.(product.id);
             }}
             className="mt-2 rounded-md bg-violet-600 py-1.5 text-xs font-medium text-white transition-colors hover:bg-violet-700"
           >
@@ -467,7 +468,7 @@ function Header({
   username = "username",
   avatarUrl = null,
   notificationCount = 5,
-  cartCount = 100,
+  cartCount = 0,
   onSearch,
   onLogout,
 }: {
@@ -599,15 +600,85 @@ function Header({
 // Page
 // ---------------------------------------------------------------------------
 
-export default function Homepage({ auth, products: serverProducts = [] }: HomepageProps) {
+export default function Homepage({ auth, initialProducts = [] }: HomepageProps) {
   const user = auth?.user;
   
   const role: UserRole = user ? (user.account_type as UserRole) : "guest";
-  const [isChatOpen, setIsChatOpen] = useState(false);
   const [showSignupModal, setShowSignupModal] = useState(false);
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [cartCount, setCartCount] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  // Use server products if available, otherwise fall back to placeholder
-  const products = serverProducts.length > 0 ? serverProducts : PRODUCTS;
+  // Fetch products on mount
+  useEffect(() => {
+    fetchProducts();
+    if (user && user.account_type === 'buyer') {
+      fetchCartCount();
+    }
+  }, []);
+
+  async function fetchProducts() {
+    try {
+      const response = await fetch('/api/products');
+      const data = await response.json();
+      if (data.data) {
+        setProducts(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+    }
+  }
+
+  async function fetchCartCount() {
+    try {
+      const response = await fetch('/api/cart/count');
+      const data = await response.json();
+      setCartCount(data.count || 0);
+    } catch (error) {
+      console.error('Failed to fetch cart count:', error);
+    }
+  }
+
+  async function handleAddToCart(productId: number) {
+    if (!user) {
+      setShowSignupModal(true);
+      return;
+    }
+
+    if (user.account_type !== 'buyer') {
+      toast.error('Only buyers can add items to cart');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch('/api/cart/items', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+        body: JSON.stringify({
+          product_id: productId,
+          quantity: 1,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(data.message || 'Added to cart!');
+        setCartCount(data.cart_count || 0);
+      } else {
+        toast.error(data.error || 'Failed to add to cart');
+      }
+    } catch (error) {
+      console.error('Add to cart error:', error);
+      toast.error('Failed to add to cart');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   function handleLogout() {
     router.post('/logout');
@@ -615,6 +686,12 @@ export default function Homepage({ auth, products: serverProducts = [] }: Homepa
 
   function handleGuestAction() {
     setShowSignupModal(true);
+  }
+
+  function handleSearch(query: string) {
+    if (query) {
+      router.visit(`/homepage?search=${encodeURIComponent(query)}`);
+    }
   }
 
   return (
@@ -634,6 +711,8 @@ export default function Homepage({ auth, products: serverProducts = [] }: Homepa
       <Header 
         username={user ? user.name : "Guest"} 
         onLogout={user ? handleLogout : undefined}
+        cartCount={cartCount}
+        onSearch={handleSearch}
       />
 
       <main className="mx-auto max-w-6xl px-4 py-4 sm:py-6">
@@ -671,7 +750,7 @@ export default function Homepage({ auth, products: serverProducts = [] }: Homepa
         <section className="mt-6 sm:mt-8">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-neutral-900 sm:text-base">
-              {serverProducts.length > 0 ? 'Available Products' : 'Top products'}
+              {products.length > 0 ? 'Available Products' : 'Top products'}
             </h2>
             <button className="flex items-center text-xs text-violet-600 hover:underline sm:text-sm">
               See all <ChevronRight className="h-4 w-4" />
@@ -679,10 +758,16 @@ export default function Homepage({ auth, products: serverProducts = [] }: Homepa
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
             {products.slice(0, 10).map((p) => (
-              <ProductCard key={p.id} product={p} role={role} onGuestAction={handleGuestAction} />
+              <ProductCard 
+                key={p.id} 
+                product={p} 
+                role={role} 
+                onGuestAction={handleGuestAction}
+                onAddToCart={handleAddToCart}
+              />
             ))}
           </div>
-          {serverProducts.length === 0 && (
+          {products.length === 0 && (
             <div className="mt-4 text-center text-sm text-neutral-500">
               No products available yet. Sellers can start adding products!
             </div>
@@ -710,7 +795,13 @@ export default function Homepage({ auth, products: serverProducts = [] }: Homepa
         {/* Recommended feed placeholder */}
         <section className="mt-4 grid grid-cols-2 gap-2 pb-8 sm:mt-6 sm:grid-cols-3 sm:gap-3 sm:pb-10 lg:grid-cols-5">
           {products.slice(0, 10).map((p) => (
-            <ProductCard key={`rec-${p.id}`} product={p} role={role} onGuestAction={handleGuestAction} />
+            <ProductCard 
+              key={`rec-${p.id}`} 
+              product={p} 
+              role={role} 
+              onGuestAction={handleGuestAction}
+              onAddToCart={handleAddToCart}
+            />
           ))}
         </section>
       </main>
@@ -720,7 +811,7 @@ export default function Homepage({ auth, products: serverProducts = [] }: Homepa
 
       {/* Chat Button */}
       <button
-        onClick={() => setIsChatOpen(!isChatOpen)}
+        onClick={() => {}}
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-all hover:scale-110"
         style={{ backgroundColor: '#1c1430' }}
         aria-label="Open chat"

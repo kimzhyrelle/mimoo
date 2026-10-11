@@ -14,15 +14,44 @@ class ProductController extends Controller
 {
     /**
      * Display a listing of products for buyers (public).
-     * Only returns active products.
+     * Supports search, category filter, price sort, and pagination.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $products = Product::with('seller:id,business_name,name')
-            ->where('status', 'active')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($product) {
+        $query = Product::with('seller:id,business_name,name')
+            ->where('status', 'active');
+
+        // Search
+        if ($request->has('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by category
+        if ($request->has('category') && $request->input('category') !== '') {
+            $query->where('category', $request->input('category'));
+        }
+
+        // Sort by price
+        $sortPrice = $request->input('sort_price'); // 'low_to_high' or 'high_to_low'
+        if ($sortPrice === 'low_to_high') {
+            $query->orderByRaw('COALESCE(sale_price, price) ASC');
+        } elseif ($sortPrice === 'high_to_low') {
+            $query->orderByRaw('COALESCE(sale_price, price) DESC');
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        // Pagination
+        $perPage = $request->input('per_page', 20);
+        $products = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $products->map(function ($product) {
                 return [
                     'id' => $product->id,
                     'name' => $product->name,
@@ -36,14 +65,20 @@ class ProductController extends Controller
                     'stock_status' => $product->stock_status,
                     'is_in_stock' => $product->isInStock(),
                     'is_low_stock' => $product->isLowStock(),
+                    'low_stock_threshold' => $product->low_stock_threshold ?? 5,
                     'images' => $product->images ?? [],
                     'main_image' => $product->main_image,
                     'brand' => $product->brand,
                     'seller_name' => $product->seller->business_name ?? $product->seller->name,
                 ];
-            });
-
-        return response()->json($products);
+            }),
+            'meta' => [
+                'current_page' => $products->currentPage(),
+                'last_page' => $products->lastPage(),
+                'per_page' => $products->perPage(),
+                'total' => $products->total(),
+            ],
+        ]);
     }
 
     /**

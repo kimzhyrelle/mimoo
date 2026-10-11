@@ -229,6 +229,10 @@ Route::get('/cart', function () {
     return Inertia::render('Cart');
 })->name('cart');
 
+Route::get('/checkout', function () {
+    return Inertia::render('CheckoutPlaceholder');
+})->middleware(['auth', 'approved'])->name('checkout');
+
 Route::get('/messages', function () {
     return view('messages');
 })->middleware(['auth', 'approved'])->name('messages');
@@ -286,9 +290,18 @@ Route::get('/auth/google/callback', [SocialiteController::class, 'handleGoogleCa
 // Product API routes
 // ---------------------------------------------------------------------------
 
-// Public product routes (buyers)
+// Public product routes (buyers) - upgraded with search, filter, sort, pagination
 Route::get('/api/products', [ProductController::class, 'index']); // List active products
 Route::get('/api/products/{id}', [ProductController::class, 'show']); // Single product
+
+// Protected buyer routes - Cart
+Route::middleware(['auth', 'verified', 'approved'])->group(function () {
+    Route::get('/api/cart', [\App\Http\Controllers\CartController::class, 'index']);
+    Route::get('/api/cart/count', [\App\Http\Controllers\CartController::class, 'getCount']);
+    Route::post('/api/cart/items', [\App\Http\Controllers\CartController::class, 'addItem']);
+    Route::patch('/api/cart/items/{id}', [\App\Http\Controllers\CartController::class, 'updateItem']);
+    Route::delete('/api/cart/items/{id}', [\App\Http\Controllers\CartController::class, 'removeItem']);
+});
 
 // Protected seller product routes
 Route::middleware(['auth', 'verified', 'approved'])->group(function () {

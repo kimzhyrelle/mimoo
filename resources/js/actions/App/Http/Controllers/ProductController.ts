@@ -79,7 +79,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     index.form = indexForm
 /**
 * @see \App\Http\Controllers\ProductController::show
- * @see app/Http/Controllers/ProductController.php:52
+ * @see app/Http/Controllers/ProductController.php:87
  * @route '/api/products/{id}'
  */
 export const show = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -94,7 +94,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\ProductController::show
- * @see app/Http/Controllers/ProductController.php:52
+ * @see app/Http/Controllers/ProductController.php:87
  * @route '/api/products/{id}'
  */
 show.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -122,7 +122,7 @@ show.url = (args: { id: string | number } | [id: string | number ] | string | nu
 
 /**
 * @see \App\Http\Controllers\ProductController::show
- * @see app/Http/Controllers/ProductController.php:52
+ * @see app/Http/Controllers/ProductController.php:87
  * @route '/api/products/{id}'
  */
 show.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -131,7 +131,7 @@ show.get = (args: { id: string | number } | [id: string | number ] | string | nu
 })
 /**
 * @see \App\Http\Controllers\ProductController::show
- * @see app/Http/Controllers/ProductController.php:52
+ * @see app/Http/Controllers/ProductController.php:87
  * @route '/api/products/{id}'
  */
 show.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -141,7 +141,7 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
 
     /**
 * @see \App\Http\Controllers\ProductController::show
- * @see app/Http/Controllers/ProductController.php:52
+ * @see app/Http/Controllers/ProductController.php:87
  * @route '/api/products/{id}'
  */
     const showForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -151,7 +151,7 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
 
             /**
 * @see \App\Http\Controllers\ProductController::show
- * @see app/Http/Controllers/ProductController.php:52
+ * @see app/Http/Controllers/ProductController.php:87
  * @route '/api/products/{id}'
  */
         showForm.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -160,7 +160,7 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
         })
             /**
 * @see \App\Http\Controllers\ProductController::show
- * @see app/Http/Controllers/ProductController.php:52
+ * @see app/Http/Controllers/ProductController.php:87
  * @route '/api/products/{id}'
  */
         showForm.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -176,7 +176,7 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
     show.form = showForm
 /**
 * @see \App\Http\Controllers\ProductController::sellerIndex
- * @see app/Http/Controllers/ProductController.php:86
+ * @see app/Http/Controllers/ProductController.php:121
  * @route '/api/seller/products'
  */
 export const sellerIndex = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -191,7 +191,7 @@ sellerIndex.definition = {
 
 /**
 * @see \App\Http\Controllers\ProductController::sellerIndex
- * @see app/Http/Controllers/ProductController.php:86
+ * @see app/Http/Controllers/ProductController.php:121
  * @route '/api/seller/products'
  */
 sellerIndex.url = (options?: RouteQueryOptions) => {
@@ -200,7 +200,7 @@ sellerIndex.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\ProductController::sellerIndex
- * @see app/Http/Controllers/ProductController.php:86
+ * @see app/Http/Controllers/ProductController.php:121
  * @route '/api/seller/products'
  */
 sellerIndex.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -209,7 +209,7 @@ sellerIndex.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\ProductController::sellerIndex
- * @see app/Http/Controllers/ProductController.php:86
+ * @see app/Http/Controllers/ProductController.php:121
  * @route '/api/seller/products'
  */
 sellerIndex.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -219,7 +219,7 @@ sellerIndex.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\ProductController::sellerIndex
- * @see app/Http/Controllers/ProductController.php:86
+ * @see app/Http/Controllers/ProductController.php:121
  * @route '/api/seller/products'
  */
     const sellerIndexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -229,7 +229,7 @@ sellerIndex.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\ProductController::sellerIndex
- * @see app/Http/Controllers/ProductController.php:86
+ * @see app/Http/Controllers/ProductController.php:121
  * @route '/api/seller/products'
  */
         sellerIndexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -238,7 +238,7 @@ sellerIndex.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\ProductController::sellerIndex
- * @see app/Http/Controllers/ProductController.php:86
+ * @see app/Http/Controllers/ProductController.php:121
  * @route '/api/seller/products'
  */
         sellerIndexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -254,7 +254,7 @@ sellerIndex.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     sellerIndex.form = sellerIndexForm
 /**
 * @see \App\Http\Controllers\ProductController::store
- * @see app/Http/Controllers/ProductController.php:169
+ * @see app/Http/Controllers/ProductController.php:204
  * @route '/api/products'
  */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -269,7 +269,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\ProductController::store
- * @see app/Http/Controllers/ProductController.php:169
+ * @see app/Http/Controllers/ProductController.php:204
  * @route '/api/products'
  */
 store.url = (options?: RouteQueryOptions) => {
@@ -278,7 +278,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\ProductController::store
- * @see app/Http/Controllers/ProductController.php:169
+ * @see app/Http/Controllers/ProductController.php:204
  * @route '/api/products'
  */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -288,7 +288,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\ProductController::store
- * @see app/Http/Controllers/ProductController.php:169
+ * @see app/Http/Controllers/ProductController.php:204
  * @route '/api/products'
  */
     const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -298,7 +298,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\ProductController::store
- * @see app/Http/Controllers/ProductController.php:169
+ * @see app/Http/Controllers/ProductController.php:204
  * @route '/api/products'
  */
         storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -309,7 +309,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     store.form = storeForm
 /**
 * @see \App\Http\Controllers\ProductController::update
- * @see app/Http/Controllers/ProductController.php:270
+ * @see app/Http/Controllers/ProductController.php:305
  * @route '/api/products/{id}'
  */
 export const update = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -324,7 +324,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\ProductController::update
- * @see app/Http/Controllers/ProductController.php:270
+ * @see app/Http/Controllers/ProductController.php:305
  * @route '/api/products/{id}'
  */
 update.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -352,7 +352,7 @@ update.url = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\ProductController::update
- * @see app/Http/Controllers/ProductController.php:270
+ * @see app/Http/Controllers/ProductController.php:305
  * @route '/api/products/{id}'
  */
 update.patch = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -362,7 +362,7 @@ update.patch = (args: { id: string | number } | [id: string | number ] | string 
 
     /**
 * @see \App\Http\Controllers\ProductController::update
- * @see app/Http/Controllers/ProductController.php:270
+ * @see app/Http/Controllers/ProductController.php:305
  * @route '/api/products/{id}'
  */
     const updateForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -377,7 +377,7 @@ update.patch = (args: { id: string | number } | [id: string | number ] | string 
 
             /**
 * @see \App\Http\Controllers\ProductController::update
- * @see app/Http/Controllers/ProductController.php:270
+ * @see app/Http/Controllers/ProductController.php:305
  * @route '/api/products/{id}'
  */
         updateForm.patch = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -393,7 +393,7 @@ update.patch = (args: { id: string | number } | [id: string | number ] | string 
     update.form = updateForm
 /**
 * @see \App\Http\Controllers\ProductController::updateStock
- * @see app/Http/Controllers/ProductController.php:368
+ * @see app/Http/Controllers/ProductController.php:403
  * @route '/api/products/{id}/stock'
  */
 export const updateStock = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -408,7 +408,7 @@ updateStock.definition = {
 
 /**
 * @see \App\Http\Controllers\ProductController::updateStock
- * @see app/Http/Controllers/ProductController.php:368
+ * @see app/Http/Controllers/ProductController.php:403
  * @route '/api/products/{id}/stock'
  */
 updateStock.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -436,7 +436,7 @@ updateStock.url = (args: { id: string | number } | [id: string | number ] | stri
 
 /**
 * @see \App\Http\Controllers\ProductController::updateStock
- * @see app/Http/Controllers/ProductController.php:368
+ * @see app/Http/Controllers/ProductController.php:403
  * @route '/api/products/{id}/stock'
  */
 updateStock.patch = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -446,7 +446,7 @@ updateStock.patch = (args: { id: string | number } | [id: string | number ] | st
 
     /**
 * @see \App\Http\Controllers\ProductController::updateStock
- * @see app/Http/Controllers/ProductController.php:368
+ * @see app/Http/Controllers/ProductController.php:403
  * @route '/api/products/{id}/stock'
  */
     const updateStockForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -461,7 +461,7 @@ updateStock.patch = (args: { id: string | number } | [id: string | number ] | st
 
             /**
 * @see \App\Http\Controllers\ProductController::updateStock
- * @see app/Http/Controllers/ProductController.php:368
+ * @see app/Http/Controllers/ProductController.php:403
  * @route '/api/products/{id}/stock'
  */
         updateStockForm.patch = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -477,7 +477,7 @@ updateStock.patch = (args: { id: string | number } | [id: string | number ] | st
     updateStock.form = updateStockForm
 /**
 * @see \App\Http\Controllers\ProductController::destroy
- * @see app/Http/Controllers/ProductController.php:467
+ * @see app/Http/Controllers/ProductController.php:502
  * @route '/api/products/{id}'
  */
 export const destroy = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -492,7 +492,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\ProductController::destroy
- * @see app/Http/Controllers/ProductController.php:467
+ * @see app/Http/Controllers/ProductController.php:502
  * @route '/api/products/{id}'
  */
 destroy.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -520,7 +520,7 @@ destroy.url = (args: { id: string | number } | [id: string | number ] | string |
 
 /**
 * @see \App\Http\Controllers\ProductController::destroy
- * @see app/Http/Controllers/ProductController.php:467
+ * @see app/Http/Controllers/ProductController.php:502
  * @route '/api/products/{id}'
  */
 destroy.delete = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -530,7 +530,7 @@ destroy.delete = (args: { id: string | number } | [id: string | number ] | strin
 
     /**
 * @see \App\Http\Controllers\ProductController::destroy
- * @see app/Http/Controllers/ProductController.php:467
+ * @see app/Http/Controllers/ProductController.php:502
  * @route '/api/products/{id}'
  */
     const destroyForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -545,7 +545,7 @@ destroy.delete = (args: { id: string | number } | [id: string | number ] | strin
 
             /**
 * @see \App\Http\Controllers\ProductController::destroy
- * @see app/Http/Controllers/ProductController.php:467
+ * @see app/Http/Controllers/ProductController.php:502
  * @route '/api/products/{id}'
  */
         destroyForm.delete = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -561,7 +561,7 @@ destroy.delete = (args: { id: string | number } | [id: string | number ] | strin
     destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\ProductController::getStockLogs
- * @see app/Http/Controllers/ProductController.php:436
+ * @see app/Http/Controllers/ProductController.php:471
  * @route '/api/products/{id}/stock-logs'
  */
 export const getStockLogs = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -576,7 +576,7 @@ getStockLogs.definition = {
 
 /**
 * @see \App\Http\Controllers\ProductController::getStockLogs
- * @see app/Http/Controllers/ProductController.php:436
+ * @see app/Http/Controllers/ProductController.php:471
  * @route '/api/products/{id}/stock-logs'
  */
 getStockLogs.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -604,7 +604,7 @@ getStockLogs.url = (args: { id: string | number } | [id: string | number ] | str
 
 /**
 * @see \App\Http\Controllers\ProductController::getStockLogs
- * @see app/Http/Controllers/ProductController.php:436
+ * @see app/Http/Controllers/ProductController.php:471
  * @route '/api/products/{id}/stock-logs'
  */
 getStockLogs.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -613,7 +613,7 @@ getStockLogs.get = (args: { id: string | number } | [id: string | number ] | str
 })
 /**
 * @see \App\Http\Controllers\ProductController::getStockLogs
- * @see app/Http/Controllers/ProductController.php:436
+ * @see app/Http/Controllers/ProductController.php:471
  * @route '/api/products/{id}/stock-logs'
  */
 getStockLogs.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -623,7 +623,7 @@ getStockLogs.head = (args: { id: string | number } | [id: string | number ] | st
 
     /**
 * @see \App\Http\Controllers\ProductController::getStockLogs
- * @see app/Http/Controllers/ProductController.php:436
+ * @see app/Http/Controllers/ProductController.php:471
  * @route '/api/products/{id}/stock-logs'
  */
     const getStockLogsForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -633,7 +633,7 @@ getStockLogs.head = (args: { id: string | number } | [id: string | number ] | st
 
             /**
 * @see \App\Http\Controllers\ProductController::getStockLogs
- * @see app/Http/Controllers/ProductController.php:436
+ * @see app/Http/Controllers/ProductController.php:471
  * @route '/api/products/{id}/stock-logs'
  */
         getStockLogsForm.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -642,7 +642,7 @@ getStockLogs.head = (args: { id: string | number } | [id: string | number ] | st
         })
             /**
 * @see \App\Http\Controllers\ProductController::getStockLogs
- * @see app/Http/Controllers/ProductController.php:436
+ * @see app/Http/Controllers/ProductController.php:471
  * @route '/api/products/{id}/stock-logs'
  */
         getStockLogsForm.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
