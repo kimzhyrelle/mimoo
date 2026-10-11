@@ -33,7 +33,7 @@ class CreateNewUser implements CreatesNewUsers
             'email'           => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'contact_number'  => ['required', 'string', 'regex:/^09\d{9}$/'],
             'birthday'        => ['required', 'date', 'before:-18 years'],
-            'account_type'    => ['required', 'in:buyer,seller'],
+            'account_type'    => ['required', 'in:buyer,seller,logistics'],
 
             // ── Address ───────────────────────────────────────────────────
             'province'         => ['required', 'string', 'max:100'],
@@ -45,9 +45,9 @@ class CreateNewUser implements CreatesNewUsers
             'id_document'     => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
 
             // ── Seller-only fields ────────────────────────────────────────
-            'business_name'    => ['required_if:account_type,seller', 'nullable', 'string', 'max:255'],
+            'business_name'    => ['required_if:account_type,seller,logistics', 'nullable', 'string', 'max:255'],
             'line_of_business' => ['required_if:account_type,seller', 'nullable', 'string', 'max:100'],
-            'business_permit'  => ['required_if:account_type,seller', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'business_permit'  => ['required_if:account_type,seller,logistics', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
 
             // ── Security ──────────────────────────────────────────────────
             'password'        => $this->passwordRules(),
@@ -55,7 +55,7 @@ class CreateNewUser implements CreatesNewUsers
             'birthday.before'          => 'You must be at least 18 years old to register.',
             'contact_number.regex'     => 'Contact number must be an 11-digit mobile number starting with 09.',
             'id_document.required'     => 'Please upload a valid government-issued ID.',
-            'business_permit.required_if' => 'A business permit is required for seller accounts.',
+            'business_permit.required_if' => 'A business permit is required for seller and logistics accounts.',
         ])->validate();
 
         // ── Store uploaded files ───────────────────────────────────────────

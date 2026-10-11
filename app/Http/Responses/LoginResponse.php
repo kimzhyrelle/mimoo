@@ -11,48 +11,32 @@ class LoginResponse implements LoginResponseContract
     /**
      * Create an HTTP response that represents the object.
      *
-     * Check account approval status first:
-     * - pending: logout and redirect to pending page
-     * - disapproved: logout and redirect to login with error
-     * - approved: proceed with normal flow
-     *
-     * Approved buyers are redirected to /homepage (the shopping interface).
-     * Approved sellers and other account types go to /dashboard.
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Symfony\Component\HttpFoundation\Response
      */
     public function toResponse($request): RedirectResponse|JsonResponse
     {
-        $user = auth()->user();
+        $user = $request->user();
 
-        if (!$user) {
-            return redirect()->route('home');
-        }
+        // DEBUG: Show me exactly what's happening
+        \Log::info('LOGIN REDIRECT DEBUG', [
+            'user_id' => $user->id,
+            'user_email' => $user->email,
+            'account_type' => $user->account_type,
+            'account_type_raw' => $user->getRawOriginal('account_type'),
+        ]);
 
-        // Check approval status
-        if ($user->status === 'pending') {
-            auth()->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
+        // Redirect based on account type
+        $home = match ($user->account_type) {
+            'seller' => '/seller/dashboard',
+            'logistics' => '/logistics/dashboard',
+            default => '/homepage',
+        };
 
-            return redirect()->route('register.pending')
-                ->with('message', 'Your account is still pending approval. You will be notified once approved.');
-        }
+        \Log::info('REDIRECTING TO: ' . $home);
 
-        if ($user->status === 'disapproved') {
-            auth()->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            return redirect()->route('home')
-                ->with('error', 'Your account application was not approved. Please contact support for more information.');
-        }
-
-        // Account is approved, proceed with normal flow
-        // Buyers go to the homepage shopping interface
-        if ($user->account_type === 'buyer') {
-            return redirect()->route('homepage');
-        }
-
-        // Everyone else (sellers, etc.) goes to dashboard
-        return redirect()->intended(route('dashboard', absolute: false));
+        return $request->wantsJson()
+            ? new JsonResponse('', 204)
+            : redirect($home);
     }
 }

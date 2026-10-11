@@ -4,6 +4,7 @@ namespace App\Http\Responses;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
 
 class RegisterResponse implements RegisterResponseContract
@@ -17,18 +18,14 @@ class RegisterResponse implements RegisterResponseContract
      */
     public function toResponse($request): RedirectResponse|JsonResponse
     {
-        $user = auth()->user();
+        // Immediately logout the newly registered user since they need approval
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
-        // All users (buyers and sellers) need approval
-        if ($user) {
-            auth()->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            return redirect()->route('register.pending');
-        }
-
-        // Fallback
-        return redirect()->route('home');
+        // Redirect to pending page
+        return $request->wantsJson()
+            ? new JsonResponse('', 204)
+            : redirect()->route('register.pending')->with('message', 'Your registration is pending approval.');
     }
 }

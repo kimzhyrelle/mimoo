@@ -20,9 +20,10 @@ use Illuminate\Support\Carbon;
  * @property string|null $middle_initial
  * @property string|null $sex
  * @property string      $email
+ * @property string|null $google_id
  * @property string|null $contact_number
  * @property string|null $birthday
- * @property string      $account_type       buyer|seller
+ * @property string      $account_type       buyer|seller|logistics
  * @property string|null $province
  * @property string|null $municipality_city
  * @property string|null $barangay
@@ -46,6 +47,7 @@ use Illuminate\Support\Carbon;
     'middle_initial',
     'sex',
     'email',
+    'google_id',
     'contact_number',
     'birthday',
     'account_type',

@@ -529,7 +529,7 @@ export default function SellerLanding() {
                     </div>
 
                     <p className="text-center text-xs text-gray-500 mt-8">
-                        Just want to shop? <Link href="/register" className="text-[#3B1F6B] font-semibold underline">Create a buyer account</Link>. Want to ride or run a sorting hub? <Link href="/register/logistics" className="text-[#3B1F6B] font-semibold underline">Apply as a logistics partner</Link>.
+                        Just want to shop? <Link href="/register" className="text-[#3B1F6B] font-semibold underline">Create a buyer account</Link>. Want to ride or run a sorting hub? <Link href="/logistics" className="text-[#3B1F6B] font-semibold underline">Apply as a logistics partner</Link>.
                     </p>
                 </div>
             </section>

@@ -1,6 +1,6 @@
 import { Link, useForm } from '@inertiajs/react';
 import { FormEvent, ReactNode, useEffect, useRef, useState } from 'react';
-import StepProgress from '../components/registration/StepProgress';
+import StepProgress from '../../components/registration/StepProgress';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
 const fontCalibri = { fontFamily: 'Calibri, sans-serif' };
@@ -15,8 +15,19 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SIDEBAR_STEPS = [
     'Add your name, contact info and birthday',
     'Set your province, city, and street address',
-    'Add any business or ID documents you have',
+    'Add your store details, permit and valid ID',
     'Set a password to secure your account',
+];
+
+const BUSINESS_CATEGORIES = [
+    'Food & Beverage',
+    'Fashion & Apparel',
+    'Health & Beauty',
+    'Home & Living',
+    'Electronics & Gadgets',
+    'Pet Supplies',
+    'Arts & Crafts',
+    'Other',
 ];
 
 // PSGC API Types
@@ -38,6 +49,7 @@ type FormShape = {
     barangay: string;
     street_address: string;
     business_name: string;
+    line_of_business: string;
     business_permit: File | null;
     id_document: File | null;
     password: string;
@@ -49,15 +61,15 @@ type Errs = Partial<Record<FieldName, string>>;
 const FIELD_STEP: Partial<Record<FieldName, number>> = {
     first_name: 1, last_name: 1, sex: 1, email: 1, contact_number: 1, birthday: 1,
     province: 2, municipality_city: 2, barangay: 2, street_address: 2,
-    business_name: 3, business_permit: 3, id_document: 3,
+    business_name: 3, line_of_business: 3, business_permit: 3, id_document: 3,
     password: 4, password_confirmation: 4,
 };
 const FIELD_LABEL: Partial<Record<FieldName, string>> = {
     first_name: 'First name', last_name: 'Last name', sex: 'Sex', email: 'Email address',
     contact_number: 'Contact number', birthday: 'Birthday', province: 'Province',
     municipality_city: 'Municipality / City', barangay: 'Barangay', street_address: 'Street & house number',
-    business_name: 'Business name', business_permit: 'Business/DTI permit',
-    id_document: 'ID', password: 'Password', password_confirmation: 'Confirm password',
+    business_name: 'Business name', line_of_business: 'Line of business', business_permit: 'Business permit',
+    id_document: 'Valid ID', password: 'Password', password_confirmation: 'Confirm password',
 };
 
 function calcAge(birthday: string): number | null {
@@ -71,9 +83,8 @@ function calcAge(birthday: string): number | null {
     return age;
 }
 
-// Optional file: walang error kapag walang file, pero chine-check pa rin kapag meron.
-function optionalFileError(f: File | null): string | undefined {
-    if (!f) return undefined;
+function fileError(f: File | null, emptyMsg: string): string | undefined {
+    if (!f) return emptyMsg;
     if (!/\.(pdf|jpe?g|png)$/i.test(f.name)) return 'Use a PDF, JPG or PNG file.';
     if (f.size > MAX_FILE_MB * 1024 * 1024) return `File is too large. Max ${MAX_FILE_MB}MB.`;
     return undefined;
@@ -96,10 +107,11 @@ function validate(step: number, d: FormShape): Errs {
         if (!d.street_address.trim()) e.street_address = 'Enter your street and house number.';
     }
     if (step === 3) {
-        // Business name, permit at ID ay optional para sa logistics partners
-        const permitErr = optionalFileError(d.business_permit);
+        if (!d.business_name.trim()) e.business_name = 'Enter your business name.';
+        if (!d.line_of_business) e.line_of_business = 'Select the category that best fits your store.';
+        const permitErr = fileError(d.business_permit, 'Upload your business permit.');
         if (permitErr) e.business_permit = permitErr;
-        const idErr = optionalFileError(d.id_document);
+        const idErr = fileError(d.id_document, 'Upload a valid government-issued ID.');
         if (idErr) e.id_document = idErr;
     }
     if (step === 4) {
@@ -189,7 +201,9 @@ function FileField({
     const inputRef = useRef<HTMLInputElement>(null);
     return (
         <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-gray-800">{label}</span>
+            <span className="text-sm font-medium text-gray-800">
+                {label} <span className="text-red-600" aria-hidden="true">*</span>
+            </span>
             <div className={`flex items-center gap-3 rounded-xl p-4 ${
                 file ? 'border border-[#B4A7D6] bg-white' : 'border-2 border-dashed border-[#DDD5EE] bg-[#F8F6FC]'
             }`}>
@@ -242,7 +256,7 @@ function FileField({
     );
 }
 
-export default function LogisticsRegistration() {
+export default function SellerRegistration() {
     const [step, setStep] = useState(1);
     const [clientErrors, setClientErrors] = useState<Errs>({});
     const [submitted, setSubmitted] = useState(false);
@@ -262,12 +276,13 @@ export default function LogisticsRegistration() {
         email: '',
         contact_number: '',
         birthday: '',
-        account_type: 'logistics',
+        account_type: 'seller',
         province: '',
         municipality_city: '',
         barangay: '',
         street_address: '',
         business_name: '',
+        line_of_business: '',
         business_permit: null,
         id_document: null,
         password: '',
@@ -370,7 +385,7 @@ export default function LogisticsRegistration() {
 
     const focusField = (f: FieldName) => document.getElementById(f)?.focus();
 
-    const stepTitles = ['Your details', 'Address', 'Business & ID documents', 'Secure your account'];
+    const stepTitles = ['Your details', 'Address', 'Store & identity verification', 'Secure your account'];
 
     const btnPrimary =
         'flex-1 bg-[#3B1F6B] text-white rounded-xl py-3 font-medium hover:bg-[#2E1854] transition disabled:opacity-60';
@@ -439,9 +454,9 @@ export default function LogisticsRegistration() {
 
                 {/* Hero copy */}
                 <div className="relative z-10">
-                    <h2 className="text-[1.7rem] leading-tight font-black tracking-wide mb-2.5" style={fontCalibri}>Join our logistics team.</h2>
+                    <h2 className="text-[1.7rem] leading-tight font-black tracking-wide mb-2.5" style={fontCalibri}>Start selling on mimoo.</h2>
                     <p className="text-[0.95rem] text-[#CEC6E6] max-w-[34ch]">
-                        Register as a rider or sorting-center partner. An admin will review your application.
+                        Selling means a quick review of your business details and ID before you go live.
                     </p>
                 </div>
 
@@ -500,10 +515,10 @@ export default function LogisticsRegistration() {
             <div className="flex-1 min-h-screen lg:h-screen overflow-y-auto bg-[#F8F6FC] p-4 sm:p-6 md:p-8 lg:p-12 xl:p-16 2xl:p-24">
                 <div className="max-w-full lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl mx-auto lg:mx-0">
                     <h2 className="text-xl md:text-2xl font-bold text-gray-900" style={fontSyncopate}>
-                        apply as a logistics partner
+                        create your seller account
                     </h2>
                     <p className="text-gray-500 mt-1 text-sm">
-                        For riders and sorting-center partners. It only takes a few minutes.
+                        Tell us about yourself and your business. It only takes a few minutes.
                     </p>
                     <p className="text-gray-500 mt-1 text-xs">
                         Fields marked <span className="text-red-600">*</span> are required.
@@ -513,11 +528,6 @@ export default function LogisticsRegistration() {
                         <Link href="/register" className="text-[#3B1F6B] font-semibold hover:underline">
                             Register a buyer account
                         </Link>
-                        . Want to sell instead?{' '}
-                        <Link href="/register/seller" className="text-[#3B1F6B] font-semibold hover:underline">
-                            Register a seller account
-                        </Link>
-                        .
                     </p>
 
                     <StepProgress currentStep={step} />
@@ -662,22 +672,30 @@ export default function LogisticsRegistration() {
                             </div>
                         )}
 
-                        {/* STEP 3 (lahat optional) */}
+                        {/* STEP 3 */}
                         {step === 3 && (
                             <div className="flex flex-col gap-8">
-                                <section aria-labelledby="business-details-label">
-                                    <p id="business-details-label" className="text-xs font-semibold uppercase tracking-wide text-[#7A63AC] mb-3" style={fontSFCompact}>
-                                        Business details <span className="normal-case tracking-normal font-semibold text-gray-500">(optional)</span>
+                                <section aria-labelledby="store-details-label">
+                                    <p id="store-details-label" className="text-xs font-semibold uppercase tracking-wide text-[#7A63AC] mb-3" style={fontSFCompact}>
+                                        Store details
                                     </p>
                                     <div className="flex flex-col gap-4">
-                                        <Field label="Business name" htmlFor="business_name" error={err('business_name')}>
-                                            <input id="business_name" placeholder="e.g. Swift Sorting Hub" value={data.business_name}
+                                        <Field label="Business name" htmlFor="business_name" required error={err('business_name')}>
+                                            <input id="business_name" placeholder="e.g. Hoppers Pet Supply" value={data.business_name}
                                                 onChange={(e) => set('business_name', e.target.value)}
                                                 aria-invalid={!!err('business_name')} className={inputCls(err('business_name'))} />
                                         </Field>
+                                        <Field label="Line of business" htmlFor="line_of_business" required error={err('line_of_business')}>
+                                            <select id="line_of_business" value={data.line_of_business}
+                                                onChange={(e) => set('line_of_business', e.target.value)}
+                                                aria-invalid={!!err('line_of_business')} className={inputCls(err('line_of_business'))}>
+                                                <option value="">Select a category</option>
+                                                {BUSINESS_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                                            </select>
+                                        </Field>
                                         <FileField
                                             id="business_permit"
-                                            label="Business/DTI permit"
+                                            label="Business permit"
                                             kind="doc"
                                             hint={`PDF, JPG or PNG · up to ${MAX_FILE_MB}MB`}
                                             buttonLabel="Choose permit file"
@@ -690,11 +708,11 @@ export default function LogisticsRegistration() {
 
                                 <section aria-labelledby="identity-label" className="border-t border-[#DDD5EE] pt-8">
                                     <p id="identity-label" className="text-xs font-semibold uppercase tracking-wide text-[#7A63AC] mb-3" style={fontSFCompact}>
-                                        Identity <span className="normal-case tracking-normal font-semibold text-gray-500">(optional)</span>
+                                        Identity verification
                                     </p>
                                     <FileField
                                         id="id_document"
-                                        label="Upload ID"
+                                        label="Upload a valid ID"
                                         kind="id"
                                         hint={`Government-issued ID · PDF, JPG or PNG · up to ${MAX_FILE_MB}MB`}
                                         buttonLabel="Choose ID file"
@@ -725,7 +743,7 @@ export default function LogisticsRegistration() {
                                         <path d="M3 7l9 6 9-6" strokeLinejoin="round" />
                                         <rect x="3" y="5" width="18" height="14" rx="2" />
                                     </svg>
-                                    <p>After submitting, please wait for the administrator's approval. We'll send it to your email.</p>
+                                    <p>After submitting, an administrator will review your business details and ID. We'll email you once your store is approved.</p>
                                 </div>
                             </>
                         )}
@@ -762,7 +780,7 @@ export default function LogisticsRegistration() {
                         </div>
                         <h2 id="success-heading" className="text-xl font-bold text-gray-900">Registration submitted</h2>
                         <p className="mt-2 text-sm text-gray-500">
-                            Please wait for the administrator's approval. We'll email you once your account is reviewed.
+                            Please wait for the administrator's approval. We'll email you once your seller account is reviewed.
                         </p>
                         <Link href="/login" className="mt-6 inline-block w-full rounded-xl bg-[#3B1F6B] py-3 font-medium text-white hover:bg-[#2E1854] transition">
                             Go to log in
@@ -774,4 +792,4 @@ export default function LogisticsRegistration() {
     );
 }
 
-LogisticsRegistration.layout = (page: ReactNode) => page;
+SellerRegistration.layout = (page: ReactNode) => page;
