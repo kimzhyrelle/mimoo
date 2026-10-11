@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { Copy, ImagePlus, MoreVertical, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, MouseEvent, ReactNode } from 'react';
@@ -26,7 +26,12 @@ const fontSyne = { fontFamily: "'Syne', sans-serif" };
 const PER_PAGE = 8;
 const MAX_IMAGE_MB = 5;
 const BORDER = 'border-[color-mix(in_srgb,#B9A6DE_44%,white)]';
-const STORE_KEY = 'mimoo_seller_products';
+
+// Get CSRF token for API requests
+const getCsrfToken = (): string => {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') || '' : '';
+};
 
 const CATEGORIES = [
     'Pet Supplies',
@@ -192,7 +197,7 @@ const TH = `text-left text-[0.68rem] font-semibold uppercase tracking-wide text-
 export default function SellerProducts({ auth, seller, products: initialProducts = [] }: SellerProductsProps) {
     const storeName = seller.store_name || seller.business_name || 'Your Store';
     
-    // Merge initial products from database with localStorage products
+    // Use products from database (passed as props from server)
     const [products, setProducts] = useState<Product[]>(initialProducts);
     const [loaded, setLoaded] = useState(false);
     const [tab, setTab] = useState<Status>('published');
@@ -202,6 +207,7 @@ export default function SellerProducts({ auth, seller, products: initialProducts
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [toast, setToast] = useState<{ msg: string; bad?: boolean } | null>(null);
     const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [saving, setSaving] = useState(false);
 
     // Add / Edit modal
     const [formOpen, setFormOpen] = useState(false);
@@ -213,30 +219,11 @@ export default function SellerProducts({ auth, seller, products: initialProducts
 
     const editing = editingId ? products.find((p) => p.id === editingId) ?? null : null;
 
-    // Load saved products + initial tab from URL
+    // Load initial tab from URL
     useEffect(() => {
-        // If no products from DB, try loading from localStorage, otherwise use empty array
-        if (initialProducts.length === 0) {
-            try {
-                const raw = localStorage.getItem(STORE_KEY);
-                if (raw) setProducts(JSON.parse(raw));
-            } catch {
-                /* use empty array */
-            }
-        }
         if (new URLSearchParams(window.location.search).get('status') === 'draft') setTab('draft');
         setLoaded(true);
     }, []);
-
-    // Save whenever products change
-    useEffect(() => {
-        if (!loaded) return;
-        try {
-            localStorage.setItem(STORE_KEY, JSON.stringify(products));
-        } catch {
-            showToast('Could not save: browser storage is full.', true);
-        }
-    }, [products, loaded]);
 
     // Keep ?status=draft in the URL
     useEffect(() => {
@@ -371,7 +358,7 @@ export default function SellerProducts({ auth, seller, products: initialProducts
         }
     };
 
-    const save = (status: Status) => {
+    const save = async (status: Status) => {
         const errs = validate(form, status === 'published');
         if (Object.keys(errs).length) {
             setErrors(errs);
@@ -380,35 +367,82 @@ export default function SellerProducts({ auth, seller, products: initialProducts
             return;
         }
 
-        const next: Product = {
-            id: editing?.id ?? 'p' + Date.now(),
-            name: form.name.trim(),
-            category: form.category,
-            brand: editing?.brand ?? storeName,
-            desc: form.desc.trim(),
-            images: form.image ? [form.image] : [],
-            mainIdx: 0,
-            price: parseFloat(form.price) || 0,
-            salePrice: form.salePrice.trim() ? parseFloat(form.salePrice) : null,
-            stock: form.stock.trim() === '' ? 0 : parseInt(form.stock, 10),
-            sku: form.sku.trim(),
-            weight: form.weight.trim() ? parseFloat(form.weight) : null,
-            status,
-            updated: Date.now(),
-        };
+        setSaving(true);
 
-        setProducts((list) =>
-            editing ? list.map((p) => (p.id === next.id ? next : p)) : [next, ...list],
-        );
-        setFormOpen(false);
-        setTab(status);
-        setQuery('');
-        setPage(1);
-        showToast(
-            editing
-                ? status === 'published' ? 'Changes saved.' : 'Moved to drafts.'
-                : status === 'published' ? 'Product published.' : 'Saved as draft.',
-        );
+        try {
+            const payload = {
+                name: form.name.trim(),
+                description: form.desc.trim(),
+                category: form.category,
+                price: parseFloat(form.price) || 0,
+                sale_price: form.salePrice.trim() ? parseFloat(form.salePrice) : null,
+                stock: form.stock.trim() === '' ? 0 : parseInt(form.stock, 10),
+                sku: form.sku.trim(),
+                weight: form.weight.trim() ? parseFloat(form.weight) : null,
+                status: status === 'published' ? 'active' : 'draft',
+                images: form.image ? [form.image] : [],
+                main_image_index: 0,
+                brand: editing?.brand ?? storeName,
+            };
+
+            const url = editing ? `/api/products/${editing.id}` : '/api/products';
+            const method = editing ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || errorData.message || 'Failed to save product');
+            }
+
+            const data = await response.json();
+
+            const savedProduct: Product = {
+                id: data.product.id.toString(),
+                name: data.product.name,
+                category: data.product.category,
+                brand: data.product.brand,
+                desc: data.product.description,
+                images: data.product.images ?? [],
+                mainIdx: data.product.main_image_index ?? 0,
+                price: data.product.price,
+                salePrice: data.product.sale_price,
+                stock: data.product.stock,
+                sku: data.product.sku,
+                weight: data.product.weight,
+                status: data.product.status === 'active' ? 'published' : 'draft',
+                updated: data.product.updated_at,
+            };
+
+            if (editing) {
+                setProducts((list) => list.map((p) => (p.id === savedProduct.id ? savedProduct : p)));
+            } else {
+                setProducts((list) => [savedProduct, ...list]);
+            }
+
+            setFormOpen(false);
+            setTab(status);
+            setQuery('');
+            setPage(1);
+            showToast(
+                editing
+                    ? status === 'published' ? 'Changes saved.' : 'Moved to drafts.'
+                    : status === 'published' ? 'Product published.' : 'Saved as draft.',
+            );
+        } catch (error: any) {
+            console.error('Failed to save product:', error);
+            const message = error.message || 'Failed to save product. Please try again.';
+            showToast(message, true);
+        } finally {
+            setSaving(false);
+        }
     };
 
     /* ---------- Duplicate / Delete ---------- */
@@ -416,28 +450,50 @@ export default function SellerProducts({ auth, seller, products: initialProducts
         const src = products.find((p) => p.id === id);
         setMenu(null);
         if (!src) return;
-        const copy: Product = {
-            ...src,
-            id: 'p' + Date.now(),
+        // For duplicate, we open the form with the source product data
+        setEditingId(null); // Not editing, creating new
+        setForm({
             name: src.name + ' (Copy)',
-            status: 'draft',
+            category: src.category,
+            price: String(src.price),
+            salePrice: src.salePrice ? String(src.salePrice) : '',
+            stock: String(src.stock),
             sku: src.sku ? src.sku + '-COPY' : '',
-            updated: Date.now(),
-        };
-        setProducts((list) => [copy, ...list]);
-        setTab('draft');
-        setQuery('');
-        setPage(1);
-        showToast(`"${src.name}" duplicated as a draft.`);
+            weight: src.weight ? String(src.weight) : '',
+            desc: src.desc,
+            image: src.images[src.mainIdx || 0] ?? '',
+        });
+        setErrors({});
+        setFormOpen(true);
+        showToast(`Duplicating "${src.name}". Update and save as a new product.`);
     };
 
     const deleting = products.find((p) => p.id === deleteId) ?? null;
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if (!deleteId) return;
-        setProducts((list) => list.filter((p) => p.id !== deleteId));
-        setDeleteId(null);
-        showToast('Product deleted.');
+
+        try {
+            const response = await fetch(`/api/products/${deleteId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to delete product');
+            }
+
+            setProducts((list) => list.filter((p) => p.id !== deleteId));
+            setDeleteId(null);
+            showToast('Product deleted.');
+        } catch (error: any) {
+            console.error('Failed to delete product:', error);
+            const message = error.message || 'Failed to delete product. Please try again.';
+            showToast(message, true);
+        }
     };
 
     const menuProduct = menu ? products.find((p) => p.id === menu.id) : null;
@@ -922,10 +978,10 @@ export default function SellerProducts({ auth, seller, products: initialProducts
                             <button
                                 type="button"
                                 onClick={() => save('published')}
-                                disabled={imageBusy}
+                                disabled={imageBusy || saving}
                                 className="px-5 py-2.5 rounded-lg text-sm font-bold bg-[#4B2E7E] text-white hover:bg-[color-mix(in_srgb,#4B2E7E_82%,black)] disabled:opacity-50"
                             >
-                                {publishLabel}
+                                {saving ? 'Saving...' : publishLabel}
                             </button>
                         </div>
                     </div>

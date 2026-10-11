@@ -28,6 +28,14 @@ interface Product {
   id: string;
   name: string;
   price: string;
+  raw_price?: number;
+  regular_price?: string | null;
+  is_on_sale?: boolean;
+  stock?: number;
+  stock_status?: string;
+  is_in_stock?: boolean;
+  image?: string | null;
+  seller_name?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -56,6 +64,11 @@ const PRODUCTS: Product[] = [
   { id: "p4", name: "Skincare Bundle", price: "₱649" },
   { id: "p5", name: "Desk Lamp", price: "₱499" },
 ];
+
+interface HomepageProps {
+  auth?: { user: any };
+  products?: Product[];
+}
 
 // ---------------------------------------------------------------------------
 // Small building blocks
@@ -348,14 +361,44 @@ function ProductCard({
       href={`/product/${product.id}`}
       className="flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white transition-shadow hover:shadow-md"
     >
-      <div className="aspect-square w-full bg-neutral-200" />
+      <div className="aspect-square w-full bg-neutral-200 overflow-hidden">
+        {product.image ? (
+          <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-neutral-400 text-xs">
+            No image
+          </div>
+        )}
+      </div>
       <div className="flex flex-1 flex-col gap-1 p-3">
         <span className="text-sm text-neutral-800 line-clamp-2">
           {product.name}
         </span>
-        <span className="text-sm font-semibold text-violet-700">
-          {product.price}
-        </span>
+        <div className="flex items-center gap-2">
+          {product.is_on_sale && product.regular_price ? (
+            <>
+              <span className="text-sm font-semibold text-violet-700">
+                {product.price}
+              </span>
+              <span className="text-xs text-neutral-500 line-through">
+                {product.regular_price}
+              </span>
+            </>
+          ) : (
+            <span className="text-sm font-semibold text-violet-700">
+              {product.price}
+            </span>
+          )}
+        </div>
+        {product.stock_status && (
+          <span className={`text-xs ${
+            product.is_in_stock 
+              ? product.stock && product.stock <= 10 ? 'text-orange-600' : 'text-green-600'
+              : 'text-red-600'
+          }`}>
+            {product.stock_status}
+          </span>
+        )}
         {role === "guest" && (
           <button
             onClick={(e) => {
@@ -367,15 +410,23 @@ function ProductCard({
             Log in to buy
           </button>
         )}
-        {role === "buyer" && (
+        {role === "buyer" && product.is_in_stock && (
           <button
             onClick={(e) => {
               e.preventDefault();
-              // Handle add to cart
+              // Handle add to cart (Step 2)
             }}
             className="mt-2 rounded-md bg-violet-600 py-1.5 text-xs font-medium text-white transition-colors hover:bg-violet-700"
           >
             Add to cart
+          </button>
+        )}
+        {role === "buyer" && !product.is_in_stock && (
+          <button
+            disabled
+            className="mt-2 rounded-md bg-neutral-300 py-1.5 text-xs font-medium text-neutral-500 cursor-not-allowed"
+          >
+            Out of stock
           </button>
         )}
         {role === "seller" && (
@@ -548,13 +599,15 @@ function Header({
 // Page
 // ---------------------------------------------------------------------------
 
-export default function Homepage() {
-  const { auth } = usePage<{ auth: { user: any } }>().props;
+export default function Homepage({ auth, products: serverProducts = [] }: HomepageProps) {
   const user = auth?.user;
   
   const role: UserRole = user ? (user.account_type as UserRole) : "guest";
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showSignupModal, setShowSignupModal] = useState(false);
+
+  // Use server products if available, otherwise fall back to placeholder
+  const products = serverProducts.length > 0 ? serverProducts : PRODUCTS;
 
   function handleLogout() {
     router.post('/logout');
@@ -618,17 +671,22 @@ export default function Homepage() {
         <section className="mt-6 sm:mt-8">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-neutral-900 sm:text-base">
-              Top products
+              {serverProducts.length > 0 ? 'Available Products' : 'Top products'}
             </h2>
             <button className="flex items-center text-xs text-violet-600 hover:underline sm:text-sm">
               See all <ChevronRight className="h-4 w-4" />
             </button>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
-            {PRODUCTS.map((p) => (
+            {products.slice(0, 10).map((p) => (
               <ProductCard key={p.id} product={p} role={role} onGuestAction={handleGuestAction} />
             ))}
           </div>
+          {serverProducts.length === 0 && (
+            <div className="mt-4 text-center text-sm text-neutral-500">
+              No products available yet. Sellers can start adding products!
+            </div>
+          )}
         </section>
 
         {/* Secondary banners */}
@@ -651,7 +709,7 @@ export default function Homepage() {
 
         {/* Recommended feed placeholder */}
         <section className="mt-4 grid grid-cols-2 gap-2 pb-8 sm:mt-6 sm:grid-cols-3 sm:gap-3 sm:pb-10 lg:grid-cols-5">
-          {PRODUCTS.map((p) => (
+          {products.slice(0, 10).map((p) => (
             <ProductCard key={`rec-${p.id}`} product={p} role={role} onGuestAction={handleGuestAction} />
           ))}
         </section>

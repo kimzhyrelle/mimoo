@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Auth\SocialiteController;
+use App\Http\Controllers\ProductController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -78,6 +79,29 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::get('/seller/products', function () {
         $user = Auth::user();
         
+        // Fetch products for the authenticated seller
+        $products = \App\Models\Product::where('seller_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($product) {
+                return [
+                    'id' => (string) $product->id,
+                    'name' => $product->name,
+                    'description' => $product->description ?? '',
+                    'category' => $product->category ?? '',
+                    'price' => (float) $product->price,
+                    'salePrice' => $product->sale_price ? (float) $product->sale_price : null,
+                    'stock' => $product->stock,
+                    'sku' => $product->sku,
+                    'status' => $product->status === 'active' ? 'published' : 'draft',
+                    'images' => $product->images ?? [],
+                    'mainIdx' => $product->main_image_index ?? 0,
+                    'weight' => $product->weight ? (float) $product->weight : null,
+                    'brand' => $product->brand ?? '',
+                    'updated' => $product->updated_at->timestamp * 1000, // Convert to milliseconds for JS
+                ];
+            })->toArray();
+        
         return Inertia::render('seller/SellerProducts', [
             'auth' => [
                 'user' => [
@@ -91,9 +115,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
                 'store_name' => $user->business_name ?? 'Your Store',
                 'business_name' => $user->business_name,
             ],
-            // TODO: When products table is created, fetch products from database:
-            // 'products' => Product::where('seller_id', $user->id)->get()
-            'products' => [], // Empty array for now - will show empty state for new sellers
+            'products' => $products,
         ]);
     })->name('seller.products');
     
@@ -176,7 +198,31 @@ Route::get('/register/pending', function () {
 })->name('register.pending');
 
 Route::get('/homepage', function () {
-    return Inertia::render('Homepage_GUEST');
+    // Fetch active products for buyers
+    $products = \App\Models\Product::with('seller:id,business_name,name')
+        ->where('status', 'active')
+        ->orderBy('created_at', 'desc')
+        ->take(20) // Limit to 20 products for now
+        ->get()
+        ->map(function ($product) {
+            return [
+                'id' => (string) $product->id,
+                'name' => $product->name,
+                'price' => '₱' . number_format($product->sale_price ?? $product->price, 2),
+                'raw_price' => (float) ($product->sale_price ?? $product->price),
+                'regular_price' => $product->sale_price ? ('₱' . number_format($product->price, 2)) : null,
+                'is_on_sale' => $product->sale_price !== null,
+                'stock' => $product->stock,
+                'stock_status' => $product->stock_status,
+                'is_in_stock' => $product->stock > 0,
+                'image' => $product->main_image,
+                'seller_name' => $product->seller->business_name ?? $product->seller->name,
+            ];
+        })->toArray();
+    
+    return Inertia::render('Homepage', [
+        'products' => $products,
+    ]);
 })->name('homepage');
 
 Route::get('/cart', function () {
@@ -203,13 +249,62 @@ Route::get('/orders', [App\Http\Controllers\OrderController::class, 'index'])
     ->middleware(['auth', 'approved'])
     ->name('orders.index');
 
-Route::get('/product/{id}', fn (string $id) => Inertia::render('ProductDetail', [
-    'productId' => $id,
-]))->name('product.show');
+Route::get('/product/{id}', function (string $id) {
+    $product = \App\Models\Product::with('seller:id,business_name,name')
+        ->findOrFail($id);
+    
+    return Inertia::render('ProductDetail', [
+        'product' => [
+            'id' => (string) $product->id,
+            'name' => $product->name,
+            'description' => $product->description ?? '',
+            'category' => $product->category ?? '',
+            'price' => (float) $product->price,
+            'sale_price' => $product->sale_price ? (float) $product->sale_price : null,
+            'effective_price' => (float) ($product->sale_price ?? $product->price),
+            'is_on_sale' => $product->sale_price !== null,
+            'stock' => $product->stock,
+            'stock_status' => $product->stock_status,
+            'is_in_stock' => $product->stock > 0,
+            'is_low_stock' => $product->stock > 0 && $product->stock <= 10,
+            'images' => $product->images ?? [],
+            'main_image_index' => $product->main_image_index ?? 0,
+            'weight' => $product->weight ? (float) $product->weight : null,
+            'brand' => $product->brand ?? '',
+            'sku' => $product->sku,
+            'seller_name' => $product->seller->business_name ?? $product->seller->name,
+            'seller_id' => $product->seller_id,
+        ],
+    ]);
+})->name('product.show');
 
 // Google OAuth routes
 Route::get('/auth/google', [SocialiteController::class, 'redirectToGoogle'])->name('auth.google');
 Route::get('/auth/google/callback', [SocialiteController::class, 'handleGoogleCallback'])->name('auth.google.callback');
+
+// ---------------------------------------------------------------------------
+// Product API routes
+// ---------------------------------------------------------------------------
+
+// Public product routes (buyers)
+Route::get('/api/products', [ProductController::class, 'index']); // List active products
+Route::get('/api/products/{id}', [ProductController::class, 'show']); // Single product
+
+// Protected seller product routes
+Route::middleware(['auth', 'verified', 'approved'])->group(function () {
+    // Analytics
+    Route::get('/api/seller/analytics', [\App\Http\Controllers\SellerAnalyticsController::class, 'index']);
+    
+    // Products CRUD
+    Route::get('/api/seller/products', [ProductController::class, 'sellerIndex']); // Seller's own products (upgraded with filters)
+    Route::post('/api/products', [ProductController::class, 'store']); // Create product
+    Route::patch('/api/products/{id}', [ProductController::class, 'update']); // Update product (all fields)
+    Route::patch('/api/products/{id}/stock', [ProductController::class, 'updateStock']); // Update stock only
+    Route::delete('/api/products/{id}', [ProductController::class, 'destroy']); // Soft delete product
+    
+    // Stock logs
+    Route::get('/api/products/{id}/stock-logs', [ProductController::class, 'getStockLogs']);
+});
 
 require __DIR__.'/settings.php';
 

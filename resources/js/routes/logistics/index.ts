@@ -1,6 +1,6 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
 /**
- * @see routes/web.php:21
+ * @see routes/web.php:22
  * @route '/logistics'
  */
 export const landing = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -14,7 +14,7 @@ landing.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:21
+ * @see routes/web.php:22
  * @route '/logistics'
  */
 landing.url = (options?: RouteQueryOptions) => {
@@ -22,7 +22,7 @@ landing.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:21
+ * @see routes/web.php:22
  * @route '/logistics'
  */
 landing.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -30,7 +30,7 @@ landing.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     method: 'get',
 })
 /**
- * @see routes/web.php:21
+ * @see routes/web.php:22
  * @route '/logistics'
  */
 landing.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -39,7 +39,7 @@ landing.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
     /**
- * @see routes/web.php:21
+ * @see routes/web.php:22
  * @route '/logistics'
  */
     const landingForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -48,7 +48,7 @@ landing.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     })
 
             /**
- * @see routes/web.php:21
+ * @see routes/web.php:22
  * @route '/logistics'
  */
         landingForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -56,7 +56,7 @@ landing.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             method: 'get',
         })
             /**
- * @see routes/web.php:21
+ * @see routes/web.php:22
  * @route '/logistics'
  */
         landingForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
