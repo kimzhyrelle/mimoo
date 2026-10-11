@@ -13,6 +13,8 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'product_id',
+        'seller_id',
+        'product_name',
         'quantity',
         'unit_price',
     ];
@@ -21,6 +23,14 @@ class OrderItem extends Model
         'quantity' => 'integer',
         'unit_price' => 'decimal:2',
     ];
+
+    /**
+     * Get the seller that owns the order item.
+     */
+    public function seller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'seller_id');
+    }
 
     /**
      * Get the order that owns the item.

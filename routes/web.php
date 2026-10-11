@@ -39,41 +39,12 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     });
     
     // Seller Dashboard - for approved sellers only
-    Route::get('/seller/dashboard', function () {
-        $user = auth()->user();
-        
-        // TODO: Calculate actual stats from database
-        // For now, showing zeros for new sellers
-        return Inertia::render('seller/SellerDashboard', [
-            'auth' => [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'account_type' => $user->account_type,
-                ],
-            ],
-            'seller' => [
-                'store_name' => $user->business_name ?? $user->name,
-                'business_name' => $user->business_name,
-            ],
-            'stats' => [
-                'total_sales' => 0, // TODO: Sum from orders table
-                'sales_growth' => 0,
-                'total_orders' => 0, // TODO: Count from orders table
-                'pending_orders' => 0,
-                'store_rating' => 0, // TODO: Average from reviews table
-                'total_reviews' => 0,
-                'to_prepare' => 0,
-                'low_stock_count' => 0,
-                'new_messages' => 0,
-                'new_reviews' => 0,
-            ],
-            'recentOrders' => [], // TODO: Get recent orders from database
-            'topProducts' => [], // TODO: Get top products from database
-            'lowStockItems' => [], // TODO: Get low stock items from database
-        ]);
-    })->name('seller.dashboard');
+    Route::get('/seller/dashboard', [\App\Http\Controllers\SellerDashboardController::class, 'index'])->name('seller.dashboard');
+    
+    // Seller Orders Page
+    Route::get('/seller/orders', function () {
+        return Inertia::render('seller/SellerOrders');
+    })->name('seller.orders');
     
     // Seller Products page
     Route::get('/seller/products', function () {
@@ -229,29 +200,17 @@ Route::get('/cart', function () {
     return Inertia::render('Cart');
 })->name('cart');
 
-Route::get('/checkout', function () {
-    return Inertia::render('CheckoutPlaceholder');
-})->middleware(['auth', 'approved'])->name('checkout');
-
 Route::get('/messages', function () {
     return view('messages');
 })->middleware(['auth', 'approved'])->name('messages');
 
-Route::get('/checkout', [App\Http\Controllers\OrderController::class, 'checkout'])
-    ->middleware(['auth', 'approved'])
-    ->name('checkout');
-
-Route::post('/orders', [App\Http\Controllers\OrderController::class, 'place'])
-    ->middleware(['auth', 'approved'])
-    ->name('orders.place');
-
-Route::get('/orders/success/{orderNo}', [App\Http\Controllers\OrderController::class, 'success'])
-    ->middleware(['auth', 'approved'])
-    ->name('order.success');
-
-Route::get('/orders', [App\Http\Controllers\OrderController::class, 'index'])
-    ->middleware(['auth', 'approved'])
-    ->name('orders.index');
+// Buyer checkout and order routes
+Route::middleware(['auth', 'verified', 'approved'])->group(function () {
+    Route::get('/checkout', [\App\Http\Controllers\OrderController::class, 'checkout'])->name('checkout');
+    Route::get('/orders', [\App\Http\Controllers\OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/success', [\App\Http\Controllers\OrderController::class, 'success'])->name('orders.success');
+    Route::get('/orders/{id}', [\App\Http\Controllers\OrderController::class, 'show'])->name('orders.show');
+});
 
 Route::get('/product/{id}', function (string $id) {
     $product = \App\Models\Product::with('seller:id,business_name,name')
@@ -294,13 +253,18 @@ Route::get('/auth/google/callback', [SocialiteController::class, 'handleGoogleCa
 Route::get('/api/products', [ProductController::class, 'index']); // List active products
 Route::get('/api/products/{id}', [ProductController::class, 'show']); // Single product
 
-// Protected buyer routes - Cart
+// Protected buyer routes - Cart & Orders API
 Route::middleware(['auth', 'verified', 'approved'])->group(function () {
+    // Cart
     Route::get('/api/cart', [\App\Http\Controllers\CartController::class, 'index']);
     Route::get('/api/cart/count', [\App\Http\Controllers\CartController::class, 'getCount']);
     Route::post('/api/cart/items', [\App\Http\Controllers\CartController::class, 'addItem']);
     Route::patch('/api/cart/items/{id}', [\App\Http\Controllers\CartController::class, 'updateItem']);
     Route::delete('/api/cart/items/{id}', [\App\Http\Controllers\CartController::class, 'removeItem']);
+    
+    // Orders
+    Route::post('/api/orders', [\App\Http\Controllers\OrderController::class, 'store']);
+    Route::post('/api/orders/{id}/cancel', [\App\Http\Controllers\OrderController::class, 'cancel']);
 });
 
 // Protected seller product routes
@@ -317,6 +281,14 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     
     // Stock logs
     Route::get('/api/products/{id}/stock-logs', [ProductController::class, 'getStockLogs']);
+    
+    // Seller Orders
+    Route::get('/api/seller/orders', [\App\Http\Controllers\SellerOrderController::class, 'index']);
+    Route::get('/api/seller/orders/recent', [\App\Http\Controllers\SellerOrderController::class, 'recent']);
+    Route::patch('/api/seller/orders/{id}/status', [\App\Http\Controllers\SellerOrderController::class, 'updateStatus']);
+    
+    // Real-time seller dashboard stream (SSE)
+    Route::get('/api/seller/dashboard/stream', [\App\Http\Controllers\SellerDashboardStreamController::class, 'stream']);
 });
 
 require __DIR__.'/settings.php';

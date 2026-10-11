@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from "react";
-import { Link } from "@inertiajs/react";
-import { Bell, Search, ShoppingCart, LogOut } from "lucide-react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
+import { Link, router } from "@inertiajs/react";
+import { Bell, Search, ShoppingCart, LogOut, Package } from "lucide-react";
 
 interface BuyerHeaderProps {
   user?: any;
@@ -30,10 +30,32 @@ export function BuyerHeader({
 }: BuyerHeaderProps) {
   const [query, setQuery] = useState("");
   const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Single source of truth — everything branches off this
   const isLoggedIn = !!user;
   const username = user?.name ?? "Guest";
+
+  // Close dropdown on route change
+  useEffect(() => {
+    const handleRouteChange = () => setShowMenu(false);
+    router.on('navigate', handleRouteChange);
+    return () => router.off('navigate', handleRouteChange);
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showMenu]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -50,7 +72,7 @@ export function BuyerHeader({
       <div className="mx-auto max-w-[1100px] px-6">
         {/* Utility row: account top-right */}
         <div className="flex h-7 items-center justify-end text-[10px] sm:text-[11px]">
-          <div className="relative">
+          <div className="relative" ref={menuRef}>
             <button
               onClick={() => isLoggedIn ? setShowMenu(!showMenu) : onGuestAction?.()}
               className="flex items-center gap-1.5 text-white/90 transition-colors hover:text-white"
@@ -60,10 +82,18 @@ export function BuyerHeader({
             </button>
 
             {showMenu && isLoggedIn && (
-              <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-white shadow-lg ring-1 ring-black/5 z-50">
+              <div className="absolute right-0 top-full mt-1 w-36 rounded-lg bg-white shadow-lg ring-1 ring-black/5 z-50">
+                <Link
+                  href="/orders"
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
+                  onClick={() => setShowMenu(false)}
+                >
+                  <Package className="h-3.5 w-3.5" />
+                  My Purchases
+                </Link>
                 <Link
                   href="/settings/profile"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   onClick={() => setShowMenu(false)}
                 >
                   Settings

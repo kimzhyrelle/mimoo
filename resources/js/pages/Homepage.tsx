@@ -517,10 +517,17 @@ function Header({
 
             {/* Dropdown menu */}
             {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-white shadow-lg ring-1 ring-black/5 z-50">
+              <div className="absolute right-0 top-full mt-1 w-36 rounded-lg bg-white shadow-lg ring-1 ring-black/5 z-50">
+                <Link
+                  href="/orders"
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
+                  onClick={() => setShowMenu(false)}
+                >
+                  My Purchases
+                </Link>
                 <Link
                   href="/settings/profile"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   onClick={() => setShowMenu(false)}
                 >
                   Settings

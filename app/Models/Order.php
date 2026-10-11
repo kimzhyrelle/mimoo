@@ -15,11 +15,33 @@ class Order extends Model
         'buyer_id',
         'total',
         'status',
+        'payment_status',
+        'payment_method',
+        'shipping_name',
+        'shipping_address',
+        'shipping_phone',
+        'idempotency_key',
     ];
 
     protected $casts = [
         'total' => 'decimal:2',
     ];
+
+    /**
+     * Check if order can be cancelled.
+     */
+    public function canBeCancelled(): bool
+    {
+        return in_array($this->status, ['pending', 'paid']);
+    }
+
+    /**
+     * Check if order is valid (not cancelled or failed).
+     */
+    public function isValid(): bool
+    {
+        return !in_array($this->status, ['cancelled', 'failed']);
+    }
 
     /**
      * Get the buyer that owns the order.

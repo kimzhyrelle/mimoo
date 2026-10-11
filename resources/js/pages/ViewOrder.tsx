@@ -199,10 +199,17 @@ function Header({
             </button>
 
             {showMenu && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-32 rounded-lg bg-white shadow-lg ring-1 ring-black/5">
+              <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-lg bg-white shadow-lg ring-1 ring-black/5">
+                <Link
+                  href="/orders"
+                  className="block rounded-t-lg px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  onClick={() => setShowMenu(false)}
+                >
+                  My Purchases
+                </Link>
                 <Link
                   href="/settings/profile"
-                  className="block rounded-t-lg px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   onClick={() => setShowMenu(false)}
                 >
                   Settings

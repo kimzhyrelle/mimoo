@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { AlertTriangle, Box, MessageSquare, Package, Star, TrendingUp } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import SellerShell from '@/layouts/seller/seller-shell';
 
@@ -59,10 +59,135 @@ const TH = 'text-left text-[0.7rem] font-semibold uppercase tracking-wide text-[
 
 const peso = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+// Real-time stats from SSE
+interface RealtimeStats {
+    timestamp: string;
+    total_stock: number;
+    total_sold: number;
+    total_revenue: number;
+    recent_orders: Array<{
+        order_id: number;
+        order_number: string;
+        product_name: string;
+        quantity: number;
+        total: number;
+        status: string;
+        created_at: string;
+        is_new: boolean;
+    }>;
+    top_products: Array<{
+        id: number;
+        name: string;
+        stock: number;
+        sold: number;
+        status: string;
+    }>;
+    status?: 'connected' | 'closing';
+    error?: string;
+}
+
 export default function SellerDashboard({ auth, seller, stats, recentOrders, topProducts, lowStockItems }: SellerDashboardProps) {
     const [chartPeriod, setChartPeriod] = useState<'daily' | 'monthly' | 'yearly'>('monthly');
+    const [realtimeStats, setRealtimeStats] = useState<RealtimeStats | null>(null);
+    const [isConnected, setIsConnected] = useState(false);
+    const [connectionFailed, setConnectionFailed] = useState(false);
+    const eventSourceRef = useRef<EventSource | null>(null);
     
     const storeName = seller?.store_name || seller?.business_name || auth.user.name;
+
+    // Setup SSE connection for real-time updates
+    useEffect(() => {
+        let reconnectTimeout: NodeJS.Timeout;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+        const reconnectDelay = 3000; // 3 seconds
+        
+        const connect = () => {
+            console.log(`🔌 Connecting to SSE... (attempt ${reconnectAttempts + 1})`);
+            
+            // Connect to SSE stream
+            const eventSource = new EventSource('/api/seller/dashboard/stream');
+            eventSourceRef.current = eventSource;
+
+            eventSource.onopen = () => {
+                console.log('✅ Real-time dashboard connected');
+                setIsConnected(true);
+                reconnectAttempts = 0; // Reset counter on successful connection
+            };
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const data: RealtimeStats = JSON.parse(event.data);
+                    
+                    // Handle status messages
+                    if ('status' in data) {
+                        if (data.status === 'connected') {
+                            console.log('📡 SSE handshake successful');
+                        } else if (data.status === 'closing') {
+                            console.log('👋 SSE stream closing normally');
+                        }
+                        return;
+                    }
+                    
+                    // Handle error messages
+                    if ('error' in data) {
+                        console.warn('⚠️ SSE error event:', data.error);
+                        return;
+                    }
+                    
+                    // Update with real data
+                    setRealtimeStats(data);
+                    console.log('📊 Dashboard updated:', data.timestamp);
+                } catch (error) {
+                    console.error('Failed to parse SSE data:', error);
+                }
+            };
+
+            eventSource.onerror = (error) => {
+                console.error('❌ SSE connection error:', error);
+                setIsConnected(false);
+                eventSource.close();
+                
+                // Attempt to reconnect with backoff
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    reconnectAttempts++;
+                    const delay = reconnectDelay * reconnectAttempts; // Progressive backoff
+                    console.log(`🔄 Reconnecting in ${delay / 1000}s... (${reconnectAttempts}/${maxReconnectAttempts})`);
+                    
+                    reconnectTimeout = setTimeout(() => {
+                        connect();
+                    }, delay);
+                } else {
+                    console.error('❌ Max reconnection attempts reached. Dashboard will use static data.');
+                    setConnectionFailed(true);
+                }
+            };
+        };
+        
+        // Initial connection
+        connect();
+
+        // Cleanup on unmount
+        return () => {
+            console.log('🔌 Closing SSE connection');
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+            }
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
+            }
+        };
+    }, []);
+
+    // Use real-time stats if available, otherwise fall back to initial props
+    const displayStats = {
+        total_sales: realtimeStats?.total_revenue ?? stats.total_sales,
+        total_sold: realtimeStats?.total_sold ?? 0,
+        total_stock: realtimeStats?.total_stock ?? 0,
+    };
+
+    const displayRecentOrders = realtimeStats?.recent_orders ?? recentOrders;
+    const displayTopProducts = realtimeStats?.top_products ?? [];
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -105,9 +230,33 @@ export default function SellerDashboard({ auth, seller, stats, recentOrders, top
 
             {/* Store Header */}
             <div className="mb-6">
-                <p className="text-[0.76rem] font-semibold text-[#4B2E7E] uppercase tracking-wider mb-1" style={fontPoppins}>Welcome back, {auth.user.name}</p>
-                <h1 className="text-[1.8rem] font-semibold leading-tight" style={fontSyne}>{storeName}</h1>
-                <p className="text-sm text-[#6E6570] mt-1">Here is how your store is performing this month.</p>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <p className="text-[0.76rem] font-semibold text-[#4B2E7E] uppercase tracking-wider mb-1" style={fontPoppins}>Welcome back, {auth.user.name}</p>
+                        <h1 className="text-[1.8rem] font-semibold leading-tight" style={fontSyne}>{storeName}</h1>
+                        <p className="text-sm text-[#6E6570] mt-1">Here is how your store is performing this month.</p>
+                    </div>
+                    {/* Real-time connection indicator */}
+                    {!connectionFailed ? (
+                        <div className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full transition-all ${
+                            isConnected 
+                                ? 'bg-green-50 text-green-700 border border-green-200' 
+                                : 'bg-yellow-50 text-yellow-700 border border-yellow-200 animate-pulse'
+                        }`}>
+                            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-yellow-500'}`}></span>
+                            {isConnected ? 'Live' : 'Connecting...'}
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 transition-all"
+                            title="Click to retry live updates"
+                        >
+                            <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                            Offline • Click to retry
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Stats Row */}
@@ -121,7 +270,7 @@ export default function SellerDashboard({ auth, seller, stats, recentOrders, top
                             <span>Total Sales</span>
                         </div>
                         <div className="flex items-end gap-2">
-                            <span className="text-[1.7rem] font-extrabold leading-none" style={fontPoppins}>{peso(stats.total_sales)}</span>
+                            <span className="text-[1.7rem] font-extrabold leading-none" style={fontPoppins}>{peso(displayStats.total_sales)}</span>
                             <span className="text-xs font-extrabold bg-white/20 px-2 py-1 rounded-full">
                                 {stats.sales_growth >= 0 ? '▲' : '▼'} {Math.abs(stats.sales_growth).toFixed(1)}%
                             </span>
@@ -133,20 +282,20 @@ export default function SellerDashboard({ auth, seller, stats, recentOrders, top
                     <div className="bg-white rounded-xl p-5 border-2 border-[#E4EEF3] border-l-[3px] border-l-[#2f6f8f]">
                         <div className="flex items-center gap-2 text-sm font-semibold text-[#6E6570] mb-3" style={fontSyne}>
                             <Box className="w-4 h-4 text-[#2f6f8f]" />
-                            <span>Orders</span>
+                            <span>Total Sold</span>
                         </div>
-                        <div className="text-[1.7rem] font-extrabold leading-none" style={fontPoppins}>{stats.total_orders.toLocaleString()}</div>
-                        <p className="text-[0.76rem] text-[#6E6570] mt-2">Completed & in progress</p>
+                        <div className="text-[1.7rem] font-extrabold leading-none" style={fontPoppins}>{displayStats.total_sold.toLocaleString()}</div>
+                        <p className="text-[0.76rem] text-[#6E6570] mt-2">Units sold (all time)</p>
                     </div>
 
-                    {/* Pending Orders */}
+                    {/* Stock */}
                     <div className="bg-white rounded-xl p-5 border-2 border-[#F7ECD6] border-l-[3px] border-l-[#a9752b]">
                         <div className="flex items-center gap-2 text-sm font-semibold text-[#6E6570] mb-3" style={fontSyne}>
                             <Package className="w-4 h-4 text-[#a9752b]" />
-                            <span>Pending Orders</span>
+                            <span>Total Stock</span>
                         </div>
-                        <div className="text-[1.7rem] font-extrabold leading-none" style={fontPoppins}>{stats.pending_orders}</div>
-                        <p className="text-[0.76rem] text-[#6E6570] mt-2">Need packing today</p>
+                        <div className="text-[1.7rem] font-extrabold leading-none" style={fontPoppins}>{displayStats.total_stock.toLocaleString()}</div>
+                        <p className="text-[0.76rem] text-[#6E6570] mt-2">Current inventory</p>
                     </div>
 
                     {/* Store Rating */}
@@ -348,24 +497,29 @@ export default function SellerDashboard({ auth, seller, stats, recentOrders, top
                         <thead>
                             <tr>
                                 <th className={TH} style={fontPoppins}>Order</th>
-                                <th className={TH} style={fontPoppins}>Buyer</th>
-                                <th className={TH} style={fontPoppins}>Item</th>
+                                <th className={TH} style={fontPoppins}>Product</th>
+                                <th className={TH} style={fontPoppins}>Quantity</th>
                                 <th className={TH} style={fontPoppins}>Total</th>
                                 <th className={TH} style={fontPoppins}>Status</th>
                                 <th className={TH} style={fontPoppins}>Date</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {recentOrders.length > 0 ? recentOrders.map((order) => (
-                                <tr key={order.id}>
-                                    <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)] font-bold" style={fontPoppins}>{order.id}</td>
-                                    <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)] text-[#6E6570] text-sm">{order.buyer_name}</td>
-                                    <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)] text-[#6E6570] text-sm">{order.item}</td>
+                            {displayRecentOrders.length > 0 ? displayRecentOrders.map((order: any) => (
+                                <tr key={order.order_id || order.id} className={order.is_new ? 'bg-green-50' : ''}>
+                                    <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)] font-bold" style={fontPoppins}>
+                                        {order.order_number || order.id}
+                                        {order.is_new && (
+                                            <span className="ml-2 text-[0.65rem] bg-green-500 text-white px-2 py-0.5 rounded-full font-extrabold">NEW</span>
+                                        )}
+                                    </td>
+                                    <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)] text-[#6E6570] text-sm">{order.product_name || order.item}</td>
+                                    <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)] text-[#6E6570] text-sm">{order.quantity || 1}</td>
                                     <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)]" style={fontPoppins}>{peso(order.total)}</td>
                                     <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)]">
                                         <span className={`text-xs font-bold uppercase tracking-wide ${getStatusColor(order.status)}`} style={fontPoppins}>{order.status}</span>
                                     </td>
-                                    <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)] text-[#6E6570] text-sm" style={fontPoppins}>{order.date}</td>
+                                    <td className="py-3 border-b border-[color-mix(in_srgb,#B9A6DE_44%,white)] text-[#6E6570] text-sm" style={fontPoppins}>{order.created_at || order.date}</td>
                                 </tr>
                             )) : (
                                 <tr>
