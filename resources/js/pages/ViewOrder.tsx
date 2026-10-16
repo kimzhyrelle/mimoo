@@ -174,6 +174,9 @@ function Header({
 }) {
   const [query, setQuery] = useState("");
   const [showMenu, setShowMenu] = useState(false);
+  
+  // Detect if user is logged in based on onLogout being provided
+  const isLoggedIn = !!onLogout;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -188,42 +191,61 @@ function Header({
       <div className="mx-auto max-w-6xl px-4">
         <div className="flex h-7 items-center justify-end text-[10px] sm:text-[11px]">
           <div className="relative">
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="flex items-center gap-1.5 text-white/90 transition-colors hover:text-white"
-            >
-              <span className="h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full bg-neutral-200">
-                {avatarUrl && <img src={avatarUrl} alt="" className="h-full w-full object-cover" />}
-              </span>
-              <span className="max-w-24 truncate">{username}</span>
-            </button>
-
-            {showMenu && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-lg bg-white shadow-lg ring-1 ring-black/5">
-                <Link
-                  href="/orders"
-                  className="block rounded-t-lg px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  onClick={() => setShowMenu(false)}
-                >
-                  My Purchases
-                </Link>
-                <Link
-                  href="/settings/profile"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  onClick={() => setShowMenu(false)}
-                >
-                  Settings
-                </Link>
+            {isLoggedIn ? (
+              <>
                 <button
-                  onClick={() => {
-                    setShowMenu(false);
-                    onLogout?.();
-                  }}
-                  className="flex w-full items-center gap-2 rounded-b-lg px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50"
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="flex items-center gap-1.5 text-white/90 transition-colors hover:text-white"
                 >
-                  <LogOut className="h-3.5 w-3.5" />
-                  Logout
+                  <span className="h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full bg-neutral-200">
+                    {avatarUrl && <img src={avatarUrl} alt="" className="h-full w-full object-cover" />}
+                  </span>
+                  <span className="max-w-24 truncate">{username}</span>
                 </button>
+
+                {showMenu && (
+                  <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-lg bg-white shadow-lg ring-1 ring-black/5">
+                    <Link
+                      href="/orders"
+                      className="block rounded-t-lg px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      onClick={() => setShowMenu(false)}
+                    >
+                      My Purchases
+                    </Link>
+                    <Link
+                      href="/settings/profile"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      onClick={() => setShowMenu(false)}
+                    >
+                      Settings
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        onLogout?.();
+                      }}
+                      className="flex w-full items-center gap-2 rounded-b-lg px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/login"
+                  className="px-3 py-1 text-[11px] font-medium text-white/90 transition-colors hover:text-white"
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/register"
+                  className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-medium text-white transition-colors hover:bg-white/20"
+                >
+                  Sign Up
+                </Link>
               </div>
             )}
           </div>

@@ -90,38 +90,57 @@ export function BuyerHeader({
         {/* Utility row: account top-right */}
         <div className="flex h-7 items-center justify-end text-[10px] sm:text-[11px]">
           <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => isLoggedIn ? setShowMenu(!showMenu) : onGuestAction?.()}
-              className="flex items-center gap-1.5 text-white/90 transition-colors hover:text-white"
-            >
-              <span className="h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full bg-neutral-200" />
-              <span className="max-w-24 truncate">{username}</span>
-            </button>
-
-            {showMenu && isLoggedIn && (
-              <div className="absolute right-0 top-full mt-1 w-36 rounded-lg bg-white shadow-lg ring-1 ring-black/5 z-50">
-                <Link
-                  href="/orders"
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
-                  onClick={() => setShowMenu(false)}
-                >
-                  <Package className="h-3.5 w-3.5" />
-                  My Purchases
-                </Link>
-                <Link
-                  href="/settings/profile"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  onClick={() => setShowMenu(false)}
-                >
-                  Settings
-                </Link>
+            {isLoggedIn ? (
+              <>
                 <button
-                  onClick={() => { setShowMenu(false); onLogout?.(); }}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 rounded-b-lg"
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="flex items-center gap-1.5 text-white/90 transition-colors hover:text-white"
                 >
-                  <LogOut className="h-3.5 w-3.5" />
-                  Logout
+                  <span className="h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full bg-neutral-200" />
+                  <span className="max-w-24 truncate">{username}</span>
                 </button>
+
+                {showMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-36 rounded-lg bg-white shadow-lg ring-1 ring-black/5 z-50">
+                    <Link
+                      href="/orders"
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
+                      onClick={() => setShowMenu(false)}
+                    >
+                      <Package className="h-3.5 w-3.5" />
+                      My Purchases
+                    </Link>
+                    <Link
+                      href="/settings/profile"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      onClick={() => setShowMenu(false)}
+                    >
+                      Settings
+                    </Link>
+                    <button
+                      onClick={() => { setShowMenu(false); onLogout?.(); }}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 rounded-b-lg"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/login"
+                  className="px-3 py-1 text-[11px] font-medium text-white/90 transition-colors hover:text-white"
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/register"
+                  className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-medium text-white transition-colors hover:bg-white/20"
+                >
+                  Sign Up
+                </Link>
               </div>
             )}
           </div>

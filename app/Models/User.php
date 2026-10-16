@@ -24,7 +24,9 @@ use Illuminate\Support\Carbon;
  * @property string|null $contact_number
  * @property string|null $birthday
  * @property string      $account_type       buyer|seller|logistics
+ * @property string|null $region
  * @property string|null $province
+ * @property string|null $district           NCR only: 1st-4th District
  * @property string|null $municipality_city
  * @property string|null $barangay
  * @property string|null $street_address
@@ -33,6 +35,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $line_of_business
  * @property string|null $business_permit    stored file path
  * @property string      $status             pending|approved|disapproved
+ * @property string      $verification_status unverified|verified
  * @property Carbon|null $approved_at
  * @property Carbon|null $email_verified_at
  * @property string      $password
@@ -51,7 +54,9 @@ use Illuminate\Support\Carbon;
     'contact_number',
     'birthday',
     'account_type',
+    'region',
     'province',
+    'district',
     'municipality_city',
     'barangay',
     'street_address',
@@ -60,6 +65,7 @@ use Illuminate\Support\Carbon;
     'line_of_business',
     'business_permit',
     'status',
+    'verification_status',
     'approved_at',
     'password',
 ])]

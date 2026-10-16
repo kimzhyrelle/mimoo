@@ -30,7 +30,8 @@ return new class extends Migration
             $table->enum('account_type', ['buyer', 'seller'])->default('buyer')->after('birthday');
 
             // Address
-            $table->string('province')->nullable()->after('account_type');
+            $table->string('region')->nullable()->after('account_type');
+            $table->string('province')->nullable()->after('region');
             $table->string('municipality_city')->nullable()->after('province');
             $table->string('barangay')->nullable()->after('municipality_city');
             $table->text('street_address')->nullable()->after('barangay');
@@ -56,7 +57,7 @@ return new class extends Migration
             $table->dropColumn([
                 'first_name', 'last_name', 'middle_initial', 'sex',
                 'contact_number', 'birthday', 'account_type',
-                'province', 'municipality_city', 'barangay', 'street_address',
+                'region', 'province', 'municipality_city', 'barangay', 'street_address',
                 'id_document', 'business_name', 'line_of_business', 'business_permit',
                 'status', 'approved_at',
             ]);

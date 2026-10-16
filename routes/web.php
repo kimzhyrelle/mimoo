@@ -168,12 +168,39 @@ Route::get('/register/pending', function () {
     return Inertia::render('register-pending');
 })->name('register.pending');
 
+// Email verification routes (OTP-based)
+Route::get('/verify-email', [\App\Http\Controllers\Auth\EmailVerificationController::class, 'showVerification'])
+    ->name('otp.show');
+Route::post('/verify-email', [\App\Http\Controllers\Auth\EmailVerificationController::class, 'verifyOtp'])
+    ->name('otp.verify');
+Route::post('/verify-email/resend', [\App\Http\Controllers\Auth\EmailVerificationController::class, 'resendOtp'])
+    ->name('otp.resend');
+
+// Privacy Policy page
+Route::get('/privacy-policy', function () {
+    return Inertia::render('PrivacyPolicy');
+})->name('privacy.policy');
+
+// Terms page (assuming you already have this)
+Route::get('/terms', function () {
+    return Inertia::render('Terms');
+})->name('terms');
+
 Route::get('/homepage', function () {
-    // Fetch active products for buyers
+    // Fetch top-selling products from the last 7 days
     $products = \App\Models\Product::with('seller:id,business_name,name')
         ->where('status', 'active')
+        ->withCount(['orderItems as total_sold' => function ($query) {
+            $query->selectRaw('COALESCE(SUM(quantity), 0)')
+                ->whereHas('order', function ($q) {
+                    $q->where('status', '!=', 'cancelled')
+                        ->where('status', '!=', 'failed')
+                        ->where('created_at', '>=', now()->subDays(7));
+                });
+        }])
+        ->orderBy('total_sold', 'desc')
         ->orderBy('created_at', 'desc')
-        ->take(20) // Limit to 20 products for now
+        ->take(20) // Top 20 products
         ->get()
         ->map(function ($product) {
             return [
@@ -188,6 +215,7 @@ Route::get('/homepage', function () {
                 'is_in_stock' => $product->stock > 0,
                 'image' => $product->main_image,
                 'seller_name' => $product->seller->business_name ?? $product->seller->name,
+                'total_sold' => $product->total_sold ?? 0,
             ];
         })->toArray();
     
@@ -196,16 +224,16 @@ Route::get('/homepage', function () {
     ]);
 })->name('homepage');
 
-Route::get('/cart', function () {
-    return Inertia::render('Cart');
-})->name('cart');
-
 Route::get('/messages', function () {
     return view('messages');
 })->middleware(['auth', 'approved'])->name('messages');
 
 // Buyer checkout and order routes
 Route::middleware(['auth', 'verified', 'approved'])->group(function () {
+    Route::get('/cart', function () {
+        return Inertia::render('Cart');
+    })->name('cart');
+    
     Route::get('/checkout', [\App\Http\Controllers\OrderController::class, 'checkout'])->name('checkout');
     Route::get('/orders', [\App\Http\Controllers\OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/success', [\App\Http\Controllers\OrderController::class, 'success'])->name('orders.success');

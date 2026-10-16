@@ -1,6 +1,15 @@
 import { Link, useForm } from '@inertiajs/react';
 import { FormEvent, ReactNode, useEffect, useRef, useState } from 'react';
 import StepProgress from '../components/registration/StepProgress';
+import { 
+    validateName, 
+    validatePassword, 
+    validateMobile, 
+    normalizeMobile,
+    validateAndTrimEmail,
+    validateAge,
+    calculateAge
+} from '../utils/validators';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
 const fontCalibri = { fontFamily: 'Calibri, sans-serif' };
@@ -11,6 +20,15 @@ const TOTAL_STEPS = 4;
 const MAX_FILE_MB = 5;
 const PH_MOBILE_RE = /^09\d{9}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const NCR_NAME = "National Capital Region (NCR)";
+
+// NCR Districts
+const NCR_DISTRICTS = [
+    '1st District (Manila)',
+    '2nd District (Marikina, Pasig, Quezon City - East)',
+    '3rd District (Caloocan, Malabon, Navotas, Valenzuela)',
+    '4th District (Las Piñas, Muntinlupa, Parañaque, Pasay, Taguig)',
+];
 
 const SIDEBAR_STEPS = [
     'Add your name, contact info and birthday',
@@ -20,6 +38,7 @@ const SIDEBAR_STEPS = [
 ];
 
 // PSGC API Types
+interface Region { code: string; name: string; }
 interface Province { code: string; name: string; regionCode: string }
 interface CityMunicipality { code: string; name: string; provinceCode: string }
 interface Barangay { code: string; name: string; cityCode: string }
@@ -33,53 +52,64 @@ type FormShape = {
     contact_number: string;
     birthday: string;
     account_type: string;
+    region: string;
     province: string;
+    district: string; // NCR only: 1st-4th District
     municipality_city: string;
     barangay: string;
     street_address: string;
     id_document: File | null;
     password: string;
     password_confirmation: string;
+    terms_accepted: boolean;
 };
 type FieldName = keyof FormShape;
 type Errs = Partial<Record<FieldName, string>>;
 
 const FIELD_STEP: Partial<Record<FieldName, number>> = {
     first_name: 1, last_name: 1, sex: 1, email: 1, contact_number: 1, birthday: 1,
-    province: 2, municipality_city: 2, barangay: 2, street_address: 2,
+    region: 2, province: 2, district: 2, municipality_city: 2, barangay: 2, street_address: 2,
     id_document: 3,
-    password: 4, password_confirmation: 4,
+    password: 4, password_confirmation: 4, terms_accepted: 4,
 };
 const FIELD_LABEL: Partial<Record<FieldName, string>> = {
     first_name: 'First name', last_name: 'Last name', sex: 'Sex', email: 'Email address',
-    contact_number: 'Contact number', birthday: 'Birthday', province: 'Province',
-    municipality_city: 'Municipality / City', barangay: 'Barangay', street_address: 'Street & house number',
+    contact_number: 'Contact number', birthday: 'Birthday', region: 'Region', province: 'Province',
+    district: 'District', municipality_city: 'Municipality / City', barangay: 'Barangay', street_address: 'Street & house number',
     id_document: 'Valid ID', password: 'Password', password_confirmation: 'Confirm password',
+    terms_accepted: 'Terms and Privacy Policy',
 };
 
 function calcAge(birthday: string): number | null {
-    if (!birthday) return null;
-    const dob = new Date(birthday + 'T00:00:00');
-    const today = new Date();
-    if (isNaN(dob.getTime()) || dob > today) return null;
-    let age = today.getFullYear() - dob.getFullYear();
-    const m = today.getMonth() - dob.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
-    return age;
+    return calculateAge(birthday);
 }
 
 function validate(step: number, d: FormShape): Errs {
     const e: Errs = {};
     if (step === 1) {
-        if (!d.first_name.trim()) e.first_name = 'Enter your first name.';
-        if (!d.last_name.trim()) e.last_name = 'Enter your last name.';
+        // Use shared validators
+        const firstNameValidation = validateName(d.first_name, 'First name');
+        if (!firstNameValidation.valid) e.first_name = firstNameValidation.error;
+        
+        const lastNameValidation = validateName(d.last_name, 'Last name');
+        if (!lastNameValidation.valid) e.last_name = lastNameValidation.error;
+        
         if (!d.sex) e.sex = 'Select your sex.';
-        if (!EMAIL_RE.test(d.email.trim())) e.email = 'Enter a valid email address.';
-        if (!PH_MOBILE_RE.test(d.contact_number.trim())) e.contact_number = 'Enter a valid PH mobile number (09XXXXXXXXX).';
-        if (calcAge(d.birthday) === null) e.birthday = 'Enter a valid past date of birth.';
+        
+        const emailValidation = validateAndTrimEmail(d.email);
+        if (!emailValidation.valid) e.email = emailValidation.error;
+        
+        const mobileValidation = validateMobile(d.contact_number);
+        if (!mobileValidation.valid) e.contact_number = mobileValidation.error;
+        
+        const ageValidation = validateAge(d.birthday);
+        if (!ageValidation.valid) e.birthday = ageValidation.error;
     }
     if (step === 2) {
-        if (!d.province) e.province = 'Select a province.';
+        const isNCR = d.region === NCR_NAME;
+        if (!d.region) e.region = 'Select a region.';
+        if (!isNCR && !d.province) e.province = 'Select a province.';
+        if (isNCR && !d.district) e.district = 'Select a district.';
         if (!d.municipality_city) e.municipality_city = 'Select a municipality or city.';
         if (!d.barangay) e.barangay = 'Select a barangay.';
         if (!d.street_address.trim()) e.street_address = 'Enter your street and house number.';
@@ -91,9 +121,13 @@ function validate(step: number, d: FormShape): Errs {
         else if (f.size > MAX_FILE_MB * 1024 * 1024) e.id_document = `File is too large. Max ${MAX_FILE_MB}MB.`;
     }
     if (step === 4) {
-        if (d.password.length < 8) e.password = 'Use at least 8 characters.';
+        const passwordValidation = validatePassword(d.password);
+        if (!passwordValidation.valid) e.password = passwordValidation.error;
+        
         if (!d.password_confirmation || d.password_confirmation !== d.password)
             e.password_confirmation = "Passwords don't match.";
+        
+        if (!d.terms_accepted) e.terms_accepted = 'You must accept the Terms and Privacy Policy.';
     }
     return e;
 }
@@ -127,8 +161,8 @@ function Field({
 }
 
 function PasswordInput({
-    id, value, onChange, error, autoComplete,
-}: { id: string; value: string; onChange: (v: string) => void; error?: string; autoComplete: string }) {
+    id, value, onChange, onBlur, error, autoComplete,
+}: { id: string; value: string; onChange: (v: string) => void; onBlur?: () => void; error?: string; autoComplete: string }) {
     const [show, setShow] = useState(false);
     return (
         <div className="relative">
@@ -137,6 +171,7 @@ function PasswordInput({
                 type={show ? 'text' : 'password'}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
+                onBlur={onBlur}
                 autoComplete={autoComplete}
                 aria-invalid={!!error}
                 aria-describedby={error ? `${id}-err` : undefined}
@@ -171,15 +206,15 @@ function PasswordInput({
 export default function Registration() {
     const [step, setStep] = useState(1);
     const [clientErrors, setClientErrors] = useState<Errs>({});
-    const [submitted, setSubmitted] = useState(false);
     const headingRef = useRef<HTMLHeadingElement>(null);
     const fileRef = useRef<HTMLInputElement>(null);
 
     // PSGC API states
+    const [regions, setRegions] = useState<Region[]>([]);
     const [provinces, setProvinces] = useState<Province[]>([]);
     const [cities, setCities] = useState<CityMunicipality[]>([]);
     const [barangays, setBarangays] = useState<Barangay[]>([]);
-    const [loading, setLoading] = useState({ provinces: false, cities: false, barangays: false });
+    const [loading, setLoading] = useState({ regions: false, provinces: false, cities: false, barangays: false });
 
     const { data, setData, post, processing, errors } = useForm<FormShape>({
         first_name: '',
@@ -190,13 +225,16 @@ export default function Registration() {
         contact_number: '',
         birthday: '',
         account_type: 'buyer',
+        region: '',
         province: '',
+        district: '',
         municipality_city: '',
         barangay: '',
         street_address: '',
         id_document: null,
         password: '',
         password_confirmation: '',
+        terms_accepted: false,
     });
 
     const age = calcAge(data.birthday);
@@ -204,21 +242,58 @@ export default function Registration() {
     const err = (f: FieldName) => allErrors[f];
     const summary = (Object.keys(clientErrors) as FieldName[]).filter((f) => clientErrors[f]);
 
-    // Load provinces on mount
+    // Check if selected region is NCR
+    const isNCR = data.region === NCR_NAME;
+
+    // Load regions on mount
     useEffect(() => {
-        setLoading((prev) => ({ ...prev, provinces: true }));
-        fetch('https://psgc.gitlab.io/api/provinces/')
+        setLoading((prev) => ({ ...prev, regions: true }));
+        fetch('https://psgc.gitlab.io/api/regions/')
             .then((res) => res.json())
-            .then((list: Province[]) => {
-                setProvinces(list.sort((a, b) => a.name.localeCompare(b.name)));
-                setLoading((prev) => ({ ...prev, provinces: false }));
+            .then((list: Region[]) => {
+                setRegions(list.sort((a, b) => a.name.localeCompare(b.name)));
+                setLoading((prev) => ({ ...prev, regions: false }));
             })
-            .catch(() => setLoading((prev) => ({ ...prev, provinces: false })));
+            .catch(() => setLoading((prev) => ({ ...prev, regions: false })));
     }, []);
 
-    // Load cities/municipalities when province changes
+    // Load provinces when region changes (skip for NCR)
     useEffect(() => {
-        if (data.province) {
+        if (data.region && !isNCR) {
+            const selected = regions.find((r) => r.name === data.region);
+            if (selected) {
+                setLoading((prev) => ({ ...prev, provinces: true }));
+                fetch(`https://psgc.gitlab.io/api/regions/${selected.code}/provinces/`)
+                    .then((res) => res.json())
+                    .then((list: Province[]) => {
+                        setProvinces(list.sort((a, b) => a.name.localeCompare(b.name)));
+                        setLoading((prev) => ({ ...prev, provinces: false }));
+                    })
+                    .catch(() => setLoading((prev) => ({ ...prev, provinces: false })));
+            }
+        } else if (isNCR) {
+            // For NCR, load cities directly from region and set province to N/A
+            const selected = regions.find((r) => r.name === data.region);
+            if (selected) {
+                setLoading((prev) => ({ ...prev, cities: true }));
+                fetch(`https://psgc.gitlab.io/api/regions/${selected.code}/cities-municipalities/`)
+                    .then((res) => res.json())
+                    .then((list: CityMunicipality[]) => {
+                        setCities(list.sort((a, b) => a.name.localeCompare(b.name)));
+                        setLoading((prev) => ({ ...prev, cities: false }));
+                    })
+                    .catch(() => setLoading((prev) => ({ ...prev, cities: false })));
+            }
+            setProvinces([]);
+            setData('province', 'N/A'); // Set province to N/A for NCR
+        } else {
+            setProvinces([]);
+        }
+    }, [data.region, regions]);
+
+    // Load cities/municipalities when province changes (skip for NCR since already loaded)
+    useEffect(() => {
+        if (data.province && !isNCR) {
             const selected = provinces.find((p) => p.name === data.province);
             if (selected) {
                 setLoading((prev) => ({ ...prev, cities: true }));
@@ -230,7 +305,7 @@ export default function Registration() {
                     })
                     .catch(() => setLoading((prev) => ({ ...prev, cities: false })));
             }
-        } else {
+        } else if (!isNCR) {
             setCities([]);
         }
     }, [data.province, provinces]);
@@ -265,6 +340,48 @@ export default function Registration() {
         if (clientErrors[key]) setClientErrors((c) => ({ ...c, [key]: undefined }));
     };
 
+    // Inline validation handlers
+    const handleBlur = (field: FieldName) => {
+        const e: Errs = {};
+        
+        switch (field) {
+            case 'first_name':
+                const firstValidation = validateName(data.first_name, 'First name');
+                if (!firstValidation.valid) e.first_name = firstValidation.error;
+                break;
+            case 'last_name':
+                const lastValidation = validateName(data.last_name, 'Last name');
+                if (!lastValidation.valid) e.last_name = lastValidation.error;
+                break;
+            case 'email':
+                const emailValidation = validateAndTrimEmail(data.email);
+                if (!emailValidation.valid) e.email = emailValidation.error;
+                else {
+                    // Trim and update if valid
+                    setData('email', emailValidation.value);
+                }
+                break;
+            case 'contact_number':
+                const mobileValidation = validateMobile(data.contact_number);
+                if (!mobileValidation.valid) e.contact_number = mobileValidation.error;
+                break;
+            case 'birthday':
+                const ageValidation = validateAge(data.birthday);
+                if (!ageValidation.valid) e.birthday = ageValidation.error;
+                break;
+            case 'password':
+                const passwordValidation = validatePassword(data.password);
+                if (!passwordValidation.valid) e.password = passwordValidation.error;
+                break;
+            case 'password_confirmation':
+                if (!data.password_confirmation || data.password_confirmation !== data.password)
+                    e.password_confirmation = "Passwords don't match.";
+                break;
+        }
+        
+        setClientErrors((prev) => ({ ...prev, ...e }));
+    };
+
     const goTo = (n: number) => {
         setStep(n);
         setTimeout(() => headingRef.current?.focus(), 0);
@@ -278,7 +395,19 @@ export default function Registration() {
         }
         setClientErrors({});
         if (step < TOTAL_STEPS) goTo(step + 1);
-        else post('/register', { forceFormData: true, onSuccess: () => setSubmitted(true) });
+        else {
+            // Normalize mobile before submitting
+            const normalizedData = {
+                ...data,
+                contact_number: normalizeMobile(data.contact_number),
+                email: data.email.trim(),
+            };
+            setData(normalizedData as any);
+            post('/register', { 
+                forceFormData: true,
+                preserveScroll: true,
+            });
+        }
     };
 
     const goBack = () => {
@@ -464,12 +593,26 @@ export default function Registration() {
                         {step === 1 && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <Field label="First name" htmlFor="first_name" required error={err('first_name')}>
-                                    <input id="first_name" value={data.first_name} onChange={(e) => set('first_name', e.target.value)}
-                                        autoComplete="given-name" aria-invalid={!!err('first_name')} className={inputCls(err('first_name'))} />
+                                    <input 
+                                        id="first_name" 
+                                        value={data.first_name} 
+                                        onChange={(e) => set('first_name', e.target.value)}
+                                        onBlur={() => handleBlur('first_name')}
+                                        autoComplete="given-name" 
+                                        aria-invalid={!!err('first_name')} 
+                                        className={inputCls(err('first_name'))} 
+                                    />
                                 </Field>
                                 <Field label="Last name" htmlFor="last_name" required error={err('last_name')}>
-                                    <input id="last_name" value={data.last_name} onChange={(e) => set('last_name', e.target.value)}
-                                        autoComplete="family-name" aria-invalid={!!err('last_name')} className={inputCls(err('last_name'))} />
+                                    <input 
+                                        id="last_name" 
+                                        value={data.last_name} 
+                                        onChange={(e) => set('last_name', e.target.value)}
+                                        onBlur={() => handleBlur('last_name')}
+                                        autoComplete="family-name" 
+                                        aria-invalid={!!err('last_name')} 
+                                        className={inputCls(err('last_name'))} 
+                                    />
                                 </Field>
                                 <Field label="Middle initial" htmlFor="middle_initial">
                                     <input id="middle_initial" maxLength={2} placeholder="e.g. D" value={data.middle_initial}
@@ -492,20 +635,46 @@ export default function Registration() {
                                     {err('sex') && <span className="text-xs font-medium text-red-600" role="alert">{err('sex')}</span>}
                                 </div>
                                 <Field label="Email address" htmlFor="email" required error={err('email')} className="sm:col-span-2">
-                                    <input id="email" type="email" placeholder="you@example.com" value={data.email}
-                                        onChange={(e) => set('email', e.target.value)} autoComplete="email"
-                                        aria-invalid={!!err('email')} className={inputCls(err('email'))} />
+                                    <input 
+                                        id="email" 
+                                        type="email" 
+                                        placeholder="you@example.com" 
+                                        value={data.email}
+                                        onChange={(e) => set('email', e.target.value)} 
+                                        onBlur={() => handleBlur('email')}
+                                        autoComplete="email"
+                                        aria-invalid={!!err('email')} 
+                                        className={inputCls(err('email'))} 
+                                    />
                                 </Field>
                                 <Field label="Contact number" htmlFor="contact_number" required error={err('contact_number')}
-                                    hint="11-digit mobile number, e.g. 09171234567">
-                                    <input id="contact_number" type="tel" inputMode="numeric" placeholder="09XXXXXXXXX" maxLength={11}
-                                        value={data.contact_number} onChange={(e) => set('contact_number', e.target.value.replace(/\D/g, ''))}
-                                        autoComplete="tel" aria-invalid={!!err('contact_number')} className={inputCls(err('contact_number'))} />
+                                    hint="09XXXXXXXXX or +639XXXXXXXXX">
+                                    <input 
+                                        id="contact_number" 
+                                        type="tel" 
+                                        inputMode="numeric" 
+                                        placeholder="09XXXXXXXXX" 
+                                        maxLength={13}
+                                        value={data.contact_number} 
+                                        onChange={(e) => set('contact_number', e.target.value.replace(/[^\d+]/g, ''))}
+                                        onBlur={() => handleBlur('contact_number')}
+                                        autoComplete="tel" 
+                                        aria-invalid={!!err('contact_number')} 
+                                        className={inputCls(err('contact_number'))} 
+                                    />
                                 </Field>
                                 <Field label="Birthday" htmlFor="birthday" required error={err('birthday')}>
-                                    <input id="birthday" type="date" max={new Date().toISOString().split('T')[0]} value={data.birthday}
-                                        onChange={(e) => set('birthday', e.target.value)} autoComplete="bday"
-                                        aria-invalid={!!err('birthday')} className={inputCls(err('birthday'))} />
+                                    <input 
+                                        id="birthday" 
+                                        type="date" 
+                                        max={new Date().toISOString().split('T')[0]} 
+                                        value={data.birthday}
+                                        onChange={(e) => set('birthday', e.target.value)} 
+                                        onBlur={() => handleBlur('birthday')}
+                                        autoComplete="bday"
+                                        aria-invalid={!!err('birthday')} 
+                                        className={inputCls(err('birthday'))} 
+                                    />
                                 </Field>
                                 <Field label="Age" htmlFor="age" hint="Calculated from your birthday">
                                     <input id="age" readOnly placeholder="Auto-filled" value={age !== null ? `${age} years old` : ''}
@@ -516,12 +685,38 @@ export default function Registration() {
 
                         {/* STEP 2 */}
                         {step === 2 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <Field label="Region" htmlFor="region" required error={err('region')}>
+                                    <select
+                                        id="region"
+                                        value={data.region}
+                                        disabled={loading.regions}
+                                        aria-invalid={!!err('region')}
+                                        className={`${inputCls(err('region'))} disabled:bg-[#F1EDFB] disabled:text-gray-400`}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            setData({
+                                                ...data,
+                                                region: value,
+                                                // NCR walang province, kaya "N/A" ang laman
+                                                province: value === NCR_NAME ? 'N/A' : '',
+                                                district: '', // Reset district
+                                                municipality_city: '',
+                                                barangay: '',
+                                            });
+                                            setCities([]); // iwas stale na listahan ng cities galing sa ibang region
+                                            setClientErrors((c) => ({ ...c, region: undefined, province: undefined, district: undefined }));
+                                        }}
+                                    >
+                                        <option value="">{loading.regions ? 'Loading regions...' : 'Select region'}</option>
+                                        {regions.map((r) => <option key={r.code} value={r.name}>{r.name}</option>)}
+                                    </select>
+                                </Field>
                                 <Field label="Province" htmlFor="province" required error={err('province')}>
                                     <select
                                         id="province"
                                         value={data.province}
-                                        disabled={loading.provinces}
+                                        disabled={!data.region || loading.provinces || isNCR}
                                         aria-invalid={!!err('province')}
                                         className={`${inputCls(err('province'))} disabled:bg-[#F1EDFB] disabled:text-gray-400`}
                                         onChange={(e) => {
@@ -529,15 +724,41 @@ export default function Registration() {
                                             setClientErrors((c) => ({ ...c, province: undefined }));
                                         }}
                                     >
-                                        <option value="">{loading.provinces ? 'Loading provinces...' : 'Select province'}</option>
-                                        {provinces.map((p) => <option key={p.code} value={p.name}>{p.name}</option>)}
+                                        {isNCR ? (
+                                            <option value="N/A">N/A</option>
+                                        ) : (
+                                            <>
+                                                <option value="">
+                                                    {!data.region ? 'Select region first' : loading.provinces ? 'Loading provinces...' : 'Select province'}
+                                                </option>
+                                                {provinces.map((p) => <option key={p.code} value={p.name}>{p.name}</option>)}
+                                            </>
+                                        )}
                                     </select>
                                 </Field>
+                                {isNCR && (
+                                    <Field label="District" htmlFor="district" required error={err('district')}>
+                                        <select
+                                            id="district"
+                                            value={data.district}
+                                            disabled={!data.region}
+                                            aria-invalid={!!err('district')}
+                                            className={`${inputCls(err('district'))} disabled:bg-[#F1EDFB] disabled:text-gray-400`}
+                                            onChange={(e) => {
+                                                setData({ ...data, district: e.target.value, municipality_city: '', barangay: '' });
+                                                setClientErrors((c) => ({ ...c, district: undefined }));
+                                            }}
+                                        >
+                                            <option value="">{!data.region ? 'Select region first' : 'Select district'}</option>
+                                            {NCR_DISTRICTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                                        </select>
+                                    </Field>
+                                )}
                                 <Field label="Municipality / City" htmlFor="municipality_city" required error={err('municipality_city')}>
                                     <select
                                         id="municipality_city"
                                         value={data.municipality_city}
-                                        disabled={!data.province || loading.cities}
+                                        disabled={isNCR ? (!data.region || loading.cities) : (!data.province || loading.cities)}
                                         aria-invalid={!!err('municipality_city')}
                                         className={`${inputCls(err('municipality_city'))} disabled:bg-[#F1EDFB] disabled:text-gray-400`}
                                         onChange={(e) => {
@@ -546,7 +767,11 @@ export default function Registration() {
                                         }}
                                     >
                                         <option value="">
-                                            {!data.province ? 'Select province first' : loading.cities ? 'Loading cities...' : 'Select municipality or city'}
+                                            {loading.cities
+                                                ? 'Loading cities...'
+                                                : isNCR
+                                                    ? (!data.region ? 'Select region first' : 'Select municipality or city')
+                                                    : (!data.province ? 'Select province first' : 'Select municipality or city')}
                                         </option>
                                         {cities.map((m) => <option key={m.code} value={m.name}>{m.name}</option>)}
                                     </select>
@@ -566,7 +791,7 @@ export default function Registration() {
                                         {barangays.map((b) => <option key={b.code} value={b.name}>{b.name}</option>)}
                                     </select>
                                 </Field>
-                                <Field label="Street & house number" htmlFor="street_address" required error={err('street_address')} className="sm:col-span-3">
+                                <Field label="Street & house number" htmlFor="street_address" required error={err('street_address')} className="sm:col-span-2">
                                     <input id="street_address" placeholder="e.g. 123 Mabini St." value={data.street_address}
                                         onChange={(e) => set('street_address', e.target.value)} autoComplete="street-address"
                                         aria-invalid={!!err('street_address')} className={inputCls(err('street_address'))} />
@@ -618,22 +843,73 @@ export default function Registration() {
                         {step === 4 && (
                             <>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <Field label="Password" htmlFor="password" required error={err('password')} hint="At least 8 characters">
-                                        <PasswordInput id="password" value={data.password} onChange={(v) => set('password', v)}
-                                            error={err('password')} autoComplete="new-password" />
+                                    <Field label="Password" htmlFor="password" required error={err('password')} 
+                                        hint="Min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special character">
+                                        <PasswordInput 
+                                            id="password" 
+                                            value={data.password} 
+                                            onChange={(v) => set('password', v)}
+                                            onBlur={() => handleBlur('password')}
+                                            error={err('password')} 
+                                            autoComplete="new-password" 
+                                        />
                                     </Field>
                                     <Field label="Confirm password" htmlFor="password_confirmation" required error={err('password_confirmation')}>
-                                        <PasswordInput id="password_confirmation" value={data.password_confirmation}
-                                            onChange={(v) => set('password_confirmation', v)} error={err('password_confirmation')}
-                                            autoComplete="new-password" />
+                                        <PasswordInput 
+                                            id="password_confirmation" 
+                                            value={data.password_confirmation}
+                                            onChange={(v) => set('password_confirmation', v)} 
+                                            onBlur={() => handleBlur('password_confirmation')}
+                                            error={err('password_confirmation')}
+                                            autoComplete="new-password" 
+                                        />
                                     </Field>
                                 </div>
+                                
+                                {/* Terms and Privacy Policy Checkbox */}
+                                <div className="mt-5">
+                                    <label className="flex items-start gap-3 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={data.terms_accepted}
+                                            onChange={(e) => set('terms_accepted', e.target.checked)}
+                                            className={`mt-0.5 rounded border-gray-300 text-[#3B1F6B] focus:ring-[#D9CCF2] ${
+                                                err('terms_accepted') ? 'border-red-400' : ''
+                                            }`}
+                                        />
+                                        <span className="text-sm text-gray-700">
+                                            I agree to the{' '}
+                                            <Link 
+                                                href="/terms" 
+                                                target="_blank"
+                                                className="text-[#3B1F6B] font-medium hover:underline"
+                                            >
+                                                Terms of Service
+                                            </Link>
+                                            {' '}and{' '}
+                                            <Link 
+                                                href="/privacy-policy" 
+                                                target="_blank"
+                                                className="text-[#3B1F6B] font-medium hover:underline"
+                                            >
+                                                Privacy Policy
+                                            </Link>
+                                            <span className="text-red-600 ml-1">*</span>
+                                        </span>
+                                    </label>
+                                    {err('terms_accepted') && (
+                                        <span className="text-xs font-medium text-red-600 mt-1 block ml-7" role="alert">
+                                            {err('terms_accepted')}
+                                        </span>
+                                    )}
+                                </div>
+                                
                                 <div className="mt-6 flex gap-3 rounded-xl bg-[#F1EDFB] p-4 text-sm text-gray-800">
                                     <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 shrink-0 text-[#7A63AC] mt-0.5" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
                                         <path d="M3 7l9 6 9-6" strokeLinejoin="round" />
                                         <rect x="3" y="5" width="18" height="14" rx="2" />
                                     </svg>
-                                    <p>After submitting, please wait for the administrator's approval. We'll send it to your email.</p>
+                                    <p>After submitting, check your email for a verification code to complete your registration.</p>
                                 </div>
                             </>
                         )}
@@ -657,27 +933,6 @@ export default function Registration() {
                     </form>
                 </div>
             </div>
-
-            {/* Success modal */}
-            {submitted && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#201A33]/55 p-6">
-                    <div role="dialog" aria-modal="true" aria-labelledby="success-heading"
-                        className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
-                        <div className="mx-auto mb-5 w-16 h-16 rounded-full bg-green-50 text-green-700 flex items-center justify-center" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" className="w-8 h-8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                        <h2 id="success-heading" className="text-xl font-bold text-gray-900">Registration submitted</h2>
-                        <p className="mt-2 text-sm text-gray-500">
-                            Please wait for the administrator's approval. We'll email you once your account is reviewed.
-                        </p>
-                        <Link href="/login" className="mt-6 inline-block w-full rounded-xl bg-[#3B1F6B] py-3 font-medium text-white hover:bg-[#2E1854] transition">
-                            Go to log in
-                        </Link>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

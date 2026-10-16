@@ -1,5 +1,5 @@
 import { Link, useForm } from '@inertiajs/react';
-import { FormEvent, ReactNode, useState } from 'react';
+import { FormEvent, ReactNode, useState, useEffect } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
 const fontPoppins = { fontFamily: 'Poppins, sans-serif' };
@@ -92,6 +92,20 @@ export default function SellerLanding() {
         password: '',
         remember: false,
     });
+
+    // Auto-scroll down on page load
+    useEffect(() => {
+        // Smooth scroll to the "Why mimoo" section
+        const scrollTarget = document.getElementById('why');
+        if (scrollTarget) {
+            setTimeout(() => {
+                scrollTarget.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+            }, 300);
+        }
+    }, []);
 
     const submit = (e: FormEvent) => {
         e.preventDefault();

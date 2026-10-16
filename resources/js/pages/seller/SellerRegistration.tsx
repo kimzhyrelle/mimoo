@@ -11,6 +11,15 @@ const TOTAL_STEPS = 4;
 const MAX_FILE_MB = 5;
 const PH_MOBILE_RE = /^09\d{9}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const NCR_NAME = "National Capital Region (NCR)";
+
+// NCR Districts
+const NCR_DISTRICTS = [
+    '1st District (Manila)',
+    '2nd District (Marikina, Pasig, Quezon City - East)',
+    '3rd District (Caloocan, Malabon, Navotas, Valenzuela)',
+    '4th District (Las Piñas, Muntinlupa, Parañaque, Pasay, Taguig)',
+];
 
 const SIDEBAR_STEPS = [
     'Add your name, contact info and birthday',
@@ -31,6 +40,7 @@ const BUSINESS_CATEGORIES = [
 ];
 
 // PSGC API Types
+interface Region { code: string; name: string; }
 interface Province { code: string; name: string; regionCode: string }
 interface CityMunicipality { code: string; name: string; provinceCode: string }
 interface Barangay { code: string; name: string; cityCode: string }
@@ -44,7 +54,9 @@ type FormShape = {
     contact_number: string;
     birthday: string;
     account_type: string;
+    region: string;
     province: string;
+    district: string; // NCR only: 1st-4th District
     municipality_city: string;
     barangay: string;
     street_address: string;
@@ -60,14 +72,14 @@ type Errs = Partial<Record<FieldName, string>>;
 
 const FIELD_STEP: Partial<Record<FieldName, number>> = {
     first_name: 1, last_name: 1, sex: 1, email: 1, contact_number: 1, birthday: 1,
-    province: 2, municipality_city: 2, barangay: 2, street_address: 2,
+    region: 2, province: 2, district: 2, municipality_city: 2, barangay: 2, street_address: 2,
     business_name: 3, line_of_business: 3, business_permit: 3, id_document: 3,
     password: 4, password_confirmation: 4,
 };
 const FIELD_LABEL: Partial<Record<FieldName, string>> = {
     first_name: 'First name', last_name: 'Last name', sex: 'Sex', email: 'Email address',
-    contact_number: 'Contact number', birthday: 'Birthday', province: 'Province',
-    municipality_city: 'Municipality / City', barangay: 'Barangay', street_address: 'Street & house number',
+    contact_number: 'Contact number', birthday: 'Birthday', region: 'Region', province: 'Province',
+    district: 'District', municipality_city: 'Municipality / City', barangay: 'Barangay', street_address: 'Street & house number',
     business_name: 'Business name', line_of_business: 'Line of business', business_permit: 'Business permit',
     id_document: 'Valid ID', password: 'Password', password_confirmation: 'Confirm password',
 };
@@ -101,7 +113,10 @@ function validate(step: number, d: FormShape): Errs {
         if (calcAge(d.birthday) === null) e.birthday = 'Enter a valid past date of birth.';
     }
     if (step === 2) {
-        if (!d.province) e.province = 'Select a province.';
+        const isNCR = d.region === NCR_NAME;
+        if (!d.region) e.region = 'Select a region.';
+        if (!isNCR && !d.province) e.province = 'Select a province.';
+        if (isNCR && !d.district) e.district = 'Select a district.';
         if (!d.municipality_city) e.municipality_city = 'Select a municipality or city.';
         if (!d.barangay) e.barangay = 'Select a barangay.';
         if (!d.street_address.trim()) e.street_address = 'Enter your street and house number.';
@@ -263,10 +278,11 @@ export default function SellerRegistration() {
     const headingRef = useRef<HTMLHeadingElement>(null);
 
     // PSGC API states
+    const [regions, setRegions] = useState<Region[]>([]);
     const [provinces, setProvinces] = useState<Province[]>([]);
     const [cities, setCities] = useState<CityMunicipality[]>([]);
     const [barangays, setBarangays] = useState<Barangay[]>([]);
-    const [loading, setLoading] = useState({ provinces: false, cities: false, barangays: false });
+    const [loading, setLoading] = useState({ regions: false, provinces: false, cities: false, barangays: false });
 
     const { data, setData, post, processing, errors } = useForm<FormShape>({
         first_name: '',
@@ -277,7 +293,9 @@ export default function SellerRegistration() {
         contact_number: '',
         birthday: '',
         account_type: 'seller',
+        region: '',
         province: '',
+        district: '',
         municipality_city: '',
         barangay: '',
         street_address: '',
@@ -294,21 +312,58 @@ export default function SellerRegistration() {
     const err = (f: FieldName) => allErrors[f];
     const summary = (Object.keys(clientErrors) as FieldName[]).filter((f) => clientErrors[f]);
 
-    // Load provinces on mount
+    // Check if selected region is NCR
+    const isNCR = data.region === NCR_NAME;
+
+    // Load regions on mount
     useEffect(() => {
-        setLoading((prev) => ({ ...prev, provinces: true }));
-        fetch('https://psgc.gitlab.io/api/provinces/')
+        setLoading((prev) => ({ ...prev, regions: true }));
+        fetch('https://psgc.gitlab.io/api/regions/')
             .then((res) => res.json())
-            .then((list: Province[]) => {
-                setProvinces(list.sort((a, b) => a.name.localeCompare(b.name)));
-                setLoading((prev) => ({ ...prev, provinces: false }));
+            .then((list: Region[]) => {
+                setRegions(list.sort((a, b) => a.name.localeCompare(b.name)));
+                setLoading((prev) => ({ ...prev, regions: false }));
             })
-            .catch(() => setLoading((prev) => ({ ...prev, provinces: false })));
+            .catch(() => setLoading((prev) => ({ ...prev, regions: false })));
     }, []);
 
-    // Load cities/municipalities when province changes
+    // Load provinces when region changes (skip for NCR)
     useEffect(() => {
-        if (data.province) {
+        if (data.region && !isNCR) {
+            const selected = regions.find((r) => r.name === data.region);
+            if (selected) {
+                setLoading((prev) => ({ ...prev, provinces: true }));
+                fetch(`https://psgc.gitlab.io/api/regions/${selected.code}/provinces/`)
+                    .then((res) => res.json())
+                    .then((list: Province[]) => {
+                        setProvinces(list.sort((a, b) => a.name.localeCompare(b.name)));
+                        setLoading((prev) => ({ ...prev, provinces: false }));
+                    })
+                    .catch(() => setLoading((prev) => ({ ...prev, provinces: false })));
+            }
+        } else if (isNCR) {
+            // For NCR, load cities directly from region
+            const selected = regions.find((r) => r.name === data.region);
+            if (selected) {
+                setLoading((prev) => ({ ...prev, cities: true }));
+                fetch(`https://psgc.gitlab.io/api/regions/${selected.code}/cities-municipalities/`)
+                    .then((res) => res.json())
+                    .then((list: CityMunicipality[]) => {
+                        setCities(list.sort((a, b) => a.name.localeCompare(b.name)));
+                        setLoading((prev) => ({ ...prev, cities: false }));
+                    })
+                    .catch(() => setLoading((prev) => ({ ...prev, cities: false })));
+            }
+            setProvinces([]);
+            setData('province', 'N/A'); // Set province to N/A for NCR
+        } else {
+            setProvinces([]);
+        }
+    }, [data.region, regions]);
+
+    // Load cities/municipalities when province changes (skip for NCR since already loaded)
+    useEffect(() => {
+        if (data.province && !isNCR) {
             const selected = provinces.find((p) => p.name === data.province);
             if (selected) {
                 setLoading((prev) => ({ ...prev, cities: true }));
@@ -320,7 +375,7 @@ export default function SellerRegistration() {
                     })
                     .catch(() => setLoading((prev) => ({ ...prev, cities: false })));
             }
-        } else {
+        } else if (!isNCR) {
             setCities([]);
         }
     }, [data.province, provinces]);
@@ -614,12 +669,37 @@ export default function SellerRegistration() {
 
                         {/* STEP 2 */}
                         {step === 2 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <Field label="Region" htmlFor="region" required error={err('region')}>
+                                    <select
+                                        id="region"
+                                        value={data.region}
+                                        disabled={loading.regions}
+                                        aria-invalid={!!err('region')}
+                                        className={`${inputCls(err('region'))} disabled:bg-[#F1EDFB] disabled:text-gray-400`}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            setData({
+                                                ...data,
+                                                region: value,
+                                                province: value === NCR_NAME ? 'N/A' : '',
+                                                district: '',
+                                                municipality_city: '',
+                                                barangay: ''
+                                            });
+                                            setCities([]);
+                                            setClientErrors((c) => ({ ...c, region: undefined, province: undefined, district: undefined }));
+                                        }}
+                                    >
+                                        <option value="">{loading.regions ? 'Loading regions...' : 'Select region'}</option>
+                                        {regions.map((r) => <option key={r.code} value={r.name}>{r.name}</option>)}
+                                    </select>
+                                </Field>
                                 <Field label="Province" htmlFor="province" required error={err('province')}>
                                     <select
                                         id="province"
                                         value={data.province}
-                                        disabled={loading.provinces}
+                                        disabled={!data.region || loading.provinces || isNCR}
                                         aria-invalid={!!err('province')}
                                         className={`${inputCls(err('province'))} disabled:bg-[#F1EDFB] disabled:text-gray-400`}
                                         onChange={(e) => {
@@ -627,15 +707,41 @@ export default function SellerRegistration() {
                                             setClientErrors((c) => ({ ...c, province: undefined }));
                                         }}
                                     >
-                                        <option value="">{loading.provinces ? 'Loading provinces...' : 'Select province'}</option>
-                                        {provinces.map((p) => <option key={p.code} value={p.name}>{p.name}</option>)}
+                                        {isNCR ? (
+                                            <option value="N/A">N/A (NCR has no provinces)</option>
+                                        ) : (
+                                            <>
+                                                <option value="">
+                                                    {!data.region ? 'Select region first' : loading.provinces ? 'Loading provinces...' : 'Select province'}
+                                                </option>
+                                                {provinces.map((p) => <option key={p.code} value={p.name}>{p.name}</option>)}
+                                            </>
+                                        )}
                                     </select>
                                 </Field>
+                                {isNCR && (
+                                    <Field label="District" htmlFor="district" required error={err('district')}>
+                                        <select
+                                            id="district"
+                                            value={data.district}
+                                            disabled={!data.region}
+                                            aria-invalid={!!err('district')}
+                                            className={`${inputCls(err('district'))} disabled:bg-[#F1EDFB] disabled:text-gray-400`}
+                                            onChange={(e) => {
+                                                setData({ ...data, district: e.target.value, municipality_city: '', barangay: '' });
+                                                setClientErrors((c) => ({ ...c, district: undefined }));
+                                            }}
+                                        >
+                                            <option value="">{!data.region ? 'Select region first' : 'Select district'}</option>
+                                            {NCR_DISTRICTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                                        </select>
+                                    </Field>
+                                )}
                                 <Field label="Municipality / City" htmlFor="municipality_city" required error={err('municipality_city')}>
                                     <select
                                         id="municipality_city"
                                         value={data.municipality_city}
-                                        disabled={!data.province || loading.cities}
+                                        disabled={isNCR ? (!data.region || loading.cities) : (!data.province || loading.cities)}
                                         aria-invalid={!!err('municipality_city')}
                                         className={`${inputCls(err('municipality_city'))} disabled:bg-[#F1EDFB] disabled:text-gray-400`}
                                         onChange={(e) => {
@@ -644,7 +750,11 @@ export default function SellerRegistration() {
                                         }}
                                     >
                                         <option value="">
-                                            {!data.province ? 'Select province first' : loading.cities ? 'Loading cities...' : 'Select municipality or city'}
+                                            {loading.cities 
+                                                ? 'Loading cities...' 
+                                                : isNCR 
+                                                    ? (!data.region ? 'Select region first' : 'Select municipality or city')
+                                                    : (!data.province ? 'Select province first' : 'Select municipality or city')}
                                         </option>
                                         {cities.map((m) => <option key={m.code} value={m.name}>{m.name}</option>)}
                                     </select>
@@ -664,7 +774,7 @@ export default function SellerRegistration() {
                                         {barangays.map((b) => <option key={b.code} value={b.name}>{b.name}</option>)}
                                     </select>
                                 </Field>
-                                <Field label="Street & house number" htmlFor="street_address" required error={err('street_address')} className="sm:col-span-3">
+                                <Field label="Street & house number" htmlFor="street_address" required error={err('street_address')} className="sm:col-span-2">
                                     <input id="street_address" placeholder="e.g. 123 Mabini St." value={data.street_address}
                                         onChange={(e) => set('street_address', e.target.value)} autoComplete="street-address"
                                         aria-invalid={!!err('street_address')} className={inputCls(err('street_address'))} />

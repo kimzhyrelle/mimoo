@@ -302,7 +302,8 @@ function SuperSeratusBanner() {
 
 function CategoryTile({ category }: { category: Category }) {
   return (
-    <button
+    <Link
+      href={`/category/${encodeURIComponent(category.label)}`}
       className="flex shrink-0 snap-start flex-col items-center gap-1.5 rounded-lg p-1 text-center transition-colors hover:bg-violet-50 sm:gap-2"
       style={{ width: "calc((100% - 40px) / 5)" }}
     >
@@ -320,7 +321,7 @@ function CategoryTile({ category }: { category: Category }) {
       <span className="text-[10px] font-medium text-neutral-700 line-clamp-1 sm:text-xs">
         {category.label}
       </span>
-    </button>
+    </Link>
   );
 }
 
@@ -645,6 +646,9 @@ function Header({
 }) {
   const [query, setQuery] = useState("");
   const [showMenu, setShowMenu] = useState(false);
+  
+  // Detect if user is logged in based on onLogout being provided
+  const isLoggedIn = !!onLogout;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -663,49 +667,68 @@ function Header({
         {/* Utility row: account, top right (sits above bell + cart) */}
         <div className="flex h-7 items-center justify-end text-[10px] sm:text-[11px]">
           <div className="relative">
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="flex items-center gap-1.5 text-white/90 transition-colors hover:text-white"
-            >
-              <span className="h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full bg-neutral-200">
-                {avatarUrl && (
-                  <img
-                    src={avatarUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                )}
-              </span>
-              <span className="max-w-24 truncate">{username}</span>
-            </button>
-
-            {/* Dropdown menu */}
-            {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-36 rounded-lg bg-white shadow-lg ring-1 ring-black/5 z-50">
-                <Link
-                  href="/orders"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
-                  onClick={() => setShowMenu(false)}
-                >
-                  My Purchases
-                </Link>
-                <Link
-                  href="/settings/profile"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  onClick={() => setShowMenu(false)}
-                >
-                  Settings
-                </Link>
+            {isLoggedIn ? (
+              <>
                 <button
-                  onClick={() => {
-                    setShowMenu(false);
-                    onLogout?.();
-                  }}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 rounded-b-lg"
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="flex items-center gap-1.5 text-white/90 transition-colors hover:text-white"
                 >
-                  <LogOut className="h-3.5 w-3.5" />
-                  Logout
+                  <span className="h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full bg-neutral-200">
+                    {avatarUrl && (
+                      <img
+                        src={avatarUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    )}
+                  </span>
+                  <span className="max-w-24 truncate">{username}</span>
                 </button>
+
+                {/* Dropdown menu */}
+                {showMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-36 rounded-lg bg-white shadow-lg ring-1 ring-black/5 z-50">
+                    <Link
+                      href="/orders"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
+                      onClick={() => setShowMenu(false)}
+                    >
+                      My Purchases
+                    </Link>
+                    <Link
+                      href="/settings/profile"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      onClick={() => setShowMenu(false)}
+                    >
+                      Settings
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        onLogout?.();
+                      }}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 rounded-b-lg"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/login"
+                  className="px-3 py-1 text-[11px] font-medium text-white/90 transition-colors hover:text-white"
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/register"
+                  className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-medium text-white transition-colors hover:bg-white/20"
+                >
+                  Sign Up
+                </Link>
               </div>
             )}
           </div>
@@ -925,7 +948,7 @@ export default function Homepage({ auth, initialProducts = [] }: HomepageProps) 
         <section className="mt-6 sm:mt-8">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-neutral-900 sm:text-base">
-              {products.length > 0 ? 'Available Products' : 'Top products'}
+              Top Products This Week
             </h2>
             <button className="flex items-center text-xs text-violet-600 hover:underline sm:text-sm">
               See all <ChevronRight className="h-4 w-4" />

@@ -1,5 +1,5 @@
 import { createInertiaApp } from '@inertiajs/react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
@@ -23,13 +23,23 @@ createInertiaApp({
         return page.default;
     },
     setup({ el, App, props }) {
-        const root = createRoot(el);
-        root.render(
-            <TooltipProvider delayDuration={0}>
-                <App {...props} />
-                <Toaster />
-            </TooltipProvider>
-        );
+        // Only run on the browser, not during SSR
+        if (typeof window !== 'undefined') {
+            const appElement = (
+                <TooltipProvider delayDuration={0}>
+                    <App {...props} />
+                    <Toaster />
+                </TooltipProvider>
+            );
+
+            // Check if SSR was used (if el has content, hydrate; otherwise create)
+            if (el.innerHTML) {
+                hydrateRoot(el, appElement);
+            } else {
+                const root = createRoot(el);
+                root.render(appElement);
+            }
+        }
     },
     progress: {
         color: '#4B5563',
@@ -37,4 +47,6 @@ createInertiaApp({
 });
 
 // This will set light / dark mode on load...
-initializeTheme();
+if (typeof window !== 'undefined') {
+    initializeTheme();
+}

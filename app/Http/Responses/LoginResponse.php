@@ -17,6 +17,13 @@ class LoginResponse implements LoginResponseContract
     public function toResponse($request): RedirectResponse|JsonResponse
     {
         $user = $request->user();
+        
+        // Check if email is verified
+        if ($user->verification_status === 'unverified') {
+            auth()->logout();
+            return redirect()->route('otp.show', ['email' => $user->email])
+                ->withErrors(['email' => 'Please verify your email address before logging in.']);
+        }
 
         // DEBUG: Show me exactly what's happening
         \Log::info('LOGIN REDIRECT DEBUG', [

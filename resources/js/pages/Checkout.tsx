@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
 import { ArrowLeft, Package, CreditCard, MapPin, Phone, User, Loader2 } from "lucide-react";
 import { BuyerHeader } from "@/components/buyer-header";
@@ -29,6 +29,31 @@ interface PageProps {
   [key: string]: any;
 }
 
+// PSGC API Types
+interface Region {
+  code: string;
+  name: string;
+}
+
+interface Province {
+  code: string;
+  name: string;
+  regionCode: string;
+}
+
+interface CityMunicipality {
+  code: string;
+  name: string;
+  provinceCode?: string;
+  regionCode?: string;
+}
+
+interface Barangay {
+  code: string;
+  name: string;
+  cityCode: string;
+}
+
 // ---------------------------------------------------------------------------
 // Shared input style (explicit colors so text is always visible)
 // ---------------------------------------------------------------------------
@@ -49,14 +74,119 @@ export default function Checkout() {
   // State
   const [submitting, setSubmitting] = useState(false);
   const [shippingName, setShippingName] = useState(user?.name || "");
-  const [shippingAddress, setShippingAddress] = useState("");
   const [shippingPhone, setShippingPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "gcash" | "paymongo">("cod");
+
+  // Address fields
+  const [region, setRegion] = useState("");
+  const [province, setProvince] = useState("");
+  const [city, setCity] = useState("");
+  const [barangay, setBarangay] = useState("");
+  const [street, setStreet] = useState("");
+
+  // PSGC API states
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [cities, setCities] = useState<CityMunicipality[]>([]);
+  const [barangays, setBarangays] = useState<Barangay[]>([]);
+  const [loading, setLoading] = useState({
+    regions: false,
+    provinces: false,
+    cities: false,
+    barangays: false,
+  });
+
+  // Check if selected region is NCR
+  const isNCR = region === "National Capital Region (NCR)";
 
   // Created ONCE per checkout page, so double-clicks/retries reuse the same key
   const idempotencyKeyRef = useRef(
     `${user?.id}-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
   );
+
+  // Load regions on mount
+  useEffect(() => {
+    setLoading((prev) => ({ ...prev, regions: true }));
+    fetch("https://psgc.gitlab.io/api/regions/")
+      .then((res) => res.json())
+      .then((data: Region[]) => {
+        setRegions(data.sort((a, b) => a.name.localeCompare(b.name)));
+        setLoading((prev) => ({ ...prev, regions: false }));
+      })
+      .catch(() => setLoading((prev) => ({ ...prev, regions: false })));
+  }, []);
+
+  // Load provinces when region changes (skip for NCR)
+  useEffect(() => {
+    if (region && !isNCR) {
+      const selected = regions.find((r) => r.name === region);
+      if (selected) {
+        setLoading((prev) => ({ ...prev, provinces: true }));
+        fetch(`https://psgc.gitlab.io/api/regions/${selected.code}/provinces/`)
+          .then((res) => res.json())
+          .then((data: Province[]) => {
+            setProvinces(data.sort((a, b) => a.name.localeCompare(b.name)));
+            setLoading((prev) => ({ ...prev, provinces: false }));
+          })
+          .catch(() => setLoading((prev) => ({ ...prev, provinces: false })));
+      }
+    } else if (isNCR) {
+      // For NCR, load cities directly from region
+      const selected = regions.find((r) => r.name === region);
+      if (selected) {
+        setLoading((prev) => ({ ...prev, cities: true }));
+        fetch(`https://psgc.gitlab.io/api/regions/${selected.code}/cities-municipalities/`)
+          .then((res) => res.json())
+          .then((data: CityMunicipality[]) => {
+            setCities(data.sort((a, b) => a.name.localeCompare(b.name)));
+            setLoading((prev) => ({ ...prev, cities: false }));
+          })
+          .catch(() => setLoading((prev) => ({ ...prev, cities: false })));
+      }
+      setProvinces([]);
+      setProvince("N/A"); // Set province to N/A for NCR
+    } else {
+      setProvinces([]);
+    }
+  }, [region, regions, isNCR]);
+
+  // Load cities when province changes (skip for NCR since already loaded)
+  useEffect(() => {
+    if (province && !isNCR) {
+      const selected = provinces.find((p) => p.name === province);
+      if (selected) {
+        setLoading((prev) => ({ ...prev, cities: true }));
+        fetch(`https://psgc.gitlab.io/api/provinces/${selected.code}/cities-municipalities/`)
+          .then((res) => res.json())
+          .then((data: CityMunicipality[]) => {
+            setCities(data.sort((a, b) => a.name.localeCompare(b.name)));
+            setLoading((prev) => ({ ...prev, cities: false }));
+          })
+          .catch(() => setLoading((prev) => ({ ...prev, cities: false })));
+      }
+    } else if (!isNCR) {
+      setCities([]);
+    }
+  }, [province, provinces, isNCR]);
+
+  // Load barangays when city changes
+  useEffect(() => {
+    if (city) {
+      const selected = cities.find((c) => c.name === city);
+      if (selected) {
+        setLoading((prev) => ({ ...prev, barangays: true }));
+        fetch(`https://psgc.gitlab.io/api/cities-municipalities/${selected.code}/barangays/`)
+          .then((res) => res.json())
+          .then((data: Barangay[]) => {
+            setBarangays(data.sort((a, b) => a.name.localeCompare(b.name)));
+            setLoading((prev) => ({ ...prev, barangays: false }));
+          })
+          .catch(() => setLoading((prev) => ({ ...prev, barangays: false })));
+      }
+    } else {
+      setBarangays([]);
+    }
+  }, [city, cities]);
 
   const peso = (n: number) =>
     "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -76,14 +206,35 @@ export default function Checkout() {
       toast.error("Please enter your name");
       return;
     }
-    if (!shippingAddress.trim()) {
-      toast.error("Please enter your address");
+    if (!region) {
+      toast.error("Please select a region");
+      return;
+    }
+    if (!isNCR && !province) {
+      toast.error("Please select a province");
+      return;
+    }
+    if (!city) {
+      toast.error("Please select a city/municipality");
+      return;
+    }
+    if (!barangay) {
+      toast.error("Please select a barangay");
+      return;
+    }
+    if (!street.trim()) {
+      toast.error("Please enter your street address");
       return;
     }
     if (!shippingPhone.trim()) {
       toast.error("Please enter your phone number");
       return;
     }
+
+    // Build full address
+    const fullAddress = isNCR
+      ? `${street}, ${barangay}, ${city}, ${region}`
+      : `${street}, ${barangay}, ${city}, ${province}`;
 
     setSubmitting(true);
 
@@ -98,7 +249,7 @@ export default function Checkout() {
         body: JSON.stringify({
           payment_method: paymentMethod,
           shipping_name: shippingName,
-          shipping_address: shippingAddress,
+          shipping_address: fullAddress,
           shipping_phone: shippingPhone,
           idempotency_key: idempotencyKeyRef.current,
         }),
@@ -184,14 +335,144 @@ export default function Checkout() {
                   <div>
                     <label className="block text-[0.83rem] font-semibold text-[#2A1B4D] mb-1.5">
                       <MapPin className="w-4 h-4 inline mr-1" />
-                      Address
+                      Region
                     </label>
-                    <textarea
-                      value={shippingAddress}
-                      onChange={(e) => setShippingAddress(e.target.value)}
-                      placeholder="House No., Street, Barangay, City, Province"
-                      rows={3}
-                      className={`${inputClass} resize-none`}
+                    <select
+                      value={region}
+                      onChange={(e) => {
+                        setRegion(e.target.value);
+                        setProvince("");
+                        setCity("");
+                        setBarangay("");
+                      }}
+                      className={inputClass}
+                      disabled={loading.regions}
+                      required
+                    >
+                      <option value="">
+                        {loading.regions ? "Loading regions..." : "Select Region"}
+                      </option>
+                      {regions.map((r) => (
+                        <option key={r.code} value={r.name}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[0.83rem] font-semibold text-[#2A1B4D] mb-1.5">
+                      <MapPin className="w-4 h-4 inline mr-1" />
+                      Province
+                    </label>
+                    <select
+                      value={province}
+                      onChange={(e) => {
+                        setProvince(e.target.value);
+                        setCity("");
+                        setBarangay("");
+                      }}
+                      className={inputClass}
+                      disabled={!region || loading.provinces || isNCR}
+                      required
+                    >
+                      {isNCR ? (
+                        <option value="N/A">N/A (NCR has no provinces)</option>
+                      ) : (
+                        <>
+                          <option value="">
+                            {loading.provinces
+                              ? "Loading provinces..."
+                              : !region
+                              ? "Select region first"
+                              : "Select Province"}
+                          </option>
+                          {provinces.map((p) => (
+                            <option key={p.code} value={p.name}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[0.83rem] font-semibold text-[#2A1B4D] mb-1.5">
+                      <MapPin className="w-4 h-4 inline mr-1" />
+                      City / Municipality
+                    </label>
+                    <select
+                      value={city}
+                      onChange={(e) => {
+                        setCity(e.target.value);
+                        setBarangay("");
+                      }}
+                      className={inputClass}
+                      disabled={
+                        isNCR
+                          ? !region || loading.cities
+                          : !province || loading.cities
+                      }
+                      required
+                    >
+                      <option value="">
+                        {loading.cities
+                          ? "Loading cities..."
+                          : isNCR
+                          ? !region
+                            ? "Select region first"
+                            : "Select City/Municipality"
+                          : !province
+                          ? "Select province first"
+                          : "Select City/Municipality"}
+                      </option>
+                      {cities.map((c) => (
+                        <option key={c.code} value={c.name}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[0.83rem] font-semibold text-[#2A1B4D] mb-1.5">
+                      <MapPin className="w-4 h-4 inline mr-1" />
+                      Barangay
+                    </label>
+                    <select
+                      value={barangay}
+                      onChange={(e) => setBarangay(e.target.value)}
+                      className={inputClass}
+                      disabled={!city || loading.barangays}
+                      required
+                    >
+                      <option value="">
+                        {loading.barangays
+                          ? "Loading barangays..."
+                          : !city
+                          ? "Select city first"
+                          : "Select Barangay"}
+                      </option>
+                      {barangays.map((b) => (
+                        <option key={b.code} value={b.name}>
+                          {b.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[0.83rem] font-semibold text-[#2A1B4D] mb-1.5">
+                      <MapPin className="w-4 h-4 inline mr-1" />
+                      Street Address
+                    </label>
+                    <input
+                      type="text"
+                      value={street}
+                      onChange={(e) => setStreet(e.target.value)}
+                      placeholder="House No., Street Name"
+                      className={inputClass}
                       required
                     />
                   </div>

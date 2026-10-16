@@ -1,6 +1,6 @@
 import SellerDashboardController from './SellerDashboardController'
-import OrderController from './OrderController'
 import Auth from './Auth'
+import OrderController from './OrderController'
 import ProductController from './ProductController'
 import CartController from './CartController'
 import SellerAnalyticsController from './SellerAnalyticsController'
@@ -10,8 +10,8 @@ import Settings from './Settings'
 import Admin from './Admin'
 const Controllers = {
     SellerDashboardController: Object.assign(SellerDashboardController, SellerDashboardController),
-OrderController: Object.assign(OrderController, OrderController),
 Auth: Object.assign(Auth, Auth),
+OrderController: Object.assign(OrderController, OrderController),
 ProductController: Object.assign(ProductController, ProductController),
 CartController: Object.assign(CartController, CartController),
 SellerAnalyticsController: Object.assign(SellerAnalyticsController, SellerAnalyticsController),
