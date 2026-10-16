@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Activity;
+use App\Models\HubProfile;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -12,9 +13,18 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Share unread notification count with every view that uses the layout
+        // Share hub profile + unread notifications with every view using the layout
         View::composer('layouts.sorting', function ($view) {
-            $view->with('unreadNotifCount', Activity::unread()->count());
+            $hub = HubProfile::current();
+            $view->with([
+                'unreadNotifCount' => Activity::unread()->count(),
+                'hubProfile'       => $hub,
+            ]);
+        });
+
+        // Also share with the sidebar partial directly
+        View::composer('partials.sidebar', function ($view) {
+            $view->with('hubProfile', HubProfile::current());
         });
     }
 }

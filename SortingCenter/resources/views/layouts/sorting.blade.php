@@ -6,9 +6,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Syne:wght@400;500;600;700;800&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 @vite(['resources/css/app.css', 'resources/js/app.js'])
+{{-- Apply saved theme before first paint to prevent flash --}}
+<script>
+  (function() {
+    if (localStorage.getItem('theme') === 'dark' ||
+       (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+  })();
+</script>
 @stack('styles')
 </head>
 <body class="font-sans antialiased">
@@ -19,13 +28,30 @@
   <div class="flex min-w-0 flex-1 flex-col">
     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-7 py-4">
       <div>
-        <h1 class="text-lg font-semibold tracking-tight" style="font-family:'Syncopate',sans-serif">@yield('title', 'Dashboard')</h1>
-        <p class="mt-0.5 text-[13px] text-muted-foreground">@yield('subtitle', 'Santa Cruz, Laguna Hub')</p>
+        <h1 class="text-xl font-bold tracking-tight">@yield('title', 'Dashboard')</h1>
+        <p class="mt-0.5 text-sm text-muted-foreground">@yield('subtitle', 'Santa Cruz, Laguna Hub')</p>
       </div>
       <div class="flex items-center gap-2.5">
         <div class="rounded-full border border-border bg-background px-2.5 py-1.5 font-mono text-[11.5px] text-muted-foreground">
           {{ now()->format('D, M j') }} · <b class="text-foreground">{{ now()->format('h:i A') }}</b>
         </div>
+
+        {{-- ── Dark mode toggle ── --}}
+        <button
+          id="darkToggle"
+          onclick="toggleDark()"
+          class="relative flex size-8.5 items-center justify-center rounded-md border border-border bg-background hover:bg-muted transition-colors"
+          aria-label="Toggle dark mode">
+          {{-- Sun (shown in dark mode) --}}
+          <svg id="iconSun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="hidden">
+            <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+          </svg>
+          {{-- Moon (shown in light mode) --}}
+          <svg id="iconMoon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+        {{-- ── End dark mode toggle ── --}}
 
         {{-- ── Notification bell ── --}}
         <div class="relative" id="notifWrapper">
@@ -82,7 +108,7 @@
       </div>
     </div>
 
-    <div class="px-7 py-6">
+    <div class="px-7 py-6 bg-muted/40 min-h-screen">
       @yield('content')
     </div>
   </div>
@@ -96,6 +122,19 @@
 }
 </style>
 <script>
+// ── Dark mode ──
+function syncDarkIcons() {
+  const dark = document.documentElement.classList.contains('dark');
+  document.getElementById('iconSun').classList.toggle('hidden', !dark);
+  document.getElementById('iconMoon').classList.toggle('hidden', dark);
+}
+function toggleDark() {
+  const isDark = document.documentElement.classList.toggle('dark');
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  syncDarkIcons();
+}
+syncDarkIcons();
+
 // ── Notification dropdown ──
 let notifOpen = false;
 
@@ -177,5 +216,6 @@ function markAllRead() {
     .then(() => loadNotifications());
 }
 </script>
+@stack('schedule-data')
 </body>
 </html>

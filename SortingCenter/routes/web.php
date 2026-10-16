@@ -83,3 +83,4 @@ Route::post('/delivery/assignment/dispatch-all', [DeliveryAssignmentController::
 Route::post('/delivery/assignment/{area}/dispatch', [DeliveryAssignmentController::class, 'dispatchArea'])->name('delivery.assignment.dispatch-area');
 Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
 Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
+Route::get('/help', fn() => view('sorting.help'))->name('help.index');

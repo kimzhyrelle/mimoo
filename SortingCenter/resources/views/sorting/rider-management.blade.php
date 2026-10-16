@@ -6,22 +6,22 @@
 @push('styles')
 @include('partials.legacy-styles')
 <style>
-  .stat-card.accent{border-color:rgba(124,79,224,.5);background:linear-gradient(180deg,#FAF7FF,#fff);}
-  .note{background:#EFEAFB;color:var(--accent-600);border:1px solid rgba(124,79,224,.4);border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+  .stat-card.accent{border-color:rgba(124,79,224,.5);background:var(--paper);}
+  .note{background:var(--paper);color:var(--accent-600);border:1px solid rgba(124,79,224,.4);border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
   .search{display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text-600);min-width:200px;}
   .search input{border:none;background:transparent;outline:none;font-size:12.5px;width:100%;font-family:inherit;color:var(--text-900);}
   .who-cell{display:flex;align-items:center;gap:10px;}
   .ravatar{width:30px;height:30px;border-radius:50%;background:var(--ink-800);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
-  .who-cell .rname{font-size:13px;font-weight:600;}
+  .who-cell .rname{font-size:13px;font-weight:600;color:var(--text-900);}
   .who-cell .rmeta{font-size:11.5px;color:var(--text-600);}
   .badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;white-space:nowrap;}
   .badge.ok{background:var(--ok-100);color:var(--ok-600);}
-  .badge.off{background:#F1EFF6;color:var(--text-400);}
-  .brgy-select{font-family:inherit;font-size:12px;font-weight:600;border:1px solid var(--line);border-radius:6px;padding:5px 8px;background:#fff;color:var(--text-900);cursor:pointer;min-width:150px;}
+  .badge.off{background:var(--paper);color:var(--text-400);}
+  .brgy-select{font-family:inherit;font-size:12px;font-weight:600;border:1px solid var(--line);border-radius:6px;padding:5px 8px;background:var(--paper);color:var(--text-900);cursor:pointer;min-width:150px;}
   .vehicle-chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-600);}
   .btn{border:none;border-radius:7px;padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;}
   .btn-ok{background:var(--ok-600);color:#fff;}
-  .btn-ok:hover{background:#26794C;}
+  .btn-ok:hover{background:var(--ok-600);filter:brightness(1.1);}
   .btn-bad{background:transparent;color:var(--bad-600);border:1px solid rgba(192,67,47,.35);}
   .btn-bad:hover{background:var(--bad-100);}
   .btn-row{display:flex;gap:8px;justify-content:flex-end;}
@@ -57,14 +57,13 @@
     </div>
   </div>
 
-  <div class="note">ⓘ Each barangay in Santa Cruz can only have <b>one</b> assigned rider. Reassigning a barangay to a new rider automatically frees it from the previous one.</div>
-
   <div class="panel">
     <div class="panel-head">
       <div><h2>Pending applications</h2><div class="sub">New courier sign-ups awaiting review</div></div>
     </div>
+    <div style="overflow-y:auto;max-height:320px;">
     <table style="width:100%;table-layout:fixed;">
-      <thead><tr style="text-align:center;">
+      <thead style="position:sticky;top:0;background:var(--card,#fff);z-index:1;"><tr style="text-align:center;">
         <th style="width:28%;text-align:center;">Applicant</th>
         <th style="width:22%;text-align:center;">Vehicle</th>
         <th style="width:18%;text-align:center;">Documents</th>
@@ -90,6 +89,7 @@
         @endforelse
       </tbody>
     </table>
+    </div>
   </div>
 
   <div class="panel">
@@ -100,12 +100,12 @@
         <input type="text" name="q" value="{{ $q }}" placeholder="Search rider…" onchange="this.form.submit()">
       </form>
     </div>
+    <div style="overflow-y:auto;max-height:440px;">
     <table style="width:100%;table-layout:fixed;">
-      <thead><tr style="text-align:center;">
+      <thead style="position:sticky;top:0;background:var(--card,#fff);z-index:1;"><tr style="text-align:center;">
         <th style="width:24%;text-align:center;">Rider</th>
         <th style="width:20%;text-align:center;">Vehicle</th>
         <th style="width:20%;text-align:center;">Assigned barangay</th>
-        <th style="width:16%;text-align:center;">Status</th>
         <th style="width:20%;text-align:center;">Action</th>
       </tr></thead>
       <tbody>
@@ -124,13 +124,6 @@
               @endif
             </td>
             <td style="text-align:center;">
-              @if ($r->isActive())
-                <span class="badge ok"><span class="dotb"></span>On shift</span>
-              @else
-                <span class="badge off"><span class="dotb"></span>Off shift</span>
-              @endif
-            </td>
-            <td style="text-align:center;">
               <button
                 onclick="openRiderManageModal(
                   {{ $r->id }},
@@ -140,16 +133,17 @@
                   {{ $r->area_id ?? 'null' }},
                   '{{ $r->isActive() ? '1' : '0' }}'
                 )"
-                style="border:1px solid var(--line);border-radius:6px;padding:4px 12px;background:#fff;font-size:12px;font-weight:600;color:var(--ink-700);cursor:pointer;font-family:inherit;">
+                style="border:1px solid var(--line);border-radius:6px;padding:4px 12px;background:var(--paper);font-size:12px;font-weight:600;color:var(--ink-700);cursor:pointer;font-family:inherit;">
                 Manage
               </button>
             </td>
           </tr>
         @empty
-          <tr><td colspan="5" style="text-align:center;color:var(--text-400);padding:24px;">No riders yet — approve an application above.</td></tr>
+          <tr><td colspan="4" style="text-align:center;color:var(--text-400);padding:24px;">No riders yet — approve an application above.</td></tr>
         @endforelse
       </tbody>
     </table>
+    </div>
   </div>
 
   {{-- ── Rider Manage Modal ── --}}
@@ -157,12 +151,12 @@
        onclick="if(event.target===this)closeRiderManageModal()"
        style="display:none;position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
 
-    <div style="background:#fff;border-radius:16px;width:100%;max-width:460px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.18);animation:rmSlideUp .18s ease-out;">
+    <div style="background:var(--card,#fff);border-radius:16px;width:100%;max-width:460px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:rmSlideUp .18s ease-out;">
 
       {{-- Header --}}
       <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);">
         <div style="display:flex;align-items:center;gap:10px;">
-          <div id="rmAvatar" style="width:38px;height:38px;border-radius:50%;background:#2A1B4D;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
+          <div id="rmAvatar" style="width:38px;height:38px;border-radius:50%;background:var(--ink-800);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
           <div>
             <div id="rmName" style="font-size:15px;font-weight:800;font-family:'Poppins',sans-serif;"></div>
             <div id="rmVehicle" style="font-size:12px;color:var(--text-600);margin-top:1px;"></div>
@@ -175,7 +169,7 @@
       <div style="padding:20px;">
 
         {{-- Current status --}}
-        <div id="rmStatusWrap" style="display:flex;align-items:center;justify-content:space-between;background:#f7f6fb;border-radius:10px;padding:12px 16px;margin-bottom:16px;">
+        <div id="rmStatusWrap" style="display:flex;align-items:center;justify-content:space-between;background:var(--paper);border-radius:10px;padding:12px 16px;margin-bottom:16px;">
           <div>
             <div style="font-size:10.5px;font-weight:700;color:var(--text-600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Shift status</div>
             <div id="rmStatusLabel" style="font-size:13px;font-weight:700;"></div>
@@ -197,7 +191,7 @@
             @csrf
             <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;">
               <select id="rmAreaSelect" name="area_id"
-                style="border:1.5px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;font-weight:600;background:#fff;color:var(--text-900);cursor:pointer;outline:none;width:100%;">
+                style="border:1.5px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;font-weight:600;background:var(--paper);color:var(--text-900);cursor:pointer;outline:none;width:100%;">
                 <option value="">— Unassigned —</option>
                 @foreach ($areas as $area)
                   <option value="{{ $area->id }}"
@@ -208,7 +202,7 @@
                 @endforeach
               </select>
               <button type="submit"
-                style="border:none;border-radius:8px;padding:9px 16px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;background:#4B2E7E;color:#fff;white-space:nowrap;">
+                style="border:none;border-radius:8px;padding:9px 16px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;background:var(--primary,#4B2E7E);color:#fff;white-space:nowrap;">
                 Save
               </button>
             </div>
@@ -216,7 +210,7 @@
         </div>
 
         {{-- Warning if barangay taken --}}
-        <div id="rmTakenWarn" style="display:none;margin-top:8px;padding:8px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e;">
+        <div id="rmTakenWarn" style="display:none;margin-top:8px;padding:8px 12px;background:var(--pend-100);border:1px solid var(--pend-600);border-radius:8px;font-size:12px;color:var(--pend-600);">
           ⚠ This barangay is currently assigned to another rider. Saving will reassign it.
         </div>
 
@@ -225,7 +219,7 @@
       {{-- Footer --}}
       <div style="padding:12px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;">
         <button onclick="closeRiderManageModal()"
-          style="border:1px solid var(--line);border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:#fff;color:var(--text-900);">
+          style="border:1px solid var(--line);border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:var(--paper);color:var(--text-900);">
           Close
         </button>
       </div>
@@ -259,10 +253,10 @@ function openRiderManageModal(id, name, initials, vehicle, areaId, isActive) {
   const btn    = document.getElementById('rmToggleBtn');
   const knob   = document.getElementById('rmToggleKnob');
   const lbl    = document.getElementById('rmStatusLabel');
-  btn.style.background  = active ? '#16a34a' : '#d1d5db';
+  btn.style.background  = active ? 'var(--ok-600)' : 'var(--line)';
   knob.style.left       = active ? '22px' : '2px';
   lbl.textContent       = active ? 'On shift' : 'Off shift';
-  lbl.style.color       = active ? '#16a34a' : '#9a93ac';
+  lbl.style.color       = active ? 'var(--ok-600)' : 'var(--text-400)';
 
   // Barangay form action
   document.getElementById('rmBarangayForm').action = '/riders/' + id + '/barangay';

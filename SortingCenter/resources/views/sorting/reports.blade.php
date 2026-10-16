@@ -8,7 +8,7 @@
   /* ── Filters bar ── */
   .filters-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-bottom:18px; border-bottom:1px solid var(--color-border); margin-bottom:20px; }
   .filter-group { display:flex; flex-direction:column; gap:4px; }
-  .filter-label { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--color-muted-foreground); }
+  .filter-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--color-muted-foreground); }
   .filter-select, .filter-date {
     border:1px solid var(--color-border);
     border-radius:8px;
@@ -45,11 +45,12 @@
     border-radius:12px;
     padding:18px 20px;
   }
-  .stat-card .val { font-size:28px; font-weight:800; letter-spacing:-1px; color:var(--color-foreground); line-height:1; font-family:'Poppins',sans-serif; }
-  .stat-card .val span { font-size:16px; font-weight:600; letter-spacing:0; }
-  .stat-card .delta { font-size:11.5px; font-weight:600; margin-top:8px; }
-  .delta.up   { color:#16a34a; }
-  .delta.down { color:#dc2626; }
+  .stat-card .lbl { font-size:11px; font-weight:600; color:var(--color-muted-foreground); line-height:1; text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px; }
+  .stat-card .val { font-size:24px; font-weight:700; color:var(--color-foreground); line-height:1; font-variant-numeric:tabular-nums; }
+  .stat-card .val span { font-size:13px; font-weight:600; color:var(--color-muted-foreground); letter-spacing:0; margin-left:1px; }
+  .stat-card .delta { font-size:11px; font-weight:600; margin-top:8px; display:inline-block; }
+  .delta.up   { color: var(--ok-600, #16a34a); }
+  .delta.down { color: var(--bad-600, #dc2626); }
   .delta.neutral { color:var(--color-muted-foreground); }
 
   /* ── Charts row ── */
@@ -60,8 +61,8 @@
     border-radius:12px;
     padding:18px;
   }
-  .chart-card h3 { font-size:13px; font-weight:700; margin-bottom:3px; }
-  .chart-card .chart-sub { font-size:11.5px; color:var(--color-muted-foreground); margin-bottom:16px; }
+  .chart-card h3 { font-size:14px; font-weight:700; margin-bottom:3px; }
+  .chart-card .chart-sub { font-size:11px; color:var(--color-muted-foreground); margin-bottom:16px; }
 
   /* Bar chart */
   .bar-chart { display:flex; flex-direction:column; gap:9px; }
@@ -87,8 +88,8 @@
     overflow:hidden;
   }
   .report-panel-head { padding:16px 20px; border-bottom:1px solid var(--color-border); }
-  .report-panel-head h3 { font-size:13px; font-weight:700; }
-  .report-panel-head .sub { font-size:11.5px; color:var(--color-muted-foreground); margin-top:2px; }
+  .report-panel-head h3 { font-size:14px; font-weight:700; }
+  .report-panel-head .sub { font-size:11px; color:var(--color-muted-foreground); margin-top:2px; }
   .report-table { width:100%; table-layout:fixed; border-collapse:collapse; }
   .report-table th {
     padding:10px 16px;
@@ -103,17 +104,17 @@
   }
   .report-table td { padding:12px 16px; font-size:12.5px; text-align:center; border-bottom:1px solid var(--color-border)/50; }
   .report-table tbody tr:last-child td { border-bottom:none; }
-  .report-table tbody tr:hover td { background:#f8f7fd; }
+  .report-table tbody tr:hover td { background: var(--color-muted); }
   .rider-cell { display:flex; align-items:center; gap:9px; justify-content:center; }
-  .rider-av { width:28px; height:28px; border-radius:50%; background:#2A1B4D; color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .rider-av { width:28px; height:28px; border-radius:50%; background:var(--color-primary); color:var(--color-primary-foreground); font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .rider-name { font-size:12.5px; font-weight:700; }
   .rider-tag { font-size:11px; color:var(--color-muted-foreground); }
   .brgy-chip { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; color:var(--color-primary); }
   .success-bar-wrap { display:flex; align-items:center; gap:8px; justify-content:center; }
   .success-track { width:80px; height:6px; background:var(--color-muted); border-radius:3px; overflow:hidden; }
-  .success-fill { height:100%; border-radius:3px; background:#16a34a; }
-  .success-fill.warn { background:#f59e0b; }
-  .success-fill.bad  { background:#dc2626; }
+  .success-fill { height:100%; border-radius:3px; background:var(--ok-600, #16a34a); }
+  .success-fill.warn { background:var(--pend-600, #f59e0b); }
+  .success-fill.bad  { background:var(--bad-600, #dc2626); }
   .avg-time { font-weight:700; color:var(--color-foreground); }
   .avg-time span { font-size:10.5px; font-weight:600; color:var(--color-muted-foreground); }
   .empty-row td { text-align:center; color:var(--color-muted-foreground); padding:28px; }
@@ -227,6 +228,7 @@
     @if ($volumeByArea->isEmpty())
       <div style="color:var(--color-muted-foreground);font-size:13px;padding:20px 0;">No data for this period.</div>
     @else
+    <div style="overflow-y:auto;max-height:280px;">
       <div class="bar-chart">
         @foreach ($volumeByArea as $row)
           <div class="bar-row">
@@ -238,6 +240,7 @@
           </div>
         @endforeach
       </div>
+    </div>
     @endif
   </div>
 
@@ -263,7 +266,7 @@
     @endphp
     <div class="donut-wrap">
       <div style="width:120px;height:120px;border-radius:50%;background:conic-gradient({{ $conicGrad }});flex-shrink:0;position:relative;">
-        <div style="position:absolute;inset:24px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--color-muted-foreground);">{{ $totalHandled }}</div>
+        <div style="position:absolute;inset:24px;border-radius:50%;background:var(--color-card);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--color-muted-foreground);">{{ $totalHandled }}</div>
       </div>
       <div class="donut-legend">
         @if ($carrierMix->isEmpty())
@@ -289,8 +292,9 @@
     <h3>Rider performance</h3>
     <div class="sub">Per-rider delivery success rate in this period</div>
   </div>
+  <div style="overflow-y:auto;max-height:420px;">
   <table class="report-table">
-    <thead>
+    <thead style="position:sticky;top:0;background:var(--color-card);z-index:1;">
       <tr>
         <th style="width:20%;text-align:left;padding-left:20px;">Rider</th>
         <th style="width:18%;">Barangay</th>
@@ -344,6 +348,7 @@
       @endforelse
     </tbody>
   </table>
+  </div>
 </div>
 
 @endsection

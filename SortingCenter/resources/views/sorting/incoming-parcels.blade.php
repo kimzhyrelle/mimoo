@@ -6,8 +6,8 @@
 @push('styles')
 @include('partials.legacy-styles')
 <style>
-  .stat-card.accent{border-color:rgba(124,79,224,.5);background:linear-gradient(180deg,#FAF7FF,#fff);}
-  .flow{display:flex;align-items:center;gap:0;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;margin-bottom:22px;overflow-x:auto;}
+  .stat-card.accent{border-color:rgba(124,79,224,.5);background:var(--paper);}
+  .flow{display:flex;align-items:center;gap:0;background:var(--card,#fff);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;margin-bottom:22px;overflow-x:auto;}
   .flow-step{display:flex;align-items:center;gap:8px;white-space:nowrap;padding:0 14px;position:relative;}
   .flow-step .dot{width:22px;height:22px;border-radius:50%;background:var(--paper);border:1.5px solid var(--line);color:var(--text-600);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;flex:0 0 auto;}
   .flow-step.done .dot{background:var(--ok-600);border-color:var(--ok-600);color:#fff;}
@@ -22,7 +22,7 @@
   .via{display:flex;align-items:center;gap:8px;}
   .via .ravatar{width:24px;height:24px;border-radius:50%;background:var(--ink-800);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;}
   .via .rname{font-size:12.5px;font-weight:600;}
-  .time{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-600);}
+  .time{font-size:12px;color:var(--text-600);}
   .badge.pending{background:var(--pend-100);color:var(--pend-600);}
   .btn{border:none;border-radius:7px;padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;}
   .btn-primary{background:var(--ink-900);color:#fff;}
@@ -30,7 +30,7 @@
   .btn-accent{background:var(--accent-500);color:var(--ink-900);}
   .btn-accent:hover{background:var(--accent-600);}
   .panel-foot{padding:12px 18px;font-size:12px;color:var(--text-600);border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
-  .note{background:#EFEAFB;color:var(--accent-600);border:1px solid rgba(124,79,224,.4);border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+  .note{background:var(--paper);color:var(--accent-600);border:1px solid rgba(124,79,224,.4);border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
 </style>
 @endpush
 
@@ -93,41 +93,32 @@
 
   </div>
 
-  <div class="flow">
-    <div class="flow-step done"><div class="dot">✓</div><div class="label">Rider picks up from seller</div></div>
-    <div class="flow-sep done"></div>
-    <div class="flow-step done"><div class="dot">✓</div><div class="label">Receive parcel</div></div>
-    <div class="flow-sep {{ $scannedToday > 0 ? 'done' : '' }}"></div>
-    <div class="flow-step {{ $scannedToday > 0 ? 'done' : '' }}"><div class="dot">✓</div><div class="label">Scan parcel</div></div>
-    <div class="flow-sep"></div>
-    <div class="flow-step"><div class="dot">4</div><div class="label">Read address</div></div>
-    <div class="flow-sep"></div>
-    <div class="flow-step"><div class="dot">5</div><div class="label">Send to sorting</div></div>
-  </div>
-
-  @if (session('status'))
-    <div class="note">ⓘ {{ session('status') }}</div>
-  @else
-    <div class="note">ⓘ Once a parcel is scanned it moves to <b>Sort Parcels</b>, where it's routed by barangay and assigned to that barangay's rider.</div>
-  @endif
-
   @if ($areas->isNotEmpty())
   <div class="panel" style="margin-bottom:16px;">
     <div class="panel-head">
-      <div><h2>Today's pickup schedule</h2><div class="sub">Sellers must have parcels ready before each route's cutoff so the rider can collect them on time</div></div>
+      <div>
+        <h2>Today's pickup schedule</h2>
+        <div class="sub">Sellers must have parcels ready before each route's cutoff</div>
+      </div>
     </div>
+
+    <div style="overflow-y:auto;max-height:320px;">
     <table style="width:100%;table-layout:fixed;">
-      <thead><tr style="text-align:center;">
+      <thead style="position:sticky;top:0;background:var(--card,#fff);z-index:1;"><tr style="text-align:center;">
         <th style="width:22%;text-align:center;">Route / Barangay</th>
         <th style="width:22%;text-align:center;">Rider</th>
-        <th style="width:18%;text-align:center;">Pickup window</th>
-        <th style="width:18%;text-align:center;">Ready-by cutoff</th>
-        <th style="width:20%;text-align:center;">Status</th>
+        <th style="width:22%;text-align:center;">Pickup window</th>
+        <th style="width:22%;text-align:center;">Ready-by cutoff</th>
       </tr></thead>
       <tbody>
         @foreach ($areas as $area)
           <tr style="text-align:center;">
-            <td class="seller" style="text-align:center;">{{ $area->name }}</td>
+            <td class="seller" style="text-align:center;">
+              <div style="display:inline-flex;align-items:center;gap:6px;">
+                <span style="width:8px;height:8px;border-radius:50%;background:{{ $area->chart_color ?? '#6C4FD8' }};flex-shrink:0;display:inline-block;"></span>
+                {{ $area->name }}
+              </div>
+            </td>
             <td style="text-align:center;">
               @if ($area->rider)
                 <div class="via" style="justify-content:center;"><div class="ravatar">{{ $area->rider->initials }}</div><div class="rname">{{ $area->rider->name }}</div></div>
@@ -137,11 +128,12 @@
             </td>
             <td class="time" style="text-align:center;">{{ $area->pickup_window }}</td>
             <td class="time" style="text-align:center;">{{ $area->cutoff_time }}</td>
-            <td style="text-align:center;"><span class="badge {{ str_contains($area->pickup_status ?? '', 'not ready') ? 'pending' : 'ok' }}"><span class="dotb"></span>{{ $area->pickup_status }}</span></td>
           </tr>
         @endforeach
       </tbody>
     </table>
+    </div>
+
     <div class="panel-foot">
       <span>Parcels not ready by cutoff roll over to the next pickup window</span>
       <span>{{ $areas->count() }} routes today</span>
@@ -169,15 +161,15 @@
       </div>
     </div>
 
+    <div style="overflow-y:auto;max-height:380px;">
     <table style="width:100%;table-layout:fixed;">
-      <thead>
+      <thead style="position:sticky;top:0;background:var(--card,#fff);z-index:1;">
         <tr style="text-align:center;">
           <th style="width:16%;text-align:center;">Parcel</th>
           <th style="width:18%;text-align:center;">Seller</th>
           <th style="width:20%;text-align:center;">Dropped off by</th>
-          <th style="width:14%;text-align:center;">Arrived</th>
-          <th style="width:16%;text-align:center;">Status</th>
-          <th style="width:16%;text-align:center;">Action</th>
+          <th style="width:18%;text-align:center;">Arrived</th>
+          <th style="width:28%;text-align:center;">Action</th>
         </tr>
       </thead>
       <tbody>
@@ -187,20 +179,20 @@
             <td class="seller" style="text-align:center;">{{ $p->seller_name }}</td>
             <td style="text-align:center;"><div class="via" style="justify-content:center;"><div class="ravatar">{{ $p->droppedOffBy->initials ?? '—' }}</div><div class="rname">{{ $p->droppedOffBy->name ?? 'Unknown rider' }}</div></div></td>
             <td class="time" style="text-align:center;">{{ $p->received_at?->format('h:i A') }}</td>
-            <td style="text-align:center;"><span class="badge pending"><span class="dotb"></span>Awaiting scan</span></td>
             <td style="text-align:center;">
               <button
                 onclick="openScanModal({{ $p->id }}, '{{ $p->tracking_no }}', '{{ addslashes($p->seller_name) }}', '{{ addslashes($p->droppedOffBy->name ?? 'Unknown rider') }}', '{{ $p->received_at?->format('h:i A') }}')"
-                style="border:1px solid var(--line);border-radius:6px;padding:4px 10px;background:#fff;font-size:12px;font-weight:600;color:var(--ink-700);cursor:pointer;font-family:inherit;">
+                style="border:1px solid var(--line);border-radius:6px;padding:4px 10px;background:var(--paper);font-size:12px;font-weight:600;color:var(--ink-700);cursor:pointer;font-family:inherit;">
                 Details
               </button>
             </td>
           </tr>
         @empty
-          <tr><td colspan="6" style="text-align:center;color:var(--text-400);padding:24px;">No parcels waiting in the drop-off queue.</td></tr>
+          <tr><td colspan="5" style="text-align:center;color:var(--text-400);padding:24px;">No parcels waiting in the drop-off queue.</td></tr>
         @endforelse
       </tbody>
     </table>
+    </div>
 
     <div class="panel-foot">
       <span>{{ $parcels->count() }} parcels in drop-off queue</span>
@@ -213,7 +205,7 @@
        onclick="if(event.target===this)closeScanModal()"
        style="display:none;position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
 
-    <div style="background:#fff;border-radius:16px;width:100%;max-width:440px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.18);animation:slideUpIn .18s ease-out;">
+    <div style="background:var(--card,#fff);border-radius:16px;width:100%;max-width:440px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:slideUpIn .18s ease-out;">
 
       {{-- Header --}}
       <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);">
@@ -227,15 +219,15 @@
       {{-- Info tiles --}}
       <div style="padding:18px 20px;">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-          <div style="background:#f7f6fb;border-radius:8px;padding:10px 12px;">
+          <div style="background:var(--paper);border-radius:8px;padding:10px 12px;">
             <div style="font-size:10.5px;color:var(--text-600);font-weight:600;margin-bottom:3px;">SELLER</div>
             <div id="smSeller" style="font-size:13px;font-weight:600;"></div>
           </div>
-          <div style="background:#f7f6fb;border-radius:8px;padding:10px 12px;">
+          <div style="background:var(--paper);border-radius:8px;padding:10px 12px;">
             <div style="font-size:10.5px;color:var(--text-600);font-weight:600;margin-bottom:3px;">DROPPED OFF BY</div>
             <div id="smRider" style="font-size:13px;font-weight:600;"></div>
           </div>
-          <div style="background:#f7f6fb;border-radius:8px;padding:10px 12px;grid-column:span 2;">
+          <div style="background:var(--paper);border-radius:8px;padding:10px 12px;grid-column:span 2;">
             <div style="font-size:10.5px;color:var(--text-600);font-weight:600;margin-bottom:3px;">ARRIVED</div>
             <div id="smTime" style="font-size:13px;font-weight:600;"></div>
           </div>
@@ -259,7 +251,7 @@
           </button>
         </form>
         <button onclick="closeScanModal()"
-          style="width:100%;border:1px solid var(--line);border-radius:8px;padding:11px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:#fff;color:var(--text-900);">
+          style="width:100%;border:1px solid var(--line);border-radius:8px;padding:11px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:var(--paper);color:var(--text-900);">
           Close
         </button>
       </div>

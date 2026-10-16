@@ -31,11 +31,11 @@
 
     {{-- Avatar --}}
     <div class="mx-auto mb-3 flex size-20 items-center justify-center rounded-full bg-primary text-[22px] font-bold text-primary-foreground">
-      LG
+      {{ strtoupper(substr($hub->display_initials ?? $hub->staff_initials ?? 'SC', 0, 2)) }}
     </div>
 
-    <div class="text-[14.5px] font-bold text-foreground">Liza Garcia</div>
-    <div class="mt-0.5 text-[11.5px] text-muted-foreground">Sorting Staff · Santa Cruz Hub</div>
+    <div class="text-[14.5px] font-bold text-foreground">{{ $hub->staff_name ?? 'Sorting Staff' }}</div>
+    <div class="mt-0.5 text-[11.5px] text-muted-foreground">{{ $hub->staff_title ?? 'Sorting Staff' }} · {{ $hub->name ?? 'Santa Cruz Hub' }}</div>
 
     <div class="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[11.5px] font-semibold text-emerald-700">
       <span class="size-1.5 rounded-full bg-emerald-500"></span>Account verified
@@ -46,15 +46,15 @@
     <div class="mt-4 border-t border-border pt-4 text-left space-y-2.5">
       <div class="flex items-center justify-between text-[12px]">
         <span class="text-muted-foreground">Hub</span>
-        <span class="font-semibold">Santa Cruz, Laguna</span>
+        <span class="font-semibold">{{ $hub->name ?? 'Santa Cruz, Laguna' }}</span>
       </div>
       <div class="flex items-center justify-between text-[12px]">
-        <span class="text-muted-foreground">Employee ID</span>
-        <span class="font-bold font-mono">SC-0042</span>
+        <span class="text-muted-foreground">Contact email</span>
+        <span class="font-semibold truncate max-w-[120px]" title="{{ $hub->contact_email }}">{{ $hub->contact_email ?? '—' }}</span>
       </div>
       <div class="flex items-center justify-between text-[12px]">
-        <span class="text-muted-foreground">Joined</span>
-        <span class="font-semibold">Jan 2026</span>
+        <span class="text-muted-foreground">Phone</span>
+        <span class="font-semibold">{{ $hub->contact_phone ?? '—' }}</span>
       </div>
       <div class="flex items-center justify-between text-[12px]">
         <span class="text-muted-foreground">Barangays covered</span>
@@ -93,56 +93,80 @@
 
           <div>
             <label class="{{ $label }}">Last name</label>
-            <input type="text" name="last_name" value="{{ old('last_name', 'Garcia') }}" class="{{ $input }}">
+            <input type="text" name="last_name" value="{{ old('last_name', $hub->last_name ?? 'Garcia') }}" class="{{ $input }}" minlength="2" maxlength="50" required>
           </div>
           <div>
             <label class="{{ $label }}">First name</label>
-            <input type="text" name="first_name" value="{{ old('first_name', 'Liza') }}" class="{{ $input }}">
+            <input type="text" name="first_name" value="{{ old('first_name', $hub->first_name ?? 'Liza') }}" class="{{ $input }}" minlength="2" maxlength="50" required>
           </div>
 
           <div>
             <label class="{{ $label }}">Middle initial</label>
-            <input type="text" name="middle_initial" value="{{ old('middle_initial', 'P.') }}" class="{{ $input }}" maxlength="3">
+            <input type="text" name="middle_initial" value="{{ old('middle_initial', $hub->middle_initial ?? '') }}" class="{{ $input }}" maxlength="5" placeholder="e.g. P.">
           </div>
           <div>
-            <label class="{{ $label }}">Sex</label>
-            <select name="sex" class="{{ $input }}">
-              <option value="female" selected>Female</option>
-              <option value="male">Male</option>
-              <option value="other">Other</option>
-            </select>
+            <label class="{{ $label }}">Title / role</label>
+            <input type="text" name="staff_title" value="{{ old('staff_title', $hub->staff_title ?? 'Sorting Staff') }}" class="{{ $input }}" placeholder="e.g. Sorting Staff">
           </div>
 
           <div>
             <label class="{{ $label }}">Birthday</label>
-            <input type="date" name="birthday" value="{{ old('birthday', '1996-04-12') }}" class="{{ $input }}">
+            <input type="date" name="birthday"
+              value="{{ old('birthday', $hub->birthday?->format('Y-m-d')) }}"
+              max="{{ now()->subYears(18)->format('Y-m-d') }}"
+              class="{{ $input }}"
+              oninput="updateAge(this)">
+            @error('birthday')
+              <p class="mt-1 text-[11px] text-destructive font-semibold">{{ $message }}</p>
+            @enderror
+            @if (!$errors->has('birthday'))
+              <p class="mt-1 text-[11px] text-muted-foreground">Must be at least 18 years old.</p>
+            @endif
           </div>
           <div>
             <label class="{{ $label }}">Age</label>
-            <input type="text" value="30" class="{{ $inputDisabled }}" disabled>
+            <input type="text" id="age-display"
+              value="{{ $hub->birthday ? now()->diffInYears($hub->birthday) : '' }}"
+              class="{{ $inputDisabled }}" disabled placeholder="—">
           </div>
 
           <div>
             <label class="{{ $label }}">Email address</label>
-            <input type="email" name="contact_email" value="{{ old('contact_email', $hub->contact_email ?? 'liza.garcia@santacruzhub.ph') }}" class="{{ $input }}">
+            <input type="email" name="contact_email" value="{{ old('contact_email', $hub->contact_email) }}" class="{{ $input }}">
           </div>
           <div>
             <label class="{{ $label }}">Contact number</label>
-            <input type="text" name="contact_phone" value="{{ old('contact_phone', $hub->contact_phone ?? '09171234567') }}" class="{{ $input }}">
+            <div class="flex overflow-hidden rounded-md border border-input focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20">
+              {{-- PH flag + code --}}
+              <div class="flex shrink-0 items-center gap-1.5 border-r border-input bg-muted/40 px-3 text-[13px] font-semibold text-muted-foreground select-none">
+                <span class="text-base leading-none">🇵🇭</span>
+                <span>+63</span>
+              </div>
+              {{-- Number input — accepts 09XXXXXXXXX or 9XXXXXXXXX --}}
+              <input
+                type="tel"
+                name="contact_phone"
+                value="{{ old('contact_phone', $hub->contact_phone) }}"
+                placeholder="09XX XXX XXXX"
+                maxlength="13"
+                oninput="formatPHNumber(this)"
+                class="min-w-0 flex-1 bg-background px-3 py-2.5 text-[13.5px] outline-none">
+            </div>
+            <p class="mt-1 text-[11px] text-muted-foreground">Format: 09XX XXX XXXX</p>
           </div>
 
           <div class="col-span-2">
             <label class="{{ $label }}">Street / house number</label>
-            <input type="text" name="address" value="{{ old('address', $hub->address ?? '12 Rizal St., Purok 3') }}" class="{{ $input }}">
+            <input type="text" name="address" value="{{ old('address', $hub->address) }}" class="{{ $input }}">
           </div>
 
           <div>
             <label class="{{ $label }}">Province</label>
-            <input type="text" value="Laguna" class="{{ $inputDisabled }}" disabled placeholder="Laguna">
+            <input type="text" value="Laguna" class="{{ $inputDisabled }}" disabled>
           </div>
           <div>
             <label class="{{ $label }}">Municipality</label>
-            <input type="text" value="Santa Cruz" class="{{ $inputDisabled }}" disabled placeholder="Santa Cruz">
+            <input type="text" value="Santa Cruz" class="{{ $inputDisabled }}" disabled>
           </div>
 
         </div>
@@ -415,6 +439,32 @@
 
 @push('scripts')
 <script>
+// ── Age auto-updater ──
+function updateAge(input) {
+  const val = input.value;
+  const display = document.getElementById('age-display');
+  if (!val) { display.value = ''; return; }
+  const birth = new Date(val);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  display.value = age >= 0 ? age : '';
+}
+
+// ── PH phone formatter ──
+function formatPHNumber(input) {
+  let v = input.value.replace(/\D/g, ''); // digits only
+  // strip leading country code if pasted with +63 or 63
+  if (v.startsWith('63')) v = v.slice(2);
+  // keep max 11 digits (09XXXXXXXXX)
+  v = v.slice(0, 11);
+  // format as 0XXX XXX XXXX
+  if (v.length > 7)      v = v.slice(0,4) + ' ' + v.slice(4,7) + ' ' + v.slice(7);
+  else if (v.length > 4) v = v.slice(0,4) + ' ' + v.slice(4);
+  input.value = v;
+}
+
 function switchTab(active) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
   document.querySelectorAll('.tab-btn').forEach(b => {

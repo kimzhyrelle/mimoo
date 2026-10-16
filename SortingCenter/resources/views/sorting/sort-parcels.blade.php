@@ -6,8 +6,8 @@
 @push('styles')
 @include('partials.legacy-styles')
 <style>
-  .stat-card.accent{border-color:rgba(124,79,224,.5);background:linear-gradient(180deg,#FAF7FF,#fff);}
-  .flow{display:flex;align-items:center;gap:0;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;margin-bottom:22px;overflow-x:auto;}
+  .stat-card.accent{border-color:rgba(124,79,224,.5);background:var(--paper);}
+  .flow{display:flex;align-items:center;gap:0;background:var(--card,#fff);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;margin-bottom:22px;overflow-x:auto;}
   .flow-step{display:flex;align-items:center;gap:8px;white-space:nowrap;padding:0 14px;position:relative;}
   .flow-step .dot{width:22px;height:22px;border-radius:50%;background:var(--paper);border:1.5px solid var(--line);color:var(--text-600);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;flex:0 0 auto;}
   .flow-step.done .dot{background:var(--ok-600);border-color:var(--ok-600);color:#fff;}
@@ -17,18 +17,18 @@
   .flow-sep.done{background:var(--ok-600);}
   .search{display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text-600);min-width:220px;}
   .search input{border:none;background:transparent;outline:none;font-size:12.5px;width:100%;font-family:inherit;color:var(--text-900);}
-  .addr .city{font-weight:600;font-size:13px;}
+  .addr .city{font-weight:600;font-size:13px;color:var(--text-900);}
   .addr .prov{font-size:11.5px;color:var(--text-600);}
   .badge.pending{background:var(--pend-100);color:var(--pend-600);}
-  .area-chip{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:6px;color:#fff;background:var(--ink-700);}
+  .area-chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:6px;color:#fff;background:var(--ink-700);}
   .muted-dash{color:var(--text-400);font-size:13px;}
-  .carrier-select{font-family:inherit;font-size:11.5px;font-weight:600;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:#fff;color:var(--text-900);cursor:pointer;}
+  .carrier-select{font-family:inherit;font-size:11.5px;font-weight:600;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--paper);color:var(--text-900);cursor:pointer;}
   .carrier-select.jnt{border-color:rgba(200,30,30,.35);color:#C81E1E;background:#FDEDED;}
   .carrier-select.lbc{border-color:rgba(42,143,189,.35);color:#2A8FBD;background:#EAF5FB;}
   .carrier-select.lalamove{border-color:rgba(124,79,224,.4);color:var(--accent-600);background:#F1EAFE;}
   .rider{display:flex;align-items:center;gap:8px;}
   .rider .ravatar{width:24px;height:24px;border-radius:50%;background:var(--ink-800);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;}
-  .rider .rname{font-size:12.5px;font-weight:600;}
+  .rider .rname{font-size:12.5px;font-weight:600;color:var(--text-900);}
   .btn{border:none;border-radius:7px;padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;}
   .btn-primary{background:var(--ink-900);color:#fff;}
   .btn-primary:hover{background:var(--ink-800);}
@@ -68,26 +68,10 @@
     </div>
   </div>
 
-  <div class="flow">
-    <div class="flow-step done"><div class="dot">✓</div><div class="label">Receive parcel</div></div>
-    <div class="flow-sep done"></div>
-    <div class="flow-step done"><div class="dot">✓</div><div class="label">Scan parcel</div></div>
-    <div class="flow-sep done"></div>
-    <div class="flow-step done"><div class="dot">✓</div><div class="label">Read address</div></div>
-    <div class="flow-sep {{ $areaDetermined > 0 ? 'done' : '' }}"></div>
-    <div class="flow-step {{ $areaDetermined > 0 ? 'done' : '' }}"><div class="dot">✓</div><div class="label">Determine barangay</div></div>
-    <div class="flow-sep {{ $areaDetermined > 0 ? 'done' : '' }}"></div>
-    <div class="flow-step {{ $areaDetermined > 0 ? 'done' : '' }}"><div class="dot">✓</div><div class="label">Sort by barangay</div></div>
-    <div class="flow-sep {{ $assignedToday > 0 ? 'done' : '' }}"></div>
-    <div class="flow-step {{ $assignedToday > 0 ? 'done' : '' }}"><div class="dot">✓</div><div class="label">Identify rider</div></div>
-    <div class="flow-sep {{ $assignedToday > 0 ? 'done' : '' }}"></div>
-    <div class="flow-step {{ $assignedToday > 0 ? 'done' : '' }}"><div class="dot">✓</div><div class="label">Assign parcel</div></div>
-  </div>
-
   @if ($errors->any())
     <div class="err">{{ $errors->first() }}</div>
   @elseif (session('status'))
-    <div class="err" style="background:#EFEAFB;color:var(--accent-600);border-color:rgba(124,79,224,.4);">ⓘ {{ session('status') }}</div>
+    <div class="err" style="background:var(--paper);color:var(--accent-600);border-color:rgba(124,79,224,.4);">ⓘ {{ session('status') }}</div>
   @endif
 
   <div class="panel">
@@ -106,14 +90,14 @@
       </div>
     </div>
 
+    <div style="overflow-y:auto;max-height:420px;">
     <table style="width:100%;table-layout:fixed;">
-      <thead>
+      <thead style="position:sticky;top:0;background:var(--card,#fff);z-index:1;">
         <tr style="text-align:center;">
           <th style="width:15%;text-align:center;">Parcel</th>
           <th style="width:22%;text-align:center;">Delivery address</th>
           <th style="width:14%;text-align:center;">Barangay</th>
           <th style="width:18%;text-align:center;">Assigned rider</th>
-          <th style="width:16%;text-align:center;">Status</th>
           <th style="width:15%;text-align:center;">Action</th>
         </tr>
       </thead>
@@ -137,15 +121,6 @@
               @endif
             </td>
             <td style="text-align:center;">
-              @if ($p->status === 'awaiting_sort')
-                <span class="badge pending"><span class="dotb"></span>Awaiting sort</span>
-              @elseif ($p->status === 'sorted')
-                <span class="badge pending"><span class="dotb"></span>Sorted, needs rider</span>
-              @else
-                <span class="badge ok"><span class="dotb"></span>Assigned to rider</span>
-              @endif
-            </td>
-            <td style="text-align:center;">
               <button
                 onclick="openSortModal(
                   {{ $p->id }},
@@ -156,16 +131,17 @@
                   '{{ $p->carrier }}',
                   '{{ $p->status }}'
                 )"
-                style="border:1px solid var(--line);border-radius:6px;padding:4px 10px;background:#fff;font-size:12px;font-weight:600;color:var(--ink-700);cursor:pointer;font-family:inherit;">
+                style="border:1px solid var(--line);border-radius:6px;padding:4px 10px;background:var(--paper);font-size:12px;font-weight:600;color:var(--ink-700);cursor:pointer;font-family:inherit;">
                 Details
               </button>
             </td>
           </tr>
         @empty
-          <tr><td colspan="6" style="text-align:center;color:var(--text-400);padding:24px;">Nothing waiting to be sorted right now.</td></tr>
+          <tr><td colspan="5" style="text-align:center;color:var(--text-400);padding:24px;">Nothing waiting to be sorted right now.</td></tr>
         @endforelse
       </tbody>
     </table>
+    </div>
 
     <div class="panel-foot">
       <div class="legend">
@@ -182,7 +158,7 @@
        onclick="if(event.target===this)closeSortModal()"
        style="display:none;position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
 
-    <div style="background:#fff;border-radius:16px;width:100%;max-width:460px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.18);animation:sortSlideUp .18s ease-out;">
+    <div style="background:var(--card,#fff);border-radius:16px;width:100%;max-width:460px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:sortSlideUp .18s ease-out;">
 
       {{-- Header --}}
       <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);">
@@ -198,15 +174,15 @@
 
         {{-- Info tiles --}}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-          <div style="background:#f7f6fb;border-radius:8px;padding:10px 12px;grid-column:span 2;">
+          <div style="background:var(--paper);border-radius:8px;padding:10px 12px;grid-column:span 2;">
             <div style="font-size:10.5px;color:var(--text-600);font-weight:600;margin-bottom:3px;">DELIVERY ADDRESS</div>
             <div id="smAddress" style="font-size:13px;font-weight:600;"></div>
           </div>
-          <div style="background:#f7f6fb;border-radius:8px;padding:10px 12px;">
+          <div style="background:var(--paper);border-radius:8px;padding:10px 12px;">
             <div style="font-size:10.5px;color:var(--text-600);font-weight:600;margin-bottom:3px;">BARANGAY</div>
             <div id="smAreaName" style="font-size:13px;font-weight:600;"></div>
           </div>
-          <div style="background:#f7f6fb;border-radius:8px;padding:10px 12px;">
+          <div style="background:var(--paper);border-radius:8px;padding:10px 12px;">
             <div style="font-size:10.5px;color:var(--text-600);font-weight:600;margin-bottom:3px;">RIDER</div>
             <div id="smRiderName" style="font-size:13px;font-weight:600;"></div>
           </div>
@@ -219,7 +195,7 @@
             @foreach(['jnt' => 'J&T Express', 'lbc' => 'LBC', 'lalamove' => 'Lalamove'] as $val => $lbl)
               <button id="carrier-{{ $val }}"
                 onclick="selectCarrier('{{ $val }}')"
-                style="flex:1;border-radius:8px;padding:8px 4px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;border:1.5px solid var(--line);background:#fff;transition:all .15s;">
+                style="flex:1;border-radius:8px;padding:8px 4px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;border:1.5px solid var(--line);background:var(--paper);transition:all .15s;">
                 {{ $lbl }}
               </button>
             @endforeach
@@ -230,7 +206,7 @@
         <div id="smActionWrap" style="margin-bottom:8px;"></div>
 
         <button onclick="closeSortModal()"
-          style="width:100%;border:1px solid var(--line);border-radius:8px;padding:11px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:#fff;color:var(--text-900);">
+          style="width:100%;border:1px solid var(--line);border-radius:8px;padding:11px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:var(--paper);color:var(--text-900);">
           Close
         </button>
       </div>
@@ -256,6 +232,12 @@ const carrierColors = {
   lbc:      { bg:'#eaf4fb', color:'#2a6fbd', border:'#a8d4ef' },
   lalamove: { bg:'#f1eafe', color:'#7c4fe0', border:'#c9b0f5' },
 };
+const isDark = () => document.documentElement.classList.contains('dark');
+const carrierColorsDark = {
+  jnt:      { bg:'oklch(0.25 0.06 25)',  color:'#fca5a5', border:'rgba(252,165,165,.3)' },
+  lbc:      { bg:'oklch(0.22 0.05 230)', color:'#93c5fd', border:'rgba(147,197,253,.3)' },
+  lalamove: { bg:'oklch(0.24 0.08 291)', color:'#c4b5fd', border:'rgba(196,181,253,.3)' },
+};
 
 function openSortModal(id, trackNo, addr, area, rider, carrier, status) {
   smCurrentId      = id;
@@ -280,12 +262,12 @@ function selectCarrier(val) {
   ['jnt','lbc','lalamove'].forEach(c => {
     const btn = document.getElementById('carrier-' + c);
     if (c === val) {
-      const cc = carrierColors[c];
+      const cc = isDark() ? carrierColorsDark[c] : carrierColors[c];
       btn.style.background   = cc.bg;
       btn.style.color        = cc.color;
       btn.style.borderColor  = cc.border;
     } else {
-      btn.style.background  = '#fff';
+      btn.style.background  = isDark() ? 'var(--paper)' : '#fff';
       btn.style.color       = 'var(--text-900)';
       btn.style.borderColor = 'var(--line)';
     }

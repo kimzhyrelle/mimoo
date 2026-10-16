@@ -68,27 +68,42 @@
         Chat / Messaging
       </a>
 
-      <a href="{{ $isPreview ? route('preview.account.index') : route('account.index') }}"
-         class="{{ $navItem }} {{ request()->routeIs('account.index') || request()->routeIs('preview.account.index') ? $active : $inactive }}">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 opacity-80"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-        Account
-      </a>
-
       @if ($isPreview)
         <a href="{{ route('preview.index') }}" class="{{ $navItem }} {{ $inactive }}">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 opacity-80"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
           Back to preview
         </a>
       @endif
+
+      <div class="{{ $section }}">Support</div>
+
+      <a href="{{ route('help.index') }}"
+         class="{{ $navItem }} {{ request()->routeIs('help.index') ? $active : $inactive }}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 opacity-80"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        Help Centre
+      </a>
+
+      <a href="{{ $isPreview ? route('preview.account.index') : route('account.index') }}"
+         class="{{ $navItem }} {{ request()->routeIs('account.index') || request()->routeIs('preview.account.index') ? $active : $inactive }}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 opacity-80"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </a>
     </nav>
 
     {{-- User info --}}
     <div class="mt-4 flex items-center gap-2.5 border-t border-sidebar-border px-2 pt-4">
-      <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white">LG</div>
-      <div class="leading-tight min-w-0">
-        <div class="text-[12.5px] font-semibold text-white truncate">Laguna Hub</div>
-        <div class="text-[11px] text-white/50">Sorting Staff</div>
+      <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white">
+        {{ strtoupper(substr($hubProfile->staff_initials ?? $hubProfile->display_initials ?? 'SC', 0, 2)) }}
       </div>
+      <div class="leading-tight min-w-0">
+        <div class="text-[12.5px] font-semibold text-white truncate">{{ $hubProfile->staff_name ?? 'Sorting Staff' }}</div>
+        <div class="text-[11px] text-white/50">{{ $hubProfile->staff_title ?? 'Sorting Staff' }}</div>
+      </div>
+      <a href="{{ $isPreview ? route('preview.account.index') : route('account.index') }}"
+         class="ml-auto shrink-0 text-white/40 hover:text-white/80 transition-colors"
+         title="Settings">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </a>
     </div>
 
 </aside>

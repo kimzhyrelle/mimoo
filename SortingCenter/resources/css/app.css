@@ -168,9 +168,7 @@
         font-family: 'Syne', ui-sans-serif, system-ui, sans-serif;
     }
 
-    h1, h2, h3 {
-        font-family: 'Syncopate', sans-serif;
-    }
+    /* Syncopate is used ONLY for the sidebar wordmark — see partials/sidebar.blade.php */
 }
 
 /* -------------------------------------------------------------------------
@@ -201,4 +199,121 @@
     --area-a: #6c4fd8;
     --area-b: #2a8fbd;
     --area-c: #1fa391;
+}
+
+/* Dark mode overrides for legacy vars */
+.dark {
+    --ink-900: oklch(0.88 0.02 291);
+    --ink-800: oklch(0.80 0.03 291);
+    --ink-700: oklch(0.72 0.04 291);
+    --accent-500: oklch(0.72 0.18 291);
+    --accent-600: oklch(0.65 0.18 291);
+    --paper: oklch(0.22 0.05 291);
+    --header-bg: oklch(0.25 0.05 291);
+    --line: oklch(0.30 0.05 291);
+    --text-900: oklch(0.95 0.01 291);
+    --text-600: oklch(0.70 0.03 291);
+    --text-400: oklch(0.52 0.03 291);
+    --ok-600: #34d399;
+    --ok-100: oklch(0.22 0.06 160);
+    --pend-600: #fbbf24;
+    --pend-100: oklch(0.22 0.05 80);
+    --bad-600: #f87171;
+    --bad-100: oklch(0.22 0.06 25);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Shared dark-mode overrides for inline CSS classes used across pages
+   ───────────────────────────────────────────────────────────────────────── */
+@layer base {
+  /* Carrier pills */
+  .dark .carrier-pill.jnt      { background: oklch(0.25 0.06 25);  color: #fca5a5; }
+  .dark .carrier-pill.lbc      { background: oklch(0.22 0.05 230); color: #93c5fd; }
+  .dark .carrier-pill.lalamove { background: oklch(0.24 0.08 291); color: #c4b5fd; }
+
+  /* Carrier selects (sort-parcels modal) */
+  .dark .carrier-select        { background: var(--paper); color: var(--text-900); border-color: var(--line); }
+  .dark .carrier-select.jnt    { background: oklch(0.25 0.06 25);  color: #fca5a5; border-color: rgba(252,165,165,.3); }
+  .dark .carrier-select.lbc    { background: oklch(0.22 0.05 230); color: #93c5fd; border-color: rgba(147,197,253,.3); }
+  .dark .carrier-select.lalamove { background: oklch(0.24 0.08 291); color: #c4b5fd; border-color: rgba(196,181,253,.3); }
+
+  /* Badge blue (delivery-monitoring) */
+  .dark .badge.blue { background: oklch(0.22 0.05 230); color: #93c5fd; }
+  .dark .badge.off  { background: var(--paper); color: var(--text-400); }
+
+  /* Rail card base (delivery-monitoring) */
+  .dark .rail-card { background: var(--card, oklch(0.18 0.05 291)); border-color: var(--line); }
+  .dark .rail-card .n { color: var(--text-900); }
+
+  /* Rider avatar (dark bg stays deep, text stays white — no change needed) */
+  .dark .rider-av,
+  .dark .ravatar { background: oklch(0.30 0.08 291); color: #fff; }
+
+  /* Note / info banner */
+  .dark .note { background: oklch(0.22 0.07 291); color: oklch(0.80 0.12 291); border-color: oklch(0.35 0.10 291); }
+
+  /* stat-card.accent gradient */
+  .dark .stat-card.accent { background: oklch(0.22 0.06 291); border-color: oklch(0.35 0.10 291); }
+
+  /* Flow bar (sort-parcels) */
+  .dark .flow { background: var(--paper); border-color: var(--line); }
+
+  /* Filter tabs active (delivery-monitoring) */
+  .dark .ftab.active { background: var(--paper); color: var(--text-900); }
+
+  /* Table row hover (reports) */
+  .dark .report-table tbody tr:hover td { background: oklch(0.22 0.05 291); }
+
+  /* Success/warning/danger fill bars (reports) */
+  .dark .success-fill      { background: #34d399; }
+  .dark .success-fill.warn { background: #fbbf24; }
+  .dark .success-fill.bad  { background: #f87171; }
+
+  /* Delta text (reports & delivery-assignment) */
+  .dark .delta.up,
+  .dark .stat-card .delta-pill.up { color: #34d399; }
+  .dark .delta.down { color: #f87171; }
+  .dark .stat-card .delta-pill.up { background: oklch(0.22 0.06 160); }
+
+  /* Area chip */
+  .dark .area-chip { background: var(--ink-700); color: #e9d5ff; }
+
+  /* Buttons */
+  .dark .btn-ok:hover { background: #059669; }
+  .dark .brgy-select  { background: var(--paper); color: var(--text-900); border-color: var(--line); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Custom scrollbars — subtle in light mode, dark-aware
+   ───────────────────────────────────────────────────────────────────────── */
+@layer base {
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  /* Webkit (Chrome, Edge, Safari) */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+  }
+
+  /* Dark mode — slightly brighter thumb so it's visible */
+  .dark ::-webkit-scrollbar-thumb {
+    background: oklch(0.38 0.05 291);
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.50 0.06 291);
+  }
 }
