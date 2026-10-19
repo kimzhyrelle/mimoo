@@ -371,6 +371,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/manage-registrations', [AdminController::class, 'manageRegistrations'])->name('manage-registrations');
         Route::post('/registrations/{userId}/approve', [AdminController::class, 'approveRegistration'])->name('registrations.approve');
         Route::post('/registrations/{userId}/disapprove', [AdminController::class, 'disapproveRegistration'])->name('registrations.disapprove');
+        
+        // Seller approval routes
+        Route::get('/seller-approval', [AdminController::class, 'sellerApproval'])->name('seller-approval');
+        Route::post('/seller-approval/{userId}/approve', [AdminController::class, 'approveSellerRegistration'])->name('seller-approval.approve');
+        Route::post('/seller-approval/{userId}/disapprove', [AdminController::class, 'disapproveSellerRegistration'])->name('seller-approval.disapprove');
+        
         Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
     });
 });

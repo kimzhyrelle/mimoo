@@ -1,48 +1,36 @@
 import { Link, router } from '@inertiajs/react';
 import {
-    AlertTriangle,
     Bell,
+    CheckSquare,
     CircleDollarSign,
-    ClipboardList,
     Cog,
+    Eye,
     FileText,
     LayoutDashboard,
     LogOut,
     MessageSquare,
-    ShieldCheck,
-    Truck,
     UserCheck,
-    Users,
 } from 'lucide-react';
-import type { FormEvent, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 // ─── Nav definition ───────────────────────────────────────────────────────────
 
 export type AdminNavKey =
     | 'dashboard'
-    | 'manage-registrations'
-    | 'user-accounts'
-    | 'seller-compliance'
-    | 'complaints-disputes'
-    | 'rider-logistics'
-    | 'commissions'
+    | 'commission'
     | 'reports'
-    | 'platform-settings'
-    | 'chat-messaging'
-    | 'account-management';
+    | 'seller-approval'
+    | 'product-approval'
+    | 'notifications'
+    | 'monitoring';
 
 const navItems: { key: AdminNavKey; label: string; icon: React.ElementType; href: string }[] = [
-    { key: 'dashboard',              label: 'Dashboard',              icon: LayoutDashboard, href: '/admin/dashboard'              },
-    { key: 'manage-registrations',   label: 'Registrations',          icon: ClipboardList,   href: '/admin/manage-registrations'   },
-    { key: 'user-accounts',          label: 'User Accounts',          icon: Users,           href: '/admin/user-accounts'          },
-    { key: 'seller-compliance',      label: 'Seller Compliance',      icon: UserCheck,       href: '/admin/seller-compliance'      },
-    { key: 'complaints-disputes',    label: 'Complaints & Disputes',  icon: AlertTriangle,   href: '/admin/complaints-disputes',   },
-    { key: 'rider-logistics',        label: 'Rider & Logistics',      icon: Truck,           href: '/admin/rider-logistics'        },
-    { key: 'commissions',            label: 'Commissions',            icon: CircleDollarSign,href: '/admin/commissions'            },
-    { key: 'reports',                label: 'Reports',                icon: FileText,        href: '/admin/reports'                },
-    { key: 'platform-settings',      label: 'Platform Settings',      icon: Cog,             href: '/admin/platform-settings'      },
-    { key: 'chat-messaging',         label: 'Chat / Messaging',       icon: MessageSquare,   href: '/admin/chat-messaging'         },
-    { key: 'account-management',     label: 'Account Management',     icon: ShieldCheck,     href: '/admin/account-management'     },
+    { key: 'dashboard',         label: 'Dashboard',         icon: LayoutDashboard,  href: '/admin/dashboard'         },
+    { key: 'commission',        label: 'Commission',        icon: CircleDollarSign, href: '/admin/commission'        },
+    { key: 'reports',           label: 'Reports',           icon: FileText,         href: '/admin/reports'           },
+    { key: 'seller-approval',   label: 'Seller Approval',   icon: UserCheck,        href: '/admin/seller-approval'   },
+    { key: 'product-approval',  label: 'Product Approval',  icon: CheckSquare,      href: '/admin/product-approval'  },
+    { key: 'monitoring',        label: 'Monitoring',        icon: Eye,              href: '/admin/monitoring'        },
 ];
 
 // ─── Shell ────────────────────────────────────────────────────────────────────
@@ -53,7 +41,7 @@ interface AdminShellProps {
 }
 
 export default function AdminShell({ active, children }: AdminShellProps) {
-    function handleLogout(e: FormEvent) {
+    function handleLogout(e: React.FormEvent) {
         e.preventDefault();
         router.post('/admin/logout');
     }

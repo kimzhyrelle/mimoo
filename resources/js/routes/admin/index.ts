@@ -1,5 +1,6 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
 import registrations from './registrations'
+import sellerApprovalDe7003 from './seller-approval'
 /**
 * @see \App\Http\Controllers\Admin\AdminController::login
  * @see app/Http/Controllers/Admin/AdminController.php:18
@@ -290,8 +291,86 @@ manageRegistrations.head = (options?: RouteQueryOptions): RouteDefinition<'head'
     
     manageRegistrations.form = manageRegistrationsForm
 /**
+* @see \App\Http\Controllers\Admin\AdminController::sellerApproval
+ * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @route '/admin/seller-approval'
+ */
+export const sellerApproval = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: sellerApproval.url(options),
+    method: 'get',
+})
+
+sellerApproval.definition = {
+    methods: ["get","head"],
+    url: '/admin/seller-approval',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+* @see \App\Http\Controllers\Admin\AdminController::sellerApproval
+ * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @route '/admin/seller-approval'
+ */
+sellerApproval.url = (options?: RouteQueryOptions) => {
+    return sellerApproval.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Admin\AdminController::sellerApproval
+ * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @route '/admin/seller-approval'
+ */
+sellerApproval.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: sellerApproval.url(options),
+    method: 'get',
+})
+/**
+* @see \App\Http\Controllers\Admin\AdminController::sellerApproval
+ * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @route '/admin/seller-approval'
+ */
+sellerApproval.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: sellerApproval.url(options),
+    method: 'head',
+})
+
+    /**
+* @see \App\Http\Controllers\Admin\AdminController::sellerApproval
+ * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @route '/admin/seller-approval'
+ */
+    const sellerApprovalForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: sellerApproval.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\Admin\AdminController::sellerApproval
+ * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @route '/admin/seller-approval'
+ */
+        sellerApprovalForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: sellerApproval.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\Admin\AdminController::sellerApproval
+ * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @route '/admin/seller-approval'
+ */
+        sellerApprovalForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: sellerApproval.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    sellerApproval.form = sellerApprovalForm
+/**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:127
+ * @see app/Http/Controllers/Admin/AdminController.php:201
  * @route '/admin/logout'
  */
 export const logout = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -306,7 +385,7 @@ logout.definition = {
 
 /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:127
+ * @see app/Http/Controllers/Admin/AdminController.php:201
  * @route '/admin/logout'
  */
 logout.url = (options?: RouteQueryOptions) => {
@@ -315,7 +394,7 @@ logout.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:127
+ * @see app/Http/Controllers/Admin/AdminController.php:201
  * @route '/admin/logout'
  */
 logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -325,7 +404,7 @@ logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:127
+ * @see app/Http/Controllers/Admin/AdminController.php:201
  * @route '/admin/logout'
  */
     const logoutForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -335,7 +414,7 @@ logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:127
+ * @see app/Http/Controllers/Admin/AdminController.php:201
  * @route '/admin/logout'
  */
         logoutForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -350,6 +429,7 @@ verify: Object.assign(verify, verify),
 dashboard: Object.assign(dashboard, dashboard),
 manageRegistrations: Object.assign(manageRegistrations, manageRegistrations),
 registrations: Object.assign(registrations, registrations),
+sellerApproval: Object.assign(sellerApproval, sellerApprovalDe7003),
 logout: Object.assign(logout, logout),
 }
 

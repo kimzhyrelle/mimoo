@@ -11,15 +11,40 @@ const TOTAL_STEPS = 4;
 const MAX_FILE_MB = 5;
 const PH_MOBILE_RE = /^09\d{9}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const NCR_NAME = "National Capital Region (NCR)";
+const PSGC_BASE = 'https://psgc.gitlab.io/api';
+const NCR_CODE = '130000000'; // PSGC code ng NCR (i-verify sa /api/regions/)
+
+// CHANGED: validation patterns
+// Name: letters (kasama ñ at accented), space, hyphen, apostrophe lang. Dapat may at least 1 letter.
+const NAME_RE = /^(?=.*[A-Za-zÀ-ÖØ-öø-ÿ])[A-Za-zÀ-ÖØ-öø-ÿ'’ -]+$/;
+// TIN: strict 000-000-000-000 (12 digits)
+const TIN_RE = /^\d{3}-\d{3}-\d{3}-\d{3}$/;
+// Business name length
+const BUSINESS_NAME_MIN = 3;
+const BUSINESS_NAME_MAX = 30;
 
 // NCR Districts
+// Ang laman ng parentheses ang ginagamit pang-filter ng cities
 const NCR_DISTRICTS = [
     '1st District (Manila)',
-    '2nd District (Marikina, Pasig, Quezon City - East)',
+    '2nd District (Mandaluyong, Marikina, Pasig, Quezon City, San Juan)',
     '3rd District (Caloocan, Malabon, Navotas, Valenzuela)',
-    '4th District (Las Piñas, Muntinlupa, Parañaque, Pasay, Taguig)',
+    '4th District (Las Piñas, Makati, Muntinlupa, Parañaque, Pasay, Pateros, Taguig)',
 ];
+
+// "City of Las Piñas" / "Las Piñas City" / "Las Piñas" -> "las pinas"
+const normCity = (s: string) =>
+    s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/^city of\s+/, '')
+        .replace(/\s+city$/, '')
+        .trim();
+
+// Kunin ang mga city keys mula sa parentheses ng district label
+const districtCityKeys = (label: string): string[] => {
+    const m = label.match(/\(([^)]*)\)/);
+    return m ? m[1].split(',').map(normCity) : [];
+};
 
 const SIDEBAR_STEPS = [
     'Add your name, contact info and birthday',
@@ -45,6 +70,13 @@ interface Province { code: string; name: string; regionCode: string }
 interface CityMunicipality { code: string; name: string; provinceCode: string }
 interface Barangay { code: string; name: string; cityCode: string }
 
+// NCR check: by code muna, fallback sa pangalan
+const isNCRRegion = (r?: Region | null): boolean =>
+    !!r && (r.code === NCR_CODE || /\(NCR\)|national capital region/i.test(r.name));
+
+const sortByName = <T extends { name: string }>(list: T[]): T[] =>
+    [...list].sort((a, b) => a.name.localeCompare(b.name));
+
 type FormShape = {
     first_name: string;
     last_name: string;
@@ -54,16 +86,23 @@ type FormShape = {
     contact_number: string;
     birthday: string;
     account_type: string;
+    tin: string;
     region: string;
     province: string;
     district: string; // NCR only: 1st-4th District
     municipality_city: string;
     barangay: string;
+    postal_code: string;
     street_address: string;
     business_name: string;
+    business_type: string; // sole proprietor, partnership, corporation
     line_of_business: string;
     business_permit: File | null;
+    dti_registration: File | null;
+    bir_2303: File | null;
+    sec_certificate: File | null; // required only for corporation
     id_document: File | null;
+    privacy_policy_accepted: boolean;
     password: string;
     password_confirmation: string;
 };
@@ -71,17 +110,18 @@ type FieldName = keyof FormShape;
 type Errs = Partial<Record<FieldName, string>>;
 
 const FIELD_STEP: Partial<Record<FieldName, number>> = {
-    first_name: 1, last_name: 1, sex: 1, email: 1, contact_number: 1, birthday: 1,
-    region: 2, province: 2, district: 2, municipality_city: 2, barangay: 2, street_address: 2,
-    business_name: 3, line_of_business: 3, business_permit: 3, id_document: 3,
-    password: 4, password_confirmation: 4,
+    first_name: 1, last_name: 1, sex: 1, email: 1, contact_number: 1, birthday: 1, tin: 1,
+    region: 2, province: 2, district: 2, municipality_city: 2, barangay: 2, postal_code: 2, street_address: 2,
+    business_name: 3, business_type: 3, line_of_business: 3, business_permit: 3, dti_registration: 3, bir_2303: 3, sec_certificate: 3, id_document: 3,
+    password: 4, password_confirmation: 4, privacy_policy_accepted: 4,
 };
 const FIELD_LABEL: Partial<Record<FieldName, string>> = {
     first_name: 'First name', last_name: 'Last name', sex: 'Sex', email: 'Email address',
-    contact_number: 'Contact number', birthday: 'Birthday', region: 'Region', province: 'Province',
-    district: 'District', municipality_city: 'Municipality / City', barangay: 'Barangay', street_address: 'Street & house number',
-    business_name: 'Business name', line_of_business: 'Line of business', business_permit: 'Business permit',
-    id_document: 'Valid ID', password: 'Password', password_confirmation: 'Confirm password',
+    contact_number: 'Contact number', birthday: 'Birthday', tin: 'TIN (Tax Identification Number)', region: 'Region', province: 'Province',
+    district: 'District', municipality_city: 'Municipality / City', barangay: 'Barangay', postal_code: 'Postal Code', street_address: 'Street & house number',
+    business_name: 'Business name', business_type: 'Business type', line_of_business: 'Line of business', business_permit: 'Business permit',
+    dti_registration: 'DTI Registration', bir_2303: 'BIR Form 2303', sec_certificate: 'SEC Certificate', id_document: 'Valid ID', 
+    privacy_policy_accepted: 'Privacy Policy', password: 'Password', password_confirmation: 'Confirm password',
 };
 
 function calcAge(birthday: string): number | null {
@@ -102,37 +142,71 @@ function fileError(f: File | null, emptyMsg: string): string | undefined {
     return undefined;
 }
 
-function validate(step: number, d: FormShape): Errs {
+function validate(step: number, d: FormShape, isNCR: boolean): Errs {
     const e: Errs = {};
     if (step === 1) {
+        // CHANGED: letters, ñ, space, hyphen, apostrophe lang
         if (!d.first_name.trim()) e.first_name = 'Enter your first name.';
+        else if (!NAME_RE.test(d.first_name.trim()))
+            e.first_name = 'Use letters only. Spaces, hyphens and apostrophes are allowed.';
         if (!d.last_name.trim()) e.last_name = 'Enter your last name.';
+        else if (!NAME_RE.test(d.last_name.trim()))
+            e.last_name = 'Use letters only. Spaces, hyphens and apostrophes are allowed.';
         if (!d.sex) e.sex = 'Select your sex.';
         if (!EMAIL_RE.test(d.email.trim())) e.email = 'Enter a valid email address.';
         if (!PH_MOBILE_RE.test(d.contact_number.trim())) e.contact_number = 'Enter a valid PH mobile number (09XXXXXXXXX).';
         if (calcAge(d.birthday) === null) e.birthday = 'Enter a valid past date of birth.';
+        // CHANGED: TIN strict 000-000-000-000
+        if (!d.tin.trim()) e.tin = 'Enter your TIN.';
+        else if (!TIN_RE.test(d.tin.trim()))
+            e.tin = 'Enter a valid TIN in the format 000-000-000-000 (12 digits).';
     }
     if (step === 2) {
-        const isNCR = d.region === NCR_NAME;
         if (!d.region) e.region = 'Select a region.';
         if (!isNCR && !d.province) e.province = 'Select a province.';
         if (isNCR && !d.district) e.district = 'Select a district.';
         if (!d.municipality_city) e.municipality_city = 'Select a municipality or city.';
         if (!d.barangay) e.barangay = 'Select a barangay.';
+        // CHANGED: exactly 4 digits, numbers lang
+        if (!d.postal_code.trim()) e.postal_code = 'Enter your postal code.';
+        else if (!/^\d{4}$/.test(d.postal_code.trim())) e.postal_code = 'Postal code must be exactly 4 digits.';
         if (!d.street_address.trim()) e.street_address = 'Enter your street and house number.';
     }
     if (step === 3) {
-        if (!d.business_name.trim()) e.business_name = 'Enter your business name.';
+        // CHANGED: business name 3 to 30 characters
+        const bizName = d.business_name.trim();
+        if (!bizName) e.business_name = 'Enter your business name.';
+        else if (bizName.length < BUSINESS_NAME_MIN || bizName.length > BUSINESS_NAME_MAX)
+            e.business_name = `Business name must be ${BUSINESS_NAME_MIN} to ${BUSINESS_NAME_MAX} characters.`;
+        if (!d.business_type) e.business_type = 'Select your business type.';
         if (!d.line_of_business) e.line_of_business = 'Select the category that best fits your store.';
         const permitErr = fileError(d.business_permit, 'Upload your business permit.');
         if (permitErr) e.business_permit = permitErr;
+        const dtiErr = fileError(d.dti_registration, 'Upload your DTI registration.');
+        if (dtiErr) e.dti_registration = dtiErr;
+        const birErr = fileError(d.bir_2303, 'Upload BIR Form 2303.');
+        if (birErr) e.bir_2303 = birErr;
+        // SEC certificate required only for corporation
+        if (d.business_type === 'corporation') {
+            const secErr = fileError(d.sec_certificate, 'Upload SEC certificate (required for Corporation).');
+            if (secErr) e.sec_certificate = secErr;
+        }
         const idErr = fileError(d.id_document, 'Upload a valid government-issued ID.');
         if (idErr) e.id_document = idErr;
     }
     if (step === 4) {
+        // CHANGED: uppercase, lowercase, number, special character
         if (d.password.length < 8) e.password = 'Use at least 8 characters.';
+        else if (
+            !/[A-Z]/.test(d.password) ||
+            !/[a-z]/.test(d.password) ||
+            !/\d/.test(d.password) ||
+            !/[^A-Za-z0-9]/.test(d.password)
+        )
+            e.password = 'Include an uppercase letter, a lowercase letter, a number and a special character.';
         if (!d.password_confirmation || d.password_confirmation !== d.password)
             e.password_confirmation = "Passwords don't match.";
+        if (!d.privacy_policy_accepted) e.privacy_policy_accepted = 'You must accept the Terms and Privacy Policy to continue.';
     }
     return e;
 }
@@ -274,7 +348,6 @@ function FileField({
 export default function SellerRegistration() {
     const [step, setStep] = useState(1);
     const [clientErrors, setClientErrors] = useState<Errs>({});
-    const [submitted, setSubmitted] = useState(false);
     const headingRef = useRef<HTMLHeadingElement>(null);
 
     // PSGC API states
@@ -293,16 +366,23 @@ export default function SellerRegistration() {
         contact_number: '',
         birthday: '',
         account_type: 'seller',
+        tin: '',
         region: '',
         province: '',
         district: '',
         municipality_city: '',
         barangay: '',
+        postal_code: '',
         street_address: '',
         business_name: '',
+        business_type: '',
         line_of_business: '',
         business_permit: null,
+        dti_registration: null,
+        bir_2303: null,
+        sec_certificate: null,
         id_document: null,
+        privacy_policy_accepted: false,
         password: '',
         password_confirmation: '',
     });
@@ -312,91 +392,111 @@ export default function SellerRegistration() {
     const err = (f: FieldName) => allErrors[f];
     const summary = (Object.keys(clientErrors) as FieldName[]).filter((f) => clientErrors[f]);
 
-    // Check if selected region is NCR
-    const isNCR = data.region === NCR_NAME;
+    // Selected region at NCR check (by code, hindi by exact name)
+    const selectedRegion = regions.find((r) => r.name === data.region);
+    const isNCR = isNCRRegion(selectedRegion);
+
+    // Cities na ipapakita: sa NCR, ayon lang sa napiling district
+    const visibleCities = (() => {
+        if (!isNCR) return cities;
+        if (!data.district) return [];
+        const keys = districtCityKeys(data.district);
+        const matched = cities.filter((c) => keys.includes(normCity(c.name)));
+        // Kung walang tumugma (iba ang pangalan sa API), ipakita lahat para hindi ma-stuck
+        return matched.length ? matched : cities;
+    })();
 
     // Load regions on mount
     useEffect(() => {
-        setLoading((prev) => ({ ...prev, regions: true }));
-        fetch('https://psgc.gitlab.io/api/regions/')
+        let cancelled = false;
+        setLoading((p) => ({ ...p, regions: true }));
+        fetch(`${PSGC_BASE}/regions/`)
             .then((res) => res.json())
-            .then((list: Region[]) => {
-                setRegions(list.sort((a, b) => a.name.localeCompare(b.name)));
-                setLoading((prev) => ({ ...prev, regions: false }));
-            })
-            .catch(() => setLoading((prev) => ({ ...prev, regions: false })));
+            .then((list: Region[]) => { if (!cancelled) setRegions(sortByName(list)); })
+            .catch(() => { if (!cancelled) setRegions([]); })
+            .finally(() => { if (!cancelled) setLoading((p) => ({ ...p, regions: false })); });
+        return () => { cancelled = true; };
     }, []);
 
-    // Load provinces when region changes (skip for NCR)
+    // Region -> provinces (non-NCR) O cities diretso (NCR)
     useEffect(() => {
-        if (data.region && !isNCR) {
-            const selected = regions.find((r) => r.name === data.region);
-            if (selected) {
-                setLoading((prev) => ({ ...prev, provinces: true }));
-                fetch(`https://psgc.gitlab.io/api/regions/${selected.code}/provinces/`)
-                    .then((res) => res.json())
-                    .then((list: Province[]) => {
-                        setProvinces(list.sort((a, b) => a.name.localeCompare(b.name)));
-                        setLoading((prev) => ({ ...prev, provinces: false }));
-                    })
-                    .catch(() => setLoading((prev) => ({ ...prev, provinces: false })));
-            }
-        } else if (isNCR) {
-            // For NCR, load cities directly from region
-            const selected = regions.find((r) => r.name === data.region);
-            if (selected) {
-                setLoading((prev) => ({ ...prev, cities: true }));
-                fetch(`https://psgc.gitlab.io/api/regions/${selected.code}/cities-municipalities/`)
-                    .then((res) => res.json())
-                    .then((list: CityMunicipality[]) => {
-                        setCities(list.sort((a, b) => a.name.localeCompare(b.name)));
-                        setLoading((prev) => ({ ...prev, cities: false }));
-                    })
-                    .catch(() => setLoading((prev) => ({ ...prev, cities: false })));
-            }
+        if (!selectedRegion) {
             setProvinces([]);
-            setData('province', 'N/A'); // Set province to N/A for NCR
-        } else {
-            setProvinces([]);
+            return;
         }
-    }, [data.region, regions]);
+        let cancelled = false;
+        const base = `${PSGC_BASE}/regions/${selectedRegion.code}`;
 
-    // Load cities/municipalities when province changes (skip for NCR since already loaded)
+        if (!isNCR) {
+            setLoading((p) => ({ ...p, provinces: true }));
+            fetch(`${base}/provinces/`)
+                .then((res) => res.json())
+                .then((list: Province[]) => { if (!cancelled) setProvinces(sortByName(list)); })
+                .catch(() => { if (!cancelled) setProvinces([]); })
+                .finally(() => { if (!cancelled) setLoading((p) => ({ ...p, provinces: false })); });
+            return () => { cancelled = true; };
+        }
+
+        // NCR: walang province, diretso cities
+        setProvinces([]);
+        setLoading((p) => ({ ...p, cities: true }));
+        fetch(`${base}/cities-municipalities/`)
+            .then((res) => res.json())
+            .then(async (list: CityMunicipality[]) => {
+                if (Array.isArray(list) && list.length) return list;
+                // Fallback: kunin per district kapag walang laman ang region endpoint
+                const districts: { code: string }[] = await fetch(`${base}/districts/`).then((r) => r.json());
+                const perDistrict = await Promise.all(
+                    districts.map((d) =>
+                        fetch(`${PSGC_BASE}/districts/${d.code}/cities-municipalities/`).then((r) => r.json())
+                    )
+                );
+                return perDistrict.flat() as CityMunicipality[];
+            })
+            .then((list) => {
+                if (cancelled) return;
+                const unique = Array.from(new Map(list.map((c) => [c.code, c])).values());
+                setCities(sortByName(unique));
+            })
+            .catch(() => { if (!cancelled) setCities([]); })
+            .finally(() => { if (!cancelled) setLoading((p) => ({ ...p, cities: false })); });
+
+        return () => { cancelled = true; };
+    }, [selectedRegion?.code, isNCR]);
+
+    // Province -> cities (non-NCR lang)
     useEffect(() => {
-        if (data.province && !isNCR) {
-            const selected = provinces.find((p) => p.name === data.province);
-            if (selected) {
-                setLoading((prev) => ({ ...prev, cities: true }));
-                fetch(`https://psgc.gitlab.io/api/provinces/${selected.code}/cities-municipalities/`)
-                    .then((res) => res.json())
-                    .then((list: CityMunicipality[]) => {
-                        setCities(list.sort((a, b) => a.name.localeCompare(b.name)));
-                        setLoading((prev) => ({ ...prev, cities: false }));
-                    })
-                    .catch(() => setLoading((prev) => ({ ...prev, cities: false })));
-            }
-        } else if (!isNCR) {
+        if (isNCR) return; // NCR cities galing na sa region effect
+        const selected = provinces.find((p) => p.name === data.province);
+        if (!data.province || !selected) {
             setCities([]);
+            return;
         }
-    }, [data.province, provinces]);
+        let cancelled = false;
+        setLoading((p) => ({ ...p, cities: true }));
+        fetch(`${PSGC_BASE}/provinces/${selected.code}/cities-municipalities/`)
+            .then((res) => res.json())
+            .then((list: CityMunicipality[]) => { if (!cancelled) setCities(sortByName(list)); })
+            .catch(() => { if (!cancelled) setCities([]); })
+            .finally(() => { if (!cancelled) setLoading((p) => ({ ...p, cities: false })); });
+        return () => { cancelled = true; };
+    }, [data.province, provinces, isNCR]);
 
-    // Load barangays when city/municipality changes
+    // City/municipality -> barangays
     useEffect(() => {
-        if (data.municipality_city) {
-            const selected = cities.find((c) => c.name === data.municipality_city);
-            if (selected) {
-                setLoading((prev) => ({ ...prev, barangays: true }));
-                fetch(`https://psgc.gitlab.io/api/cities-municipalities/${selected.code}/barangays/`)
-                    .then((res) => res.json())
-                    .then((list: Barangay[]) => {
-                        setBarangays(list.sort((a, b) => a.name.localeCompare(b.name)));
-                        setLoading((prev) => ({ ...prev, barangays: false }));
-                    })
-                    .catch(() => setLoading((prev) => ({ ...prev, barangays: false })));
-            }
-        } else {
+        const selected = cities.find((c) => c.name === data.municipality_city);
+        if (!data.municipality_city || !selected) {
             setBarangays([]);
+            return;
         }
+        let cancelled = false;
+        setLoading((p) => ({ ...p, barangays: true }));
+        fetch(`${PSGC_BASE}/cities-municipalities/${selected.code}/barangays/`)
+            .then((res) => res.json())
+            .then((list: Barangay[]) => { if (!cancelled) setBarangays(sortByName(list)); })
+            .catch(() => { if (!cancelled) setBarangays([]); })
+            .finally(() => { if (!cancelled) setLoading((p) => ({ ...p, barangays: false })); });
+        return () => { cancelled = true; };
     }, [data.municipality_city, cities]);
 
     // Kapag may server-side error, ibalik sa step na may unang error
@@ -416,14 +516,30 @@ export default function SellerRegistration() {
     };
 
     const goNext = () => {
-        const e = validate(step, data);
+        // Trim email first
+        if (step === TOTAL_STEPS && data.email) {
+            data.email = data.email.trim();
+        }
+        
+        const e = validate(step, data, isNCR);
         if (Object.keys(e).length) {
             setClientErrors(e);
             return;
         }
         setClientErrors({});
         if (step < TOTAL_STEPS) goTo(step + 1);
-        else post('/register', { forceFormData: true, onSuccess: () => setSubmitted(true) });
+        else {
+            post('/register', { 
+                forceFormData: true,
+                onSuccess: () => {
+                    // Registration successful - backend will redirect to OTP page
+                    console.log('Registration submitted successfully');
+                },
+                onError: (errors) => {
+                    console.error('Registration failed:', errors);
+                },
+            });
+        }
     };
 
     const goBack = () => {
@@ -655,6 +771,13 @@ export default function SellerRegistration() {
                                         value={data.contact_number} onChange={(e) => set('contact_number', e.target.value.replace(/\D/g, ''))}
                                         autoComplete="tel" aria-invalid={!!err('contact_number')} className={inputCls(err('contact_number'))} />
                                 </Field>
+                                {/* CHANGED: hint para sa strict TIN format */}
+                                <Field label="TIN (Tax Identification Number)" htmlFor="tin" required error={err('tin')}
+                                    hint="Format: 000-000-000-000 (12 digits)">
+                                    <input id="tin" type="text" placeholder="123-456-789-000" value={data.tin}
+                                        onChange={(e) => set('tin', e.target.value)} autoComplete="off"
+                                        aria-invalid={!!err('tin')} className={inputCls(err('tin'))} />
+                                </Field>
                                 <Field label="Birthday" htmlFor="birthday" required error={err('birthday')}>
                                     <input id="birthday" type="date" max={new Date().toISOString().split('T')[0]} value={data.birthday}
                                         onChange={(e) => set('birthday', e.target.value)} autoComplete="bday"
@@ -678,47 +801,61 @@ export default function SellerRegistration() {
                                         aria-invalid={!!err('region')}
                                         className={`${inputCls(err('region'))} disabled:bg-[#F1EDFB] disabled:text-gray-400`}
                                         onChange={(e) => {
-                                            const value = e.target.value;
-                                            setData({
-                                                ...data,
-                                                region: value,
-                                                province: value === NCR_NAME ? 'N/A' : '',
+                                            set('region', e.target.value);
+                                            setData((prev) => ({
+                                                ...prev,
+                                                region: e.target.value,
+                                                province: '',
                                                 district: '',
                                                 municipality_city: '',
                                                 barangay: ''
-                                            });
-                                            setCities([]);
-                                            setClientErrors((c) => ({ ...c, region: undefined, province: undefined, district: undefined }));
+                                            }));
+                                            setClientErrors((c) => ({ 
+                                                ...c, 
+                                                region: undefined, 
+                                                province: undefined, 
+                                                district: undefined,
+                                                municipality_city: undefined,
+                                                barangay: undefined
+                                            }));
                                         }}
                                     >
                                         <option value="">{loading.regions ? 'Loading regions...' : 'Select region'}</option>
                                         {regions.map((r) => <option key={r.code} value={r.name}>{r.name}</option>)}
                                     </select>
                                 </Field>
-                                <Field label="Province" htmlFor="province" required error={err('province')}>
-                                    <select
-                                        id="province"
-                                        value={data.province}
-                                        disabled={!data.region || loading.provinces || isNCR}
-                                        aria-invalid={!!err('province')}
-                                        className={`${inputCls(err('province'))} disabled:bg-[#F1EDFB] disabled:text-gray-400`}
-                                        onChange={(e) => {
-                                            setData({ ...data, province: e.target.value, municipality_city: '', barangay: '' });
-                                            setClientErrors((c) => ({ ...c, province: undefined }));
-                                        }}
-                                    >
-                                        {isNCR ? (
-                                            <option value="N/A">N/A (NCR has no provinces)</option>
-                                        ) : (
-                                            <>
-                                                <option value="">
-                                                    {!data.region ? 'Select region first' : loading.provinces ? 'Loading provinces...' : 'Select province'}
-                                                </option>
-                                                {provinces.map((p) => <option key={p.code} value={p.name}>{p.name}</option>)}
-                                            </>
-                                        )}
-                                    </select>
-                                </Field>
+                                
+                                {!isNCR && (
+                                    <Field label="Province" htmlFor="province" required error={err('province')}>
+                                        <select
+                                            id="province"
+                                            value={data.province}
+                                            disabled={!data.region || loading.provinces}
+                                            aria-invalid={!!err('province')}
+                                            className={`${inputCls(err('province'))} disabled:bg-[#F1EDFB] disabled:text-gray-400`}
+                                            onChange={(e) => {
+                                                setData((prev) => ({
+                                                    ...prev,
+                                                    province: e.target.value,
+                                                    municipality_city: '',
+                                                    barangay: ''
+                                                }));
+                                                setClientErrors((c) => ({ 
+                                                    ...c, 
+                                                    province: undefined,
+                                                    municipality_city: undefined,
+                                                    barangay: undefined
+                                                }));
+                                            }}
+                                        >
+                                            <option value="">
+                                                {!data.region ? 'Select region first' : loading.provinces ? 'Loading provinces...' : 'Select province'}
+                                            </option>
+                                            {provinces.map((p) => <option key={p.code} value={p.name}>{p.name}</option>)}
+                                        </select>
+                                    </Field>
+                                )}
+                                
                                 {isNCR && (
                                     <Field label="District" htmlFor="district" required error={err('district')}>
                                         <select
@@ -728,8 +865,18 @@ export default function SellerRegistration() {
                                             aria-invalid={!!err('district')}
                                             className={`${inputCls(err('district'))} disabled:bg-[#F1EDFB] disabled:text-gray-400`}
                                             onChange={(e) => {
-                                                setData({ ...data, district: e.target.value, municipality_city: '', barangay: '' });
-                                                setClientErrors((c) => ({ ...c, district: undefined }));
+                                                setData((prev) => ({
+                                                    ...prev,
+                                                    district: e.target.value,
+                                                    municipality_city: '',
+                                                    barangay: ''
+                                                }));
+                                                setClientErrors((c) => ({ 
+                                                    ...c, 
+                                                    district: undefined,
+                                                    municipality_city: undefined,
+                                                    barangay: undefined
+                                                }));
                                             }}
                                         >
                                             <option value="">{!data.region ? 'Select region first' : 'Select district'}</option>
@@ -737,28 +884,38 @@ export default function SellerRegistration() {
                                         </select>
                                     </Field>
                                 )}
+                                
                                 <Field label="Municipality / City" htmlFor="municipality_city" required error={err('municipality_city')}>
                                     <select
                                         id="municipality_city"
                                         value={data.municipality_city}
-                                        disabled={isNCR ? (!data.region || loading.cities) : (!data.province || loading.cities)}
+                                        disabled={isNCR ? (!data.district || loading.cities) : (!data.province || loading.cities)}
                                         aria-invalid={!!err('municipality_city')}
                                         className={`${inputCls(err('municipality_city'))} disabled:bg-[#F1EDFB] disabled:text-gray-400`}
                                         onChange={(e) => {
-                                            setData({ ...data, municipality_city: e.target.value, barangay: '' });
-                                            setClientErrors((c) => ({ ...c, municipality_city: undefined }));
+                                            setData((prev) => ({
+                                                ...prev,
+                                                municipality_city: e.target.value,
+                                                barangay: ''
+                                            }));
+                                            setClientErrors((c) => ({ 
+                                                ...c, 
+                                                municipality_city: undefined,
+                                                barangay: undefined
+                                            }));
                                         }}
                                     >
                                         <option value="">
                                             {loading.cities 
                                                 ? 'Loading cities...' 
                                                 : isNCR 
-                                                    ? (!data.region ? 'Select region first' : 'Select municipality or city')
+                                                    ? (!data.district ? 'Select district first' : 'Select municipality or city')
                                                     : (!data.province ? 'Select province first' : 'Select municipality or city')}
                                         </option>
-                                        {cities.map((m) => <option key={m.code} value={m.name}>{m.name}</option>)}
+                                        {visibleCities.map((c) => <option key={c.code} value={c.name}>{c.name}</option>)}
                                     </select>
                                 </Field>
+                                
                                 <Field label="Barangay" htmlFor="barangay" required error={err('barangay')}>
                                     <select
                                         id="barangay"
@@ -766,18 +923,43 @@ export default function SellerRegistration() {
                                         disabled={!data.municipality_city || loading.barangays}
                                         aria-invalid={!!err('barangay')}
                                         className={`${inputCls(err('barangay'))} disabled:bg-[#F1EDFB] disabled:text-gray-400`}
-                                        onChange={(e) => set('barangay', e.target.value)}
+                                        onChange={(e) => {
+                                            set('barangay', e.target.value);
+                                            setClientErrors((c) => ({ ...c, barangay: undefined }));
+                                        }}
                                     >
                                         <option value="">
-                                            {!data.municipality_city ? 'Select municipality first' : loading.barangays ? 'Loading barangays...' : 'Select barangay'}
+                                            {!data.municipality_city ? 'Select municipality/city first' : loading.barangays ? 'Loading barangays...' : 'Select barangay'}
                                         </option>
                                         {barangays.map((b) => <option key={b.code} value={b.name}>{b.name}</option>)}
                                     </select>
                                 </Field>
+                                
+                                {/* CHANGED: tinanggal ang maxLength para ma-reject (hindi ma-truncate) ang 5+ digits */}
+                                <Field label="Postal Code" htmlFor="postal_code" required error={err('postal_code')}
+                                    hint="Exactly 4 digits">
+                                    <input
+                                        id="postal_code"
+                                        type="text"
+                                        inputMode="numeric"
+                                        placeholder="1234"
+                                        value={data.postal_code}
+                                        onChange={(e) => set('postal_code', e.target.value.replace(/\D/g, ''))}
+                                        aria-invalid={!!err('postal_code')}
+                                        className={inputCls(err('postal_code'))}
+                                    />
+                                </Field>
+                                
                                 <Field label="Street & house number" htmlFor="street_address" required error={err('street_address')} className="sm:col-span-2">
-                                    <input id="street_address" placeholder="e.g. 123 Mabini St." value={data.street_address}
-                                        onChange={(e) => set('street_address', e.target.value)} autoComplete="street-address"
-                                        aria-invalid={!!err('street_address')} className={inputCls(err('street_address'))} />
+                                    <input
+                                        id="street_address"
+                                        type="text"
+                                        placeholder="e.g. 123 Rizal Street, Bldg 5, Unit 12"
+                                        value={data.street_address}
+                                        onChange={(e) => set('street_address', e.target.value)}
+                                        aria-invalid={!!err('street_address')}
+                                        className={inputCls(err('street_address'))}
+                                    />
                                 </Field>
                             </div>
                         )}
@@ -790,10 +972,22 @@ export default function SellerRegistration() {
                                         Store details
                                     </p>
                                     <div className="flex flex-col gap-4">
-                                        <Field label="Business name" htmlFor="business_name" required error={err('business_name')}>
+                                        {/* CHANGED: hint para sa 3 to 30 characters */}
+                                        <Field label="Business name" htmlFor="business_name" required error={err('business_name')}
+                                            hint={`${BUSINESS_NAME_MIN} to ${BUSINESS_NAME_MAX} characters`}>
                                             <input id="business_name" placeholder="e.g. Hoppers Pet Supply" value={data.business_name}
                                                 onChange={(e) => set('business_name', e.target.value)}
                                                 aria-invalid={!!err('business_name')} className={inputCls(err('business_name'))} />
+                                        </Field>
+                                        <Field label="Business type" htmlFor="business_type" required error={err('business_type')}>
+                                            <select id="business_type" value={data.business_type}
+                                                onChange={(e) => set('business_type', e.target.value)}
+                                                aria-invalid={!!err('business_type')} className={inputCls(err('business_type'))}>
+                                                <option value="">Select business type</option>
+                                                <option value="sole_proprietor">Sole Proprietor</option>
+                                                <option value="partnership">Partnership</option>
+                                                <option value="corporation">Corporation</option>
+                                            </select>
                                         </Field>
                                         <Field label="Line of business" htmlFor="line_of_business" required error={err('line_of_business')}>
                                             <select id="line_of_business" value={data.line_of_business}
@@ -803,6 +997,14 @@ export default function SellerRegistration() {
                                                 {BUSINESS_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                                             </select>
                                         </Field>
+                                    </div>
+                                </section>
+
+                                <section aria-labelledby="documents-label" className="border-t border-[#DDD5EE] pt-8">
+                                    <p id="documents-label" className="text-xs font-semibold uppercase tracking-wide text-[#7A63AC] mb-3" style={fontSFCompact}>
+                                        Business documents
+                                    </p>
+                                    <div className="flex flex-col gap-5">
                                         <FileField
                                             id="business_permit"
                                             label="Business permit"
@@ -813,6 +1015,38 @@ export default function SellerRegistration() {
                                             error={err('business_permit')}
                                             onPick={(f) => set('business_permit', f)}
                                         />
+                                        <FileField
+                                            id="dti_registration"
+                                            label="DTI Registration"
+                                            kind="doc"
+                                            hint={`PDF, JPG or PNG · up to ${MAX_FILE_MB}MB`}
+                                            buttonLabel="Choose DTI file"
+                                            file={data.dti_registration}
+                                            error={err('dti_registration')}
+                                            onPick={(f) => set('dti_registration', f)}
+                                        />
+                                        <FileField
+                                            id="bir_2303"
+                                            label="BIR Form 2303 (Certificate of Registration)"
+                                            kind="doc"
+                                            hint={`PDF, JPG or PNG · up to ${MAX_FILE_MB}MB`}
+                                            buttonLabel="Choose BIR 2303 file"
+                                            file={data.bir_2303}
+                                            error={err('bir_2303')}
+                                            onPick={(f) => set('bir_2303', f)}
+                                        />
+                                        {data.business_type === 'corporation' && (
+                                            <FileField
+                                                id="sec_certificate"
+                                                label="SEC Certificate (Required for Corporation)"
+                                                kind="doc"
+                                                hint={`PDF, JPG or PNG · up to ${MAX_FILE_MB}MB`}
+                                                buttonLabel="Choose SEC certificate"
+                                                file={data.sec_certificate}
+                                                error={err('sec_certificate')}
+                                                onPick={(f) => set('sec_certificate', f)}
+                                            />
+                                        )}
                                     </div>
                                 </section>
 
@@ -822,9 +1056,9 @@ export default function SellerRegistration() {
                                     </p>
                                     <FileField
                                         id="id_document"
-                                        label="Upload a valid ID"
+                                        label="Upload a valid government-issued ID"
                                         kind="id"
-                                        hint={`Government-issued ID · PDF, JPG or PNG · up to ${MAX_FILE_MB}MB`}
+                                        hint={`PDF, JPG or PNG · up to ${MAX_FILE_MB}MB`}
                                         buttonLabel="Choose ID file"
                                         file={data.id_document}
                                         error={err('id_document')}
@@ -838,7 +1072,9 @@ export default function SellerRegistration() {
                         {step === 4 && (
                             <>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <Field label="Password" htmlFor="password" required error={err('password')} hint="At least 8 characters">
+                                    {/* CHANGED: hint para sa password rules */}
+                                    <Field label="Password" htmlFor="password" required error={err('password')}
+                                        hint="At least 8 characters with uppercase, lowercase, number and special character">
                                         <PasswordInput id="password" value={data.password} onChange={(v) => set('password', v)}
                                             error={err('password')} autoComplete="new-password" />
                                     </Field>
@@ -848,12 +1084,48 @@ export default function SellerRegistration() {
                                             autoComplete="new-password" />
                                     </Field>
                                 </div>
-                                <div className="mt-6 flex gap-3 rounded-xl bg-[#F1EDFB] p-4 text-sm text-gray-800">
-                                    <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 shrink-0 text-[#7A63AC] mt-0.5" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-                                        <path d="M3 7l9 6 9-6" strokeLinejoin="round" />
-                                        <rect x="3" y="5" width="18" height="14" rx="2" />
-                                    </svg>
-                                    <p>After submitting, an administrator will review your business details and ID. We'll email you once your store is approved.</p>
+                                
+                                <div className="mt-6 flex flex-col gap-4">
+                                    <div className={`flex flex-col gap-1.5 ${err('privacy_policy_accepted') ? 'text-red-600' : ''}`}>
+                                        <label className="flex items-start gap-3 cursor-pointer">
+                                            <input
+                                                id="privacy_policy_accepted"
+                                                type="checkbox"
+                                                checked={data.privacy_policy_accepted}
+                                                onChange={(e) => set('privacy_policy_accepted', e.target.checked)}
+                                                aria-invalid={!!err('privacy_policy_accepted')}
+                                                aria-describedby={err('privacy_policy_accepted') ? 'privacy-policy-err' : undefined}
+                                                className="mt-0.5 w-4 h-4 accent-[#3B1F6B] cursor-pointer"
+                                            />
+                                            <span className="text-sm text-gray-800 flex-1">
+                                                I have read and agree to the{' '}
+                                                <a 
+                                                    href="/privacy-policy" 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="text-[#3B1F6B] font-semibold hover:underline"
+                                                >
+                                                    Privacy Policy
+                                                </a>
+                                                {' '}<span className="text-red-600" aria-hidden="true">*</span>
+                                            </span>
+                                        </label>
+                                        {err('privacy_policy_accepted') && (
+                                            <span id="privacy-policy-err" className="text-xs font-medium text-red-600 ml-7" role="alert">
+                                                {err('privacy_policy_accepted')}
+                                            </span>
+                                        )}
+                                    </div>
+                                    
+                                    <div className="flex gap-3 rounded-xl bg-[#F1EDFB] p-4 text-sm text-gray-800">
+                                        <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 shrink-0 text-[#7A63AC] mt-0.5" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+                                            <path d="M3 7l9 6 9-6" strokeLinejoin="round" />
+                                            <rect x="3" y="5" width="18" height="14" rx="2" />
+                                        </svg>
+                                        <p>
+                                            After submitting, you'll receive an <strong>OTP verification code</strong> via email. Once verified, an administrator will review your business details and ID. We'll email you once your store is approved.
+                                        </p>
+                                    </div>
                                 </div>
                             </>
                         )}
@@ -877,27 +1149,6 @@ export default function SellerRegistration() {
                     </form>
                 </div>
             </div>
-
-            {/* Success modal */}
-            {submitted && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#201A33]/55 p-6">
-                    <div role="dialog" aria-modal="true" aria-labelledby="success-heading"
-                        className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
-                        <div className="mx-auto mb-5 w-16 h-16 rounded-full bg-green-50 text-green-700 flex items-center justify-center" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" className="w-8 h-8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                        <h2 id="success-heading" className="text-xl font-bold text-gray-900">Registration submitted</h2>
-                        <p className="mt-2 text-sm text-gray-500">
-                            Please wait for the administrator's approval. We'll email you once your seller account is reviewed.
-                        </p>
-                        <Link href="/login" className="mt-6 inline-block w-full rounded-xl bg-[#3B1F6B] py-3 font-medium text-white hover:bg-[#2E1854] transition">
-                            Go to log in
-                        </Link>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

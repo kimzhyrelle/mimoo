@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property string      $email
  * @property string|null $google_id
  * @property string|null $contact_number
+ * @property string|null $tin
  * @property string|null $birthday
  * @property string      $account_type       buyer|seller|logistics
  * @property string|null $region
@@ -29,11 +30,17 @@ use Illuminate\Support\Carbon;
  * @property string|null $district           NCR only: 1st-4th District
  * @property string|null $municipality_city
  * @property string|null $barangay
+ * @property string|null $postal_code
  * @property string|null $street_address
  * @property string|null $id_document        stored file path
  * @property string|null $business_name
+ * @property string|null $business_type      sole_proprietor|partnership|corporation
  * @property string|null $line_of_business
  * @property string|null $business_permit    stored file path
+ * @property string|null $dti_registration   stored file path
+ * @property string|null $bir_2303           stored file path
+ * @property string|null $sec_certificate    stored file path
+ * @property bool        $privacy_policy_accepted
  * @property string      $status             pending|approved|disapproved
  * @property string      $verification_status unverified|verified
  * @property Carbon|null $approved_at
@@ -52,6 +59,7 @@ use Illuminate\Support\Carbon;
     'email',
     'google_id',
     'contact_number',
+    'tin',
     'birthday',
     'account_type',
     'region',
@@ -59,11 +67,17 @@ use Illuminate\Support\Carbon;
     'district',
     'municipality_city',
     'barangay',
+    'postal_code',
     'street_address',
     'id_document',
     'business_name',
+    'business_type',
     'line_of_business',
     'business_permit',
+    'dti_registration',
+    'bir_2303',
+    'sec_certificate',
+    'privacy_policy_accepted',
     'status',
     'verification_status',
     'approved_at',

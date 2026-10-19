@@ -18,17 +18,31 @@ const fontSFCompact = { fontFamily: "'SF Compact', -apple-system, BlinkMacSystem
 
 const TOTAL_STEPS = 4;
 const MAX_FILE_MB = 5;
-const PH_MOBILE_RE = /^09\d{9}$/;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const NCR_NAME = "National Capital Region (NCR)";
+const PSGC_BASE = 'https://psgc.gitlab.io/api';
+const NCR_CODE = '130000000'; // PSGC code ng NCR (i-verify sa /api/regions/)
 
 // NCR Districts
+// Ang laman ng parentheses ang ginagamit pang-filter ng cities
 const NCR_DISTRICTS = [
     '1st District (Manila)',
-    '2nd District (Marikina, Pasig, Quezon City - East)',
+    '2nd District (Mandaluyong, Marikina, Pasig, Quezon City, San Juan)',
     '3rd District (Caloocan, Malabon, Navotas, Valenzuela)',
-    '4th District (Las Piñas, Muntinlupa, Parañaque, Pasay, Taguig)',
+    '4th District (Las Piñas, Makati, Muntinlupa, Parañaque, Pasay, Pateros, Taguig)',
 ];
+
+// "City of Las Piñas" / "Las Piñas City" / "Las Piñas" -> "las pinas"
+const normCity = (s: string) =>
+    s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/^city of\s+/, '')
+        .replace(/\s+city$/, '')
+        .trim();
+
+// Kunin ang mga city keys mula sa parentheses ng district label
+const districtCityKeys = (label: string): string[] => {
+    const m = label.match(/\(([^)]*)\)/);
+    return m ? m[1].split(',').map(normCity) : [];
+};
 
 const SIDEBAR_STEPS = [
     'Add your name, contact info and birthday',
@@ -42,6 +56,13 @@ interface Region { code: string; name: string; }
 interface Province { code: string; name: string; regionCode: string }
 interface CityMunicipality { code: string; name: string; provinceCode: string }
 interface Barangay { code: string; name: string; cityCode: string }
+
+// NCR check: by code muna, fallback sa pangalan
+const isNCRRegion = (r?: Region | null): boolean =>
+    !!r && (r.code === NCR_CODE || /\(NCR\)|national capital region/i.test(r.name));
+
+const sortByName = <T extends { name: string }>(list: T[]): T[] =>
+    [...list].sort((a, b) => a.name.localeCompare(b.name));
 
 type FormShape = {
     first_name: string;
@@ -84,10 +105,9 @@ function calcAge(birthday: string): number | null {
     return calculateAge(birthday);
 }
 
-function validate(step: number, d: FormShape): Errs {
+function validate(step: number, d: FormShape, isNCR: boolean): Errs {
     const e: Errs = {};
     if (step === 1) {
-        // Use shared validators
         const firstNameValidation = validateName(d.first_name, 'First name');
         if (!firstNameValidation.valid) e.first_name = firstNameValidation.error;
         
@@ -106,7 +126,6 @@ function validate(step: number, d: FormShape): Errs {
         if (!ageValidation.valid) e.birthday = ageValidation.error;
     }
     if (step === 2) {
-        const isNCR = d.region === NCR_NAME;
         if (!d.region) e.region = 'Select a region.';
         if (!isNCR && !d.province) e.province = 'Select a province.';
         if (isNCR && !d.district) e.district = 'Select a district.';
@@ -216,7 +235,7 @@ export default function Registration() {
     const [barangays, setBarangays] = useState<Barangay[]>([]);
     const [loading, setLoading] = useState({ regions: false, provinces: false, cities: false, barangays: false });
 
-    const { data, setData, post, processing, errors } = useForm<FormShape>({
+    const { data, setData, post, processing, errors, transform } = useForm<FormShape>({
         first_name: '',
         last_name: '',
         middle_initial: '',
@@ -237,96 +256,123 @@ export default function Registration() {
         terms_accepted: false,
     });
 
+    // Normalize bago i-submit (mas maaasahan kaysa setData + post agad)
+    transform((d) => ({
+        ...d,
+        contact_number: normalizeMobile(d.contact_number),
+        email: d.email.trim(),
+    }));
+
     const age = calcAge(data.birthday);
     const allErrors: Errs = { ...(errors as Errs), ...clientErrors };
     const err = (f: FieldName) => allErrors[f];
     const summary = (Object.keys(clientErrors) as FieldName[]).filter((f) => clientErrors[f]);
 
-    // Check if selected region is NCR
-    const isNCR = data.region === NCR_NAME;
+    // Selected region at NCR check (by code, hindi by exact name)
+    const selectedRegion = regions.find((r) => r.name === data.region);
+    const isNCR = isNCRRegion(selectedRegion);
+
+    // Cities na ipapakita: sa NCR, ayon lang sa napiling district
+    const visibleCities = (() => {
+        if (!isNCR) return cities;
+        if (!data.district) return [];
+        const keys = districtCityKeys(data.district);
+        const matched = cities.filter((c) => keys.includes(normCity(c.name)));
+        // Kung walang tumugma (iba ang pangalan sa API), ipakita lahat para hindi ma-stuck
+        return matched.length ? matched : cities;
+    })();
 
     // Load regions on mount
     useEffect(() => {
-        setLoading((prev) => ({ ...prev, regions: true }));
-        fetch('https://psgc.gitlab.io/api/regions/')
+        let cancelled = false;
+        setLoading((p) => ({ ...p, regions: true }));
+        fetch(`${PSGC_BASE}/regions/`)
             .then((res) => res.json())
-            .then((list: Region[]) => {
-                setRegions(list.sort((a, b) => a.name.localeCompare(b.name)));
-                setLoading((prev) => ({ ...prev, regions: false }));
-            })
-            .catch(() => setLoading((prev) => ({ ...prev, regions: false })));
+            .then((list: Region[]) => { if (!cancelled) setRegions(sortByName(list)); })
+            .catch(() => { if (!cancelled) setRegions([]); })
+            .finally(() => { if (!cancelled) setLoading((p) => ({ ...p, regions: false })); });
+        return () => { cancelled = true; };
     }, []);
 
-    // Load provinces when region changes (skip for NCR)
+    // Region -> provinces (non-NCR) O cities diretso (NCR)
     useEffect(() => {
-        if (data.region && !isNCR) {
-            const selected = regions.find((r) => r.name === data.region);
-            if (selected) {
-                setLoading((prev) => ({ ...prev, provinces: true }));
-                fetch(`https://psgc.gitlab.io/api/regions/${selected.code}/provinces/`)
-                    .then((res) => res.json())
-                    .then((list: Province[]) => {
-                        setProvinces(list.sort((a, b) => a.name.localeCompare(b.name)));
-                        setLoading((prev) => ({ ...prev, provinces: false }));
-                    })
-                    .catch(() => setLoading((prev) => ({ ...prev, provinces: false })));
-            }
-        } else if (isNCR) {
-            // For NCR, load cities directly from region and set province to N/A
-            const selected = regions.find((r) => r.name === data.region);
-            if (selected) {
-                setLoading((prev) => ({ ...prev, cities: true }));
-                fetch(`https://psgc.gitlab.io/api/regions/${selected.code}/cities-municipalities/`)
-                    .then((res) => res.json())
-                    .then((list: CityMunicipality[]) => {
-                        setCities(list.sort((a, b) => a.name.localeCompare(b.name)));
-                        setLoading((prev) => ({ ...prev, cities: false }));
-                    })
-                    .catch(() => setLoading((prev) => ({ ...prev, cities: false })));
-            }
+        if (!selectedRegion) {
             setProvinces([]);
-            setData('province', 'N/A'); // Set province to N/A for NCR
-        } else {
-            setProvinces([]);
+            return;
         }
-    }, [data.region, regions]);
+        let cancelled = false;
+        const base = `${PSGC_BASE}/regions/${selectedRegion.code}`;
 
-    // Load cities/municipalities when province changes (skip for NCR since already loaded)
+        if (!isNCR) {
+            setLoading((p) => ({ ...p, provinces: true }));
+            fetch(`${base}/provinces/`)
+                .then((res) => res.json())
+                .then((list: Province[]) => { if (!cancelled) setProvinces(sortByName(list)); })
+                .catch(() => { if (!cancelled) setProvinces([]); })
+                .finally(() => { if (!cancelled) setLoading((p) => ({ ...p, provinces: false })); });
+            return () => { cancelled = true; };
+        }
+
+        // NCR: walang province, diretso cities
+        setProvinces([]);
+        setLoading((p) => ({ ...p, cities: true }));
+        fetch(`${base}/cities-municipalities/`)
+            .then((res) => res.json())
+            .then(async (list: CityMunicipality[]) => {
+                if (Array.isArray(list) && list.length) return list;
+                // Fallback: kunin per district kapag walang laman ang region endpoint
+                const districts: { code: string }[] = await fetch(`${base}/districts/`).then((r) => r.json());
+                const perDistrict = await Promise.all(
+                    districts.map((d) =>
+                        fetch(`${PSGC_BASE}/districts/${d.code}/cities-municipalities/`).then((r) => r.json())
+                    )
+                );
+                return perDistrict.flat() as CityMunicipality[];
+            })
+            .then((list) => {
+                if (cancelled) return;
+                const unique = Array.from(new Map(list.map((c) => [c.code, c])).values());
+                setCities(sortByName(unique));
+            })
+            .catch(() => { if (!cancelled) setCities([]); })
+            .finally(() => { if (!cancelled) setLoading((p) => ({ ...p, cities: false })); });
+
+        return () => { cancelled = true; };
+    }, [selectedRegion?.code, isNCR]);
+
+    // Province -> cities (non-NCR lang)
     useEffect(() => {
-        if (data.province && !isNCR) {
-            const selected = provinces.find((p) => p.name === data.province);
-            if (selected) {
-                setLoading((prev) => ({ ...prev, cities: true }));
-                fetch(`https://psgc.gitlab.io/api/provinces/${selected.code}/cities-municipalities/`)
-                    .then((res) => res.json())
-                    .then((list: CityMunicipality[]) => {
-                        setCities(list.sort((a, b) => a.name.localeCompare(b.name)));
-                        setLoading((prev) => ({ ...prev, cities: false }));
-                    })
-                    .catch(() => setLoading((prev) => ({ ...prev, cities: false })));
-            }
-        } else if (!isNCR) {
+        if (isNCR) return; // NCR cities galing na sa region effect
+        const selected = provinces.find((p) => p.name === data.province);
+        if (!data.province || !selected) {
             setCities([]);
+            return;
         }
-    }, [data.province, provinces]);
+        let cancelled = false;
+        setLoading((p) => ({ ...p, cities: true }));
+        fetch(`${PSGC_BASE}/provinces/${selected.code}/cities-municipalities/`)
+            .then((res) => res.json())
+            .then((list: CityMunicipality[]) => { if (!cancelled) setCities(sortByName(list)); })
+            .catch(() => { if (!cancelled) setCities([]); })
+            .finally(() => { if (!cancelled) setLoading((p) => ({ ...p, cities: false })); });
+        return () => { cancelled = true; };
+    }, [data.province, provinces, isNCR]);
 
-    // Load barangays when city/municipality changes
+    // City/municipality -> barangays
     useEffect(() => {
-        if (data.municipality_city) {
-            const selected = cities.find((c) => c.name === data.municipality_city);
-            if (selected) {
-                setLoading((prev) => ({ ...prev, barangays: true }));
-                fetch(`https://psgc.gitlab.io/api/cities-municipalities/${selected.code}/barangays/`)
-                    .then((res) => res.json())
-                    .then((list: Barangay[]) => {
-                        setBarangays(list.sort((a, b) => a.name.localeCompare(b.name)));
-                        setLoading((prev) => ({ ...prev, barangays: false }));
-                    })
-                    .catch(() => setLoading((prev) => ({ ...prev, barangays: false })));
-            }
-        } else {
+        const selected = cities.find((c) => c.name === data.municipality_city);
+        if (!data.municipality_city || !selected) {
             setBarangays([]);
+            return;
         }
+        let cancelled = false;
+        setLoading((p) => ({ ...p, barangays: true }));
+        fetch(`${PSGC_BASE}/cities-municipalities/${selected.code}/barangays/`)
+            .then((res) => res.json())
+            .then((list: Barangay[]) => { if (!cancelled) setBarangays(sortByName(list)); })
+            .catch(() => { if (!cancelled) setBarangays([]); })
+            .finally(() => { if (!cancelled) setLoading((p) => ({ ...p, barangays: false })); });
+        return () => { cancelled = true; };
     }, [data.municipality_city, cities]);
 
     // Kapag may server-side error, ibalik sa step na may unang error
@@ -345,34 +391,37 @@ export default function Registration() {
         const e: Errs = {};
         
         switch (field) {
-            case 'first_name':
-                const firstValidation = validateName(data.first_name, 'First name');
-                if (!firstValidation.valid) e.first_name = firstValidation.error;
+            case 'first_name': {
+                const v = validateName(data.first_name, 'First name');
+                if (!v.valid) e.first_name = v.error;
                 break;
-            case 'last_name':
-                const lastValidation = validateName(data.last_name, 'Last name');
-                if (!lastValidation.valid) e.last_name = lastValidation.error;
+            }
+            case 'last_name': {
+                const v = validateName(data.last_name, 'Last name');
+                if (!v.valid) e.last_name = v.error;
                 break;
-            case 'email':
-                const emailValidation = validateAndTrimEmail(data.email);
-                if (!emailValidation.valid) e.email = emailValidation.error;
-                else {
-                    // Trim and update if valid
-                    setData('email', emailValidation.value);
-                }
+            }
+            case 'email': {
+                const v = validateAndTrimEmail(data.email);
+                if (!v.valid) e.email = v.error;
+                else setData('email', v.value);
                 break;
-            case 'contact_number':
-                const mobileValidation = validateMobile(data.contact_number);
-                if (!mobileValidation.valid) e.contact_number = mobileValidation.error;
+            }
+            case 'contact_number': {
+                const v = validateMobile(data.contact_number);
+                if (!v.valid) e.contact_number = v.error;
                 break;
-            case 'birthday':
-                const ageValidation = validateAge(data.birthday);
-                if (!ageValidation.valid) e.birthday = ageValidation.error;
+            }
+            case 'birthday': {
+                const v = validateAge(data.birthday);
+                if (!v.valid) e.birthday = v.error;
                 break;
-            case 'password':
-                const passwordValidation = validatePassword(data.password);
-                if (!passwordValidation.valid) e.password = passwordValidation.error;
+            }
+            case 'password': {
+                const v = validatePassword(data.password);
+                if (!v.valid) e.password = v.error;
                 break;
+            }
             case 'password_confirmation':
                 if (!data.password_confirmation || data.password_confirmation !== data.password)
                     e.password_confirmation = "Passwords don't match.";
@@ -388,7 +437,7 @@ export default function Registration() {
     };
 
     const goNext = () => {
-        const e = validate(step, data);
+        const e = validate(step, data, isNCR);
         if (Object.keys(e).length) {
             setClientErrors(e);
             return;
@@ -396,13 +445,7 @@ export default function Registration() {
         setClientErrors({});
         if (step < TOTAL_STEPS) goTo(step + 1);
         else {
-            // Normalize mobile before submitting
-            const normalizedData = {
-                ...data,
-                contact_number: normalizeMobile(data.contact_number),
-                email: data.email.trim(),
-            };
-            setData(normalizedData as any);
+            // Na-normalize na ng transform() sa taas
             post('/register', { 
                 forceFormData: true,
                 preserveScroll: true,
@@ -695,16 +738,18 @@ export default function Registration() {
                                         className={`${inputCls(err('region'))} disabled:bg-[#F1EDFB] disabled:text-gray-400`}
                                         onChange={(e) => {
                                             const value = e.target.value;
+                                            const picked = regions.find((r) => r.name === value);
                                             setData({
                                                 ...data,
                                                 region: value,
                                                 // NCR walang province, kaya "N/A" ang laman
-                                                province: value === NCR_NAME ? 'N/A' : '',
-                                                district: '', // Reset district
+                                                province: isNCRRegion(picked) ? 'N/A' : '',
+                                                district: '',
                                                 municipality_city: '',
                                                 barangay: '',
                                             });
-                                            setCities([]); // iwas stale na listahan ng cities galing sa ibang region
+                                            setCities([]); // iwas stale na listahan galing sa ibang region
+                                            setBarangays([]);
                                             setClientErrors((c) => ({ ...c, region: undefined, province: undefined, district: undefined }));
                                         }}
                                     >
@@ -712,7 +757,7 @@ export default function Registration() {
                                         {regions.map((r) => <option key={r.code} value={r.name}>{r.name}</option>)}
                                     </select>
                                 </Field>
-                                <Field label="Province" htmlFor="province" required error={err('province')}>
+                                <Field label="Province" htmlFor="province" required={!isNCR} error={err('province')}>
                                     <select
                                         id="province"
                                         value={data.province}
@@ -758,7 +803,7 @@ export default function Registration() {
                                     <select
                                         id="municipality_city"
                                         value={data.municipality_city}
-                                        disabled={isNCR ? (!data.region || loading.cities) : (!data.province || loading.cities)}
+                                        disabled={isNCR ? (!data.district || loading.cities) : (!data.province || loading.cities)}
                                         aria-invalid={!!err('municipality_city')}
                                         className={`${inputCls(err('municipality_city'))} disabled:bg-[#F1EDFB] disabled:text-gray-400`}
                                         onChange={(e) => {
@@ -770,10 +815,10 @@ export default function Registration() {
                                             {loading.cities
                                                 ? 'Loading cities...'
                                                 : isNCR
-                                                    ? (!data.region ? 'Select region first' : 'Select municipality or city')
+                                                    ? (!data.district ? 'Select district first' : 'Select municipality or city')
                                                     : (!data.province ? 'Select province first' : 'Select municipality or city')}
                                         </option>
-                                        {cities.map((m) => <option key={m.code} value={m.name}>{m.name}</option>)}
+                                        {visibleCities.map((m) => <option key={m.code} value={m.name}>{m.name}</option>)}
                                     </select>
                                 </Field>
                                 <Field label="Barangay" htmlFor="barangay" required error={err('barangay')}>

@@ -21,15 +21,27 @@ class RegisterResponse implements RegisterResponseContract
         $user = Auth::user();
         $email = $user ? $user->email : null;
         
+        \Log::info('REGISTER RESPONSE DEBUG', [
+            'user_id' => $user?->id,
+            'user_email' => $email,
+            'account_type' => $user?->account_type,
+            'wants_json' => $request->wantsJson(),
+            'is_inertia' => $request->header('X-Inertia'),
+        ]);
+        
         // Immediately logout the newly registered user
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        // Redirect to email verification page
-        return $request->wantsJson()
-            ? new JsonResponse('', 204)
-            : redirect()->route('otp.show', ['email' => $email])
-                ->with('status', 'Registration successful! Please check your email for a verification code.');
+        \Log::info('REDIRECTING TO OTP PAGE', [
+            'email' => $email,
+            'route' => route('otp.show', ['email' => $email]),
+        ]);
+
+        // Always redirect for Inertia requests (never return JSON)
+        // Inertia handles redirects properly via the X-Inertia-Location header
+        return redirect()->route('otp.show', ['email' => $email])
+            ->with('status', 'Registration successful! Please check your email for a verification code.');
     }
 }

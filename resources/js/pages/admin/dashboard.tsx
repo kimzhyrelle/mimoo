@@ -70,7 +70,7 @@ export default function AdminDashboard() {
             <AdminShell active="dashboard">
                 {/* Welcome */}
                 <div className="mb-8">
-                    <h1 className="text-xl font-bold text-gray-900">Welcome back, Admin 👋</h1>
+                    <h1 className="text-xl font-bold text-gray-900">Welcome back, Admin !</h1>
                     <p className="mt-0.5 text-sm text-gray-400">Here's what's happening across Mimoo today.</p>
                 </div>
 

@@ -122,16 +122,12 @@ function StatusBadge({ status }: { status: 'pending' | 'approved' | 'disapproved
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function ManageRegistrations({ registrations, stats }: Props) {
-    const [roleFilter, setRoleFilter] = useState('All roles');
+export default function SellerApproval({ registrations, stats }: Props) {
     const [statusFilter, setStatusFilter] = useState('All');
     const [search, setSearch] = useState('');
 
-    // Filter registrations
+    // Filter registrations (only sellers)
     const filteredRegistrations = registrations.filter((reg) => {
-        const matchesRole =
-            roleFilter === 'All roles' ||
-            reg.account_type.toLowerCase() === roleFilter.toLowerCase();
         const matchesStatus =
             statusFilter === 'All' ||
             reg.status.toLowerCase() === statusFilter.toLowerCase();
@@ -141,43 +137,32 @@ export default function ManageRegistrations({ registrations, stats }: Props) {
             reg.email.toLowerCase().includes(search.toLowerCase()) ||
             reg.business_name?.toLowerCase().includes(search.toLowerCase());
 
-        return matchesRole && matchesStatus && matchesSearch;
+        return matchesStatus && matchesSearch;
     });
 
     function handleApprove(userId: number) {
-        if (confirm('Are you sure you want to approve this registration?')) {
-            router.post(`/admin/registrations/${userId}/approve`);
+        if (confirm('Are you sure you want to approve this seller registration?')) {
+            router.post(`/admin/seller-approval/${userId}/approve`);
         }
     }
 
     function handleDisapprove(userId: number) {
-        if (confirm('Are you sure you want to disapprove this registration?')) {
-            router.post(`/admin/registrations/${userId}/disapprove`);
+        if (confirm('Are you sure you want to disapprove this seller registration?')) {
+            router.post(`/admin/seller-approval/${userId}/disapprove`);
         }
     }
 
     return (
         <>
-            <Head title="Manage Registrations" />
-            <AdminShell active="manage-registrations">
+            <Head title="Seller Approval" />
+            <AdminShell active="seller-approval">
                 {/* Header row */}
                 <div className="mb-6 flex items-center justify-between">
-                    <h1 className="text-xl font-bold text-gray-900">Manage Account Registrations</h1>
+                    <div>
+                        <h1 className="text-xl font-bold text-gray-900">Seller Approval</h1>
+                        <p className="mt-1 text-sm text-gray-500">Verify valid ID and business permit; approve or reject seller registrations</p>
+                    </div>
                     <div className="flex items-center gap-2">
-                        {/* Role filter */}
-                        <div className="relative">
-                            <select
-                                value={roleFilter}
-                                onChange={(e) => setRoleFilter(e.target.value)}
-                                className="h-8 appearance-none rounded-md border border-gray-200 bg-white pl-3 pr-8 text-xs text-gray-600 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#3B1F6B]/30"
-                            >
-                                {['All roles', 'Buyer', 'Seller'].map((r) => (
-                                    <option key={r}>{r}</option>
-                                ))}
-                            </select>
-                            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-                        </div>
-
                         {/* Status filter */}
                         <div className="relative">
                             <select
@@ -202,9 +187,9 @@ export default function ManageRegistrations({ registrations, stats }: Props) {
                     {/* Table header */}
                     <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
                         <div>
-                            <p className="text-sm font-semibold text-gray-800">Registration applications</p>
+                            <p className="text-sm font-semibold text-gray-800">Seller registration applications</p>
                             <p className="mt-0.5 text-xs text-gray-400">
-                                Sorted by newest first — tap the review icon to see full submitted details.
+                                Review seller documents including valid ID and business permit — tap the review icon for full details.
                             </p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -253,14 +238,14 @@ export default function ManageRegistrations({ registrations, stats }: Props) {
                                             <div className="flex flex-col items-center gap-3 text-gray-300">
                                                 <ThumbsDown className="h-8 w-8" strokeWidth={1} />
                                                 <p className="text-sm font-medium text-gray-400">
-                                                    {search || roleFilter !== 'All roles' || statusFilter !== 'All'
-                                                        ? 'No matching registrations'
-                                                        : 'No registrations yet'}
+                                                    {search || statusFilter !== 'All'
+                                                        ? 'No matching seller registrations'
+                                                        : 'No seller registrations yet'}
                                                 </p>
                                                 <p className="text-xs text-gray-300">
-                                                    {search || roleFilter !== 'All roles' || statusFilter !== 'All'
+                                                    {search || statusFilter !== 'All'
                                                         ? 'Try adjusting your filters or search query.'
-                                                        : 'Applications will appear here once users start signing up.'}
+                                                        : 'Seller applications will appear here once they start signing up.'}
                                                 </p>
                                             </div>
                                         </td>
@@ -278,8 +263,8 @@ export default function ManageRegistrations({ registrations, stats }: Props) {
 
                                             {/* Role */}
                                             <td className="px-5 py-4">
-                                                <span className="inline-block rounded bg-gray-100 px-2 py-1 text-xs font-medium capitalize text-gray-600">
-                                                    {reg.account_type}
+                                                <span className="inline-block rounded bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700">
+                                                    Seller
                                                 </span>
                                             </td>
 
@@ -386,4 +371,4 @@ export default function ManageRegistrations({ registrations, stats }: Props) {
     );
 }
 
-ManageRegistrations.layout = (page: React.ReactNode) => page;
+SellerApproval.layout = (page: React.ReactNode) => page;

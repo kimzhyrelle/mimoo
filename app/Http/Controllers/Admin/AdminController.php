@@ -92,6 +92,42 @@ class AdminController extends Controller
     }
 
     /**
+     * Show the seller approval page.
+     */
+    public function sellerApproval(): Response
+    {
+        $registrations = \App\Models\User::query()
+            ->where('account_type', 'seller')
+            ->where('verification_status', 'verified') // Only show verified sellers
+            ->whereIn('status', ['pending', 'approved', 'disapproved'])
+            ->orderByRaw("FIELD(status, 'pending', 'approved', 'disapproved')")
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(fn ($user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'account_type' => $user->account_type,
+                'business_name' => $user->business_name,
+                'status' => $user->status,
+                'created_at' => $user->created_at->format('M d, Y'),
+                'approved_at' => $user->approved_at?->format('M d, Y'),
+            ]);
+
+        $stats = [
+            'total' => \App\Models\User::where('account_type', 'seller')->where('verification_status', 'verified')->count(),
+            'pending' => \App\Models\User::where('account_type', 'seller')->where('verification_status', 'verified')->where('status', 'pending')->count(),
+            'approved' => \App\Models\User::where('account_type', 'seller')->where('verification_status', 'verified')->where('status', 'approved')->count(),
+            'disapproved' => \App\Models\User::where('account_type', 'seller')->where('verification_status', 'verified')->where('status', 'disapproved')->count(),
+        ];
+
+        return Inertia::render('admin/seller-approval', [
+            'registrations' => $registrations,
+            'stats' => $stats,
+        ]);
+    }
+
+    /**
      * Approve a user registration.
      */
     public function approveRegistration(Request $request, int $userId): RedirectResponse
@@ -119,6 +155,44 @@ class AdminController extends Controller
         ]);
 
         return back()->with('success', "Account for {$user->name} has been disapproved.");
+    }
+
+    /**
+     * Approve a seller registration.
+     */
+    public function approveSellerRegistration(Request $request, int $userId): RedirectResponse
+    {
+        $user = \App\Models\User::findOrFail($userId);
+        
+        if ($user->account_type !== 'seller') {
+            return back()->withErrors(['error' => 'This account is not a seller.']);
+        }
+        
+        $user->update([
+            'status' => 'approved',
+            'approved_at' => now(),
+        ]);
+
+        return back()->with('success', "Seller account for {$user->name} has been approved.");
+    }
+
+    /**
+     * Disapprove a seller registration.
+     */
+    public function disapproveSellerRegistration(Request $request, int $userId): RedirectResponse
+    {
+        $user = \App\Models\User::findOrFail($userId);
+        
+        if ($user->account_type !== 'seller') {
+            return back()->withErrors(['error' => 'This account is not a seller.']);
+        }
+        
+        $user->update([
+            'status' => 'disapproved',
+            'approved_at' => null,
+        ]);
+
+        return back()->with('success', "Seller account for {$user->name} has been disapproved.");
     }
 
     /**

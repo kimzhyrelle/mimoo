@@ -36,14 +36,21 @@ class CreateNewUser implements CreatesNewUsers
         $input['email'] = trim($input['email'] ?? '');
         $input['contact_number'] = PhilippineMobile::normalize($input['contact_number'] ?? '');
         
-        // Trim names
+        // Trim names and TIN
         $input['first_name'] = trim($input['first_name'] ?? '');
         $input['last_name'] = trim($input['last_name'] ?? '');
+        $input['tin'] = trim($input['tin'] ?? '');
         
-        // Check if terms accepted (required for buyers)
+        // Check if terms accepted (required for buyers) OR privacy policy accepted (required for sellers)
         if (($input['account_type'] ?? 'buyer') === 'buyer' && empty($input['terms_accepted'])) {
             throw ValidationException::withMessages([
                 'terms_accepted' => 'You must accept the Terms and Privacy Policy.',
+            ]);
+        }
+        
+        if (($input['account_type'] ?? '') === 'seller' && empty($input['privacy_policy_accepted'])) {
+            throw ValidationException::withMessages([
+                'privacy_policy_accepted' => 'You must accept the Privacy Policy.',
             ]);
         }
         
@@ -55,9 +62,11 @@ class CreateNewUser implements CreatesNewUsers
             'sex'             => ['required', 'in:male,female'],
             'email'           => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'contact_number'  => ['required', 'string', new PhilippineMobile(), 'unique:users,contact_number'],
+            'tin'             => ['nullable', 'string', 'max:50'], // For sellers
             'birthday'        => ['required', 'date', 'before:-18 years'],
             'account_type'    => ['required', 'in:buyer,seller,logistics'],
             'terms_accepted'  => ['required_if:account_type,buyer', 'accepted'],
+            'privacy_policy_accepted' => ['required_if:account_type,seller', 'accepted'],
 
             // ── Address ───────────────────────────────────────────────────
             'region'           => ['required', 'string', 'max:100'],
@@ -65,6 +74,7 @@ class CreateNewUser implements CreatesNewUsers
             'district'         => ['nullable', 'string', 'max:100'], // NCR only
             'municipality_city'=> ['required', 'string', 'max:100'],
             'barangay'         => ['required', 'string', 'max:100'],
+            'postal_code'      => ['nullable', 'string', 'max:10'], // For sellers
             'street_address'   => ['required', 'string', 'max:255'],
 
             // ── Identity document (required for everyone) ─────────────────
@@ -72,8 +82,12 @@ class CreateNewUser implements CreatesNewUsers
 
             // ── Seller-only fields ────────────────────────────────────────
             'business_name'    => ['required_if:account_type,seller,logistics', 'nullable', 'string', 'max:255'],
+            'business_type'    => ['required_if:account_type,seller', 'nullable', 'in:sole_proprietor,partnership,corporation'],
             'line_of_business' => ['required_if:account_type,seller', 'nullable', 'string', 'max:100'],
             'business_permit'  => ['required_if:account_type,seller,logistics', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'dti_registration' => ['required_if:account_type,seller', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'bir_2303'         => ['required_if:account_type,seller', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'sec_certificate'  => ['required_if:business_type,corporation', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
 
             // ── Security ──────────────────────────────────────────────────
             'password'        => ['required', 'string', new StrongPassword(), 'confirmed'],
@@ -83,8 +97,13 @@ class CreateNewUser implements CreatesNewUsers
             'email.unique'             => 'This email is already registered.',
             'id_document.required'     => 'Please upload a valid government-issued ID.',
             'business_permit.required_if' => 'A business permit is required for seller and logistics accounts.',
+            'dti_registration.required_if' => 'DTI registration is required for sellers.',
+            'bir_2303.required_if' => 'BIR Form 2303 is required for sellers.',
+            'sec_certificate.required_if' => 'SEC certificate is required for corporations.',
             'terms_accepted.required_if' => 'You must accept the Terms and Privacy Policy.',
             'terms_accepted.accepted' => 'You must accept the Terms and Privacy Policy.',
+            'privacy_policy_accepted.required_if' => 'You must accept the Privacy Policy.',
+            'privacy_policy_accepted.accepted' => 'You must accept the Privacy Policy.',
         ]);
         
         $validator->validate();
@@ -95,6 +114,15 @@ class CreateNewUser implements CreatesNewUsers
             $idDocumentPath    = $this->storeFile($input['id_document'], 'id_documents');
             $businessPermitPath = isset($input['business_permit']) && $input['business_permit'] instanceof UploadedFile
                 ? $this->storeFile($input['business_permit'], 'business_permits')
+                : null;
+            $dtiRegistrationPath = isset($input['dti_registration']) && $input['dti_registration'] instanceof UploadedFile
+                ? $this->storeFile($input['dti_registration'], 'dti_registrations')
+                : null;
+            $bir2303Path = isset($input['bir_2303']) && $input['bir_2303'] instanceof UploadedFile
+                ? $this->storeFile($input['bir_2303'], 'bir_2303')
+                : null;
+            $secCertificatePath = isset($input['sec_certificate']) && $input['sec_certificate'] instanceof UploadedFile
+                ? $this->storeFile($input['sec_certificate'], 'sec_certificates')
                 : null;
 
             // ── Create user ────────────────────────────────────────────────────
@@ -107,6 +135,7 @@ class CreateNewUser implements CreatesNewUsers
                 'sex'               => $input['sex'],
                 'email'             => $input['email'],
                 'contact_number'    => $input['contact_number'], // Already normalized
+                'tin'               => $input['tin'] ?? null,
                 'birthday'          => $input['birthday'],
                 'account_type'      => $input['account_type'],
                 'region'            => $input['region'],
@@ -114,11 +143,17 @@ class CreateNewUser implements CreatesNewUsers
                 'district'          => $input['district'] ?? null,
                 'municipality_city' => $input['municipality_city'],
                 'barangay'          => $input['barangay'],
+                'postal_code'       => $input['postal_code'] ?? null,
                 'street_address'    => $input['street_address'],
                 'id_document'       => $idDocumentPath,
                 'business_name'     => $input['business_name'] ?? null,
+                'business_type'     => $input['business_type'] ?? null,
                 'line_of_business'  => $input['line_of_business'] ?? null,
                 'business_permit'   => $businessPermitPath,
+                'dti_registration'  => $dtiRegistrationPath,
+                'bir_2303'          => $bir2303Path,
+                'sec_certificate'   => $secCertificatePath,
+                'privacy_policy_accepted' => $input['privacy_policy_accepted'] ?? false,
                 'password'          => $input['password'],
                 // All accounts start as pending and unverified
                 'status'            => 'pending',

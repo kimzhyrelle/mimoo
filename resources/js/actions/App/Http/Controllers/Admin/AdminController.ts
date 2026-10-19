@@ -290,7 +290,7 @@ manageRegistrations.head = (options?: RouteQueryOptions): RouteDefinition<'head'
     manageRegistrations.form = manageRegistrationsForm
 /**
 * @see \App\Http\Controllers\Admin\AdminController::approveRegistration
- * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @see app/Http/Controllers/Admin/AdminController.php:133
  * @route '/admin/registrations/{userId}/approve'
  */
 export const approveRegistration = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -305,7 +305,7 @@ approveRegistration.definition = {
 
 /**
 * @see \App\Http\Controllers\Admin\AdminController::approveRegistration
- * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @see app/Http/Controllers/Admin/AdminController.php:133
  * @route '/admin/registrations/{userId}/approve'
  */
 approveRegistration.url = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -333,7 +333,7 @@ approveRegistration.url = (args: { userId: string | number } | [userId: string |
 
 /**
 * @see \App\Http\Controllers\Admin\AdminController::approveRegistration
- * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @see app/Http/Controllers/Admin/AdminController.php:133
  * @route '/admin/registrations/{userId}/approve'
  */
 approveRegistration.post = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -343,7 +343,7 @@ approveRegistration.post = (args: { userId: string | number } | [userId: string 
 
     /**
 * @see \App\Http\Controllers\Admin\AdminController::approveRegistration
- * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @see app/Http/Controllers/Admin/AdminController.php:133
  * @route '/admin/registrations/{userId}/approve'
  */
     const approveRegistrationForm = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -353,7 +353,7 @@ approveRegistration.post = (args: { userId: string | number } | [userId: string 
 
             /**
 * @see \App\Http\Controllers\Admin\AdminController::approveRegistration
- * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @see app/Http/Controllers/Admin/AdminController.php:133
  * @route '/admin/registrations/{userId}/approve'
  */
         approveRegistrationForm.post = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -364,7 +364,7 @@ approveRegistration.post = (args: { userId: string | number } | [userId: string 
     approveRegistration.form = approveRegistrationForm
 /**
 * @see \App\Http\Controllers\Admin\AdminController::disapproveRegistration
- * @see app/Http/Controllers/Admin/AdminController.php:112
+ * @see app/Http/Controllers/Admin/AdminController.php:148
  * @route '/admin/registrations/{userId}/disapprove'
  */
 export const disapproveRegistration = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -379,7 +379,7 @@ disapproveRegistration.definition = {
 
 /**
 * @see \App\Http\Controllers\Admin\AdminController::disapproveRegistration
- * @see app/Http/Controllers/Admin/AdminController.php:112
+ * @see app/Http/Controllers/Admin/AdminController.php:148
  * @route '/admin/registrations/{userId}/disapprove'
  */
 disapproveRegistration.url = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -407,7 +407,7 @@ disapproveRegistration.url = (args: { userId: string | number } | [userId: strin
 
 /**
 * @see \App\Http\Controllers\Admin\AdminController::disapproveRegistration
- * @see app/Http/Controllers/Admin/AdminController.php:112
+ * @see app/Http/Controllers/Admin/AdminController.php:148
  * @route '/admin/registrations/{userId}/disapprove'
  */
 disapproveRegistration.post = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -417,7 +417,7 @@ disapproveRegistration.post = (args: { userId: string | number } | [userId: stri
 
     /**
 * @see \App\Http\Controllers\Admin\AdminController::disapproveRegistration
- * @see app/Http/Controllers/Admin/AdminController.php:112
+ * @see app/Http/Controllers/Admin/AdminController.php:148
  * @route '/admin/registrations/{userId}/disapprove'
  */
     const disapproveRegistrationForm = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -427,7 +427,7 @@ disapproveRegistration.post = (args: { userId: string | number } | [userId: stri
 
             /**
 * @see \App\Http\Controllers\Admin\AdminController::disapproveRegistration
- * @see app/Http/Controllers/Admin/AdminController.php:112
+ * @see app/Http/Controllers/Admin/AdminController.php:148
  * @route '/admin/registrations/{userId}/disapprove'
  */
         disapproveRegistrationForm.post = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -437,8 +437,234 @@ disapproveRegistration.post = (args: { userId: string | number } | [userId: stri
     
     disapproveRegistration.form = disapproveRegistrationForm
 /**
+* @see \App\Http\Controllers\Admin\AdminController::sellerApproval
+ * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @route '/admin/seller-approval'
+ */
+export const sellerApproval = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: sellerApproval.url(options),
+    method: 'get',
+})
+
+sellerApproval.definition = {
+    methods: ["get","head"],
+    url: '/admin/seller-approval',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+* @see \App\Http\Controllers\Admin\AdminController::sellerApproval
+ * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @route '/admin/seller-approval'
+ */
+sellerApproval.url = (options?: RouteQueryOptions) => {
+    return sellerApproval.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Admin\AdminController::sellerApproval
+ * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @route '/admin/seller-approval'
+ */
+sellerApproval.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: sellerApproval.url(options),
+    method: 'get',
+})
+/**
+* @see \App\Http\Controllers\Admin\AdminController::sellerApproval
+ * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @route '/admin/seller-approval'
+ */
+sellerApproval.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: sellerApproval.url(options),
+    method: 'head',
+})
+
+    /**
+* @see \App\Http\Controllers\Admin\AdminController::sellerApproval
+ * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @route '/admin/seller-approval'
+ */
+    const sellerApprovalForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: sellerApproval.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\Admin\AdminController::sellerApproval
+ * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @route '/admin/seller-approval'
+ */
+        sellerApprovalForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: sellerApproval.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\Admin\AdminController::sellerApproval
+ * @see app/Http/Controllers/Admin/AdminController.php:97
+ * @route '/admin/seller-approval'
+ */
+        sellerApprovalForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: sellerApproval.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    sellerApproval.form = sellerApprovalForm
+/**
+* @see \App\Http\Controllers\Admin\AdminController::approveSellerRegistration
+ * @see app/Http/Controllers/Admin/AdminController.php:163
+ * @route '/admin/seller-approval/{userId}/approve'
+ */
+export const approveSellerRegistration = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: approveSellerRegistration.url(args, options),
+    method: 'post',
+})
+
+approveSellerRegistration.definition = {
+    methods: ["post"],
+    url: '/admin/seller-approval/{userId}/approve',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\Admin\AdminController::approveSellerRegistration
+ * @see app/Http/Controllers/Admin/AdminController.php:163
+ * @route '/admin/seller-approval/{userId}/approve'
+ */
+approveSellerRegistration.url = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions) => {
+    if (typeof args === 'string' || typeof args === 'number') {
+        args = { userId: args }
+    }
+
+    
+    if (Array.isArray(args)) {
+        args = {
+                    userId: args[0],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        userId: args.userId,
+                }
+
+    return approveSellerRegistration.definition.url
+            .replace('{userId}', parsedArgs.userId.toString())
+            .replace(/\/+$/, '') + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Admin\AdminController::approveSellerRegistration
+ * @see app/Http/Controllers/Admin/AdminController.php:163
+ * @route '/admin/seller-approval/{userId}/approve'
+ */
+approveSellerRegistration.post = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: approveSellerRegistration.url(args, options),
+    method: 'post',
+})
+
+    /**
+* @see \App\Http\Controllers\Admin\AdminController::approveSellerRegistration
+ * @see app/Http/Controllers/Admin/AdminController.php:163
+ * @route '/admin/seller-approval/{userId}/approve'
+ */
+    const approveSellerRegistrationForm = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: approveSellerRegistration.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\Admin\AdminController::approveSellerRegistration
+ * @see app/Http/Controllers/Admin/AdminController.php:163
+ * @route '/admin/seller-approval/{userId}/approve'
+ */
+        approveSellerRegistrationForm.post = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: approveSellerRegistration.url(args, options),
+            method: 'post',
+        })
+    
+    approveSellerRegistration.form = approveSellerRegistrationForm
+/**
+* @see \App\Http\Controllers\Admin\AdminController::disapproveSellerRegistration
+ * @see app/Http/Controllers/Admin/AdminController.php:182
+ * @route '/admin/seller-approval/{userId}/disapprove'
+ */
+export const disapproveSellerRegistration = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: disapproveSellerRegistration.url(args, options),
+    method: 'post',
+})
+
+disapproveSellerRegistration.definition = {
+    methods: ["post"],
+    url: '/admin/seller-approval/{userId}/disapprove',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\Admin\AdminController::disapproveSellerRegistration
+ * @see app/Http/Controllers/Admin/AdminController.php:182
+ * @route '/admin/seller-approval/{userId}/disapprove'
+ */
+disapproveSellerRegistration.url = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions) => {
+    if (typeof args === 'string' || typeof args === 'number') {
+        args = { userId: args }
+    }
+
+    
+    if (Array.isArray(args)) {
+        args = {
+                    userId: args[0],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        userId: args.userId,
+                }
+
+    return disapproveSellerRegistration.definition.url
+            .replace('{userId}', parsedArgs.userId.toString())
+            .replace(/\/+$/, '') + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Admin\AdminController::disapproveSellerRegistration
+ * @see app/Http/Controllers/Admin/AdminController.php:182
+ * @route '/admin/seller-approval/{userId}/disapprove'
+ */
+disapproveSellerRegistration.post = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: disapproveSellerRegistration.url(args, options),
+    method: 'post',
+})
+
+    /**
+* @see \App\Http\Controllers\Admin\AdminController::disapproveSellerRegistration
+ * @see app/Http/Controllers/Admin/AdminController.php:182
+ * @route '/admin/seller-approval/{userId}/disapprove'
+ */
+    const disapproveSellerRegistrationForm = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: disapproveSellerRegistration.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\Admin\AdminController::disapproveSellerRegistration
+ * @see app/Http/Controllers/Admin/AdminController.php:182
+ * @route '/admin/seller-approval/{userId}/disapprove'
+ */
+        disapproveSellerRegistrationForm.post = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: disapproveSellerRegistration.url(args, options),
+            method: 'post',
+        })
+    
+    disapproveSellerRegistration.form = disapproveSellerRegistrationForm
+/**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:127
+ * @see app/Http/Controllers/Admin/AdminController.php:201
  * @route '/admin/logout'
  */
 export const logout = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -453,7 +679,7 @@ logout.definition = {
 
 /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:127
+ * @see app/Http/Controllers/Admin/AdminController.php:201
  * @route '/admin/logout'
  */
 logout.url = (options?: RouteQueryOptions) => {
@@ -462,7 +688,7 @@ logout.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:127
+ * @see app/Http/Controllers/Admin/AdminController.php:201
  * @route '/admin/logout'
  */
 logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -472,7 +698,7 @@ logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:127
+ * @see app/Http/Controllers/Admin/AdminController.php:201
  * @route '/admin/logout'
  */
     const logoutForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -482,7 +708,7 @@ logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:127
+ * @see app/Http/Controllers/Admin/AdminController.php:201
  * @route '/admin/logout'
  */
         logoutForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -491,6 +717,6 @@ logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
         })
     
     logout.form = logoutForm
-const AdminController = { index, verify, dashboard, manageRegistrations, approveRegistration, disapproveRegistration, logout }
+const AdminController = { index, verify, dashboard, manageRegistrations, approveRegistration, disapproveRegistration, sellerApproval, approveSellerRegistration, disapproveSellerRegistration, logout }
 
 export default AdminController
