@@ -10,7 +10,7 @@ import {
     Timer,
     XCircle,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AdminShell from '@/layouts/admin/admin-shell';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -125,6 +125,21 @@ function StatusBadge({ status }: { status: 'pending' | 'approved' | 'disapproved
 export default function SellerApproval({ registrations, stats }: Props) {
     const [statusFilter, setStatusFilter] = useState('All');
     const [search, setSearch] = useState('');
+    const [selectedSeller, setSelectedSeller] = useState<any>(null);
+    const [showModal, setShowModal] = useState(false);
+    const [loadingDetails, setLoadingDetails] = useState(false);
+    const [previewDoc, setPreviewDoc] = useState<{ url: string; title: string } | null>(null);
+
+    // ESC key to close preview
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && previewDoc) {
+                setPreviewDoc(null);
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [previewDoc]);
 
     // Filter registrations (only sellers)
     const filteredRegistrations = registrations.filter((reg) => {
@@ -140,15 +155,34 @@ export default function SellerApproval({ registrations, stats }: Props) {
         return matchesStatus && matchesSearch;
     });
 
+    async function handleViewDetails(userId: number) {
+        setLoadingDetails(true);
+        setShowModal(true);
+        
+        try {
+            const response = await fetch(`/admin/seller-approval/${userId}/details`);
+            const data = await response.json();
+            setSelectedSeller(data);
+        } catch (error) {
+            console.error('Failed to load seller details:', error);
+            alert('Failed to load seller details');
+            setShowModal(false);
+        } finally {
+            setLoadingDetails(false);
+        }
+    }
+
     function handleApprove(userId: number) {
         if (confirm('Are you sure you want to approve this seller registration?')) {
             router.post(`/admin/seller-approval/${userId}/approve`);
+            setShowModal(false);
         }
     }
 
     function handleDisapprove(userId: number) {
         if (confirm('Are you sure you want to disapprove this seller registration?')) {
             router.post(`/admin/seller-approval/${userId}/disapprove`);
+            setShowModal(false);
         }
     }
 
@@ -332,7 +366,8 @@ export default function SellerApproval({ registrations, stats }: Props) {
                                                         </button>
                                                     )}
                                                     <button
-                                                        className="flex h-7 w-7 items-center justify-center rounded border border-gray-200 bg-white text-gray-400 transition hover:bg-gray-50"
+                                                        onClick={() => handleViewDetails(reg.id)}
+                                                        className="flex h-7 w-7 items-center justify-center rounded border border-gray-200 bg-white text-gray-400 transition hover:bg-gray-50 hover:text-[#3B1F6B]"
                                                         title="View details"
                                                     >
                                                         <Eye className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -366,6 +401,348 @@ export default function SellerApproval({ registrations, stats }: Props) {
                     <Eye className="ml-auto h-3.5 w-3.5 text-gray-300" strokeWidth={1.5} />
                     <span className="text-xs text-gray-300">review icon</span>
                 </div>
+
+                {/* Details Modal */}
+                {showModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowModal(false)}>
+                        <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+                            {loadingDetails ? (
+                                <div className="flex items-center justify-center p-12">
+                                    <div className="text-center">
+                                        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-[#3B1F6B]"></div>
+                                        <p className="mt-4 text-sm text-gray-500">Loading seller details...</p>
+                                    </div>
+                                </div>
+                            ) : selectedSeller ? (
+                                <>
+                                    {/* Modal Header */}
+                                    <div className="sticky top-0 border-b border-gray-200 bg-white px-6 py-4">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h2 className="text-lg font-bold text-gray-900">Seller Application Details</h2>
+                                                <p className="text-sm text-gray-500">Review all submitted information and documents</p>
+                                            </div>
+                                            <button
+                                                onClick={() => setShowModal(false)}
+                                                className="rounded-lg p-2 hover:bg-gray-100"
+                                            >
+                                                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Modal Content */}
+                                    <div className="p-6">
+                                        {/* Personal Information */}
+                                        <div className="mb-6">
+                                            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-700">Personal Information</h3>
+                                            <div className="grid grid-cols-2 gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Full Name</p>
+                                                    <p className="mt-1 font-medium text-gray-900">
+                                                        {selectedSeller.first_name} {selectedSeller.middle_initial} {selectedSeller.last_name}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Sex</p>
+                                                    <p className="mt-1 font-medium text-gray-900 capitalize">{selectedSeller.sex}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Email</p>
+                                                    <p className="mt-1 font-medium text-gray-900">{selectedSeller.email}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Contact Number</p>
+                                                    <p className="mt-1 font-medium text-gray-900">{selectedSeller.contact_number}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Birthday</p>
+                                                    <p className="mt-1 font-medium text-gray-900">{selectedSeller.birthday}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">TIN</p>
+                                                    <p className="mt-1 font-medium text-gray-900">{selectedSeller.tin || '—'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Address */}
+                                        <div className="mb-6">
+                                            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-700">Address</h3>
+                                            <div className="grid grid-cols-2 gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Region</p>
+                                                    <p className="mt-1 font-medium text-gray-900">{selectedSeller.region}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Province</p>
+                                                    <p className="mt-1 font-medium text-gray-900">{selectedSeller.province}</p>
+                                                </div>
+                                                {selectedSeller.district && (
+                                                    <div>
+                                                        <p className="text-xs text-gray-500">District</p>
+                                                        <p className="mt-1 font-medium text-gray-900">{selectedSeller.district}</p>
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <p className="text-xs text-gray-500">City/Municipality</p>
+                                                    <p className="mt-1 font-medium text-gray-900">{selectedSeller.municipality_city}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Barangay</p>
+                                                    <p className="mt-1 font-medium text-gray-900">{selectedSeller.barangay}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Postal Code</p>
+                                                    <p className="mt-1 font-medium text-gray-900">{selectedSeller.postal_code}</p>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <p className="text-xs text-gray-500">Street Address</p>
+                                                    <p className="mt-1 font-medium text-gray-900">{selectedSeller.street_address}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Business Information */}
+                                        <div className="mb-6">
+                                            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-700">Business Information</h3>
+                                            <div className="grid grid-cols-2 gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Business Name</p>
+                                                    <p className="mt-1 font-medium text-gray-900">{selectedSeller.business_name}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Business Type</p>
+                                                    <p className="mt-1 font-medium text-gray-900 capitalize">{selectedSeller.business_type?.replace('_', ' ')}</p>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <p className="text-xs text-gray-500">Line of Business</p>
+                                                    <p className="mt-1 font-medium text-gray-900">{selectedSeller.line_of_business}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Documents */}
+                                        <div className="mb-6">
+                                            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-700">Submitted Documents</h3>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                {selectedSeller.id_document_url && (
+                                                    <button
+                                                        onClick={() => setPreviewDoc({ url: selectedSeller.id_document_url, title: 'Valid ID' })}
+                                                        className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 hover:border-[#3B1F6B] hover:bg-gray-50"
+                                                    >
+                                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#F1EDFB]">
+                                                            <svg className="h-5 w-5 text-[#3B1F6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                                                            </svg>
+                                                        </div>
+                                                        <div className="flex-1 text-left">
+                                                            <p className="text-sm font-medium text-gray-900">Valid ID</p>
+                                                            <p className="text-xs text-gray-500">Click to preview</p>
+                                                        </div>
+                                                        <Eye className="h-4 w-4 text-gray-400" />
+                                                    </button>
+                                                )}
+                                                {selectedSeller.business_permit_url && (
+                                                    <button
+                                                        onClick={() => setPreviewDoc({ url: selectedSeller.business_permit_url, title: 'Business Permit' })}
+                                                        className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 hover:border-[#3B1F6B] hover:bg-gray-50"
+                                                    >
+                                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#F1EDFB]">
+                                                            <svg className="h-5 w-5 text-[#3B1F6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                            </svg>
+                                                        </div>
+                                                        <div className="flex-1 text-left">
+                                                            <p className="text-sm font-medium text-gray-900">Business Permit</p>
+                                                            <p className="text-xs text-gray-500">Click to preview</p>
+                                                        </div>
+                                                        <Eye className="h-4 w-4 text-gray-400" />
+                                                    </button>
+                                                )}
+                                                {selectedSeller.dti_registration_url && (
+                                                    <button
+                                                        onClick={() => setPreviewDoc({ url: selectedSeller.dti_registration_url, title: 'DTI Registration' })}
+                                                        className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 hover:border-[#3B1F6B] hover:bg-gray-50"
+                                                    >
+                                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#F1EDFB]">
+                                                            <svg className="h-5 w-5 text-[#3B1F6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                            </svg>
+                                                        </div>
+                                                        <div className="flex-1 text-left">
+                                                            <p className="text-sm font-medium text-gray-900">DTI Registration</p>
+                                                            <p className="text-xs text-gray-500">Click to preview</p>
+                                                        </div>
+                                                        <Eye className="h-4 w-4 text-gray-400" />
+                                                    </button>
+                                                )}
+                                                {selectedSeller.bir_2303_url && (
+                                                    <button
+                                                        onClick={() => setPreviewDoc({ url: selectedSeller.bir_2303_url, title: 'BIR Form 2303' })}
+                                                        className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 hover:border-[#3B1F6B] hover:bg-gray-50"
+                                                    >
+                                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#F1EDFB]">
+                                                            <svg className="h-5 w-5 text-[#3B1F6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                            </svg>
+                                                        </div>
+                                                        <div className="flex-1 text-left">
+                                                            <p className="text-sm font-medium text-gray-900">BIR Form 2303</p>
+                                                            <p className="text-xs text-gray-500">Click to preview</p>
+                                                        </div>
+                                                        <Eye className="h-4 w-4 text-gray-400" />
+                                                    </button>
+                                                )}
+                                                {selectedSeller.sec_certificate_url && (
+                                                    <button
+                                                        onClick={() => setPreviewDoc({ url: selectedSeller.sec_certificate_url, title: 'SEC Certificate' })}
+                                                        className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 hover:border-[#3B1F6B] hover:bg-gray-50"
+                                                    >
+                                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#F1EDFB]">
+                                                            <svg className="h-5 w-5 text-[#3B1F6B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                            </svg>
+                                                        </div>
+                                                        <div className="flex-1 text-left">
+                                                            <p className="text-sm font-medium text-gray-900">SEC Certificate</p>
+                                                            <p className="text-xs text-gray-500">Click to preview</p>
+                                                        </div>
+                                                        <Eye className="h-4 w-4 text-gray-400" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Status Info */}
+                                        <div className="mb-6">
+                                            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-700">Application Status</h3>
+                                            <div className="flex items-center gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                                <StatusBadge status={selectedSeller.status} />
+                                                <div className="text-xs text-gray-500">
+                                                    <p>Applied: {selectedSeller.created_at}</p>
+                                                    {selectedSeller.approved_at && <p>Approved: {selectedSeller.approved_at}</p>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Modal Footer - Actions */}
+                                    <div className="sticky bottom-0 border-t border-gray-200 bg-white px-6 py-4">
+                                        <div className="flex items-center justify-end gap-3">
+                                            <button
+                                                onClick={() => setShowModal(false)}
+                                                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                            >
+                                                Close
+                                            </button>
+                                            {selectedSeller.status === 'pending' && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleDisapprove(selectedSeller.id)}
+                                                        className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
+                                                    >
+                                                        <XCircle className="h-4 w-4" />
+                                                        Disapprove
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleApprove(selectedSeller.id)}
+                                                        className="flex items-center gap-2 rounded-lg bg-[#3B1F6B] px-4 py-2 text-sm font-medium text-white hover:bg-[#2E1854]"
+                                                    >
+                                                        <ThumbsUp className="h-4 w-4" />
+                                                        Approve Seller
+                                                    </button>
+                                                </>
+                                            )}
+                                            {selectedSeller.status === 'approved' && (
+                                                <button
+                                                    onClick={() => handleDisapprove(selectedSeller.id)}
+                                                    className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
+                                                >
+                                                    <XCircle className="h-4 w-4" />
+                                                    Revoke Approval
+                                                </button>
+                                            )}
+                                            {selectedSeller.status === 'disapproved' && (
+                                                <button
+                                                    onClick={() => handleApprove(selectedSeller.id)}
+                                                    className="flex items-center gap-2 rounded-lg bg-[#3B1F6B] px-4 py-2 text-sm font-medium text-white hover:bg-[#2E1854]"
+                                                >
+                                                    <ThumbsUp className="h-4 w-4" />
+                                                    Approve Seller
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </>
+                            ) : null}
+                        </div>
+                    </div>
+                )}
+
+                {/* Document Preview Modal */}
+                {previewDoc && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setPreviewDoc(null)}>
+                        <div className="relative flex h-[90vh] w-full max-w-5xl flex-col rounded-xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                            {/* Preview Header */}
+                            <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F1EDFB]">
+                                        <Eye className="h-4 w-4 text-[#3B1F6B]" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-bold text-gray-900">{previewDoc.title}</h3>
+                                        <p className="text-xs text-gray-500">Document preview</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <a
+                                        href={previewDoc.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                                    >
+                                        Open in new tab
+                                    </a>
+                                    <button
+                                        onClick={() => setPreviewDoc(null)}
+                                        className="rounded-lg p-2 hover:bg-gray-100"
+                                        aria-label="Close preview"
+                                    >
+                                        <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Preview Content */}
+                            <div className="flex-1 overflow-hidden bg-gray-100">
+                                <iframe
+                                    src={previewDoc.url}
+                                    className="h-full w-full border-0"
+                                    title={previewDoc.title}
+                                    sandbox="allow-same-origin allow-scripts"
+                                />
+                            </div>
+
+                            {/* Preview Footer */}
+                            <div className="flex items-center justify-between border-t border-gray-200 bg-white px-6 py-3">
+                                <p className="text-xs text-gray-500">
+                                    Press ESC to close or click outside to dismiss
+                                </p>
+                                <button
+                                    onClick={() => setPreviewDoc(null)}
+                                    className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                >
+                                    Close Preview
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </AdminShell>
         </>
     );

@@ -33,8 +33,14 @@ export default function VerifyEmail({ email: initialEmail, status }: VerifyEmail
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         post('/verify-email', {
-            onSuccess: () => {
+            onSuccess: (page) => {
+                console.log('OTP verification success:', page);
                 reset('code');
+                // Force redirect to login for buyers (backend already redirects, but ensure it)
+                // Sellers/logistics will be redirected to pending-approval by backend
+            },
+            onError: (errors) => {
+                console.error('OTP verification failed:', errors);
             },
         });
     };

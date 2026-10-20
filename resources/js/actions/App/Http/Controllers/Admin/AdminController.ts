@@ -515,6 +515,198 @@ sellerApproval.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => 
     
     sellerApproval.form = sellerApprovalForm
 /**
+* @see \App\Http\Controllers\Admin\AdminController::getSellerDetails
+ * @see app/Http/Controllers/Admin/AdminController.php:201
+ * @route '/admin/seller-approval/{userId}/details'
+ */
+export const getSellerDetails = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: getSellerDetails.url(args, options),
+    method: 'get',
+})
+
+getSellerDetails.definition = {
+    methods: ["get","head"],
+    url: '/admin/seller-approval/{userId}/details',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+* @see \App\Http\Controllers\Admin\AdminController::getSellerDetails
+ * @see app/Http/Controllers/Admin/AdminController.php:201
+ * @route '/admin/seller-approval/{userId}/details'
+ */
+getSellerDetails.url = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions) => {
+    if (typeof args === 'string' || typeof args === 'number') {
+        args = { userId: args }
+    }
+
+    
+    if (Array.isArray(args)) {
+        args = {
+                    userId: args[0],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        userId: args.userId,
+                }
+
+    return getSellerDetails.definition.url
+            .replace('{userId}', parsedArgs.userId.toString())
+            .replace(/\/+$/, '') + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Admin\AdminController::getSellerDetails
+ * @see app/Http/Controllers/Admin/AdminController.php:201
+ * @route '/admin/seller-approval/{userId}/details'
+ */
+getSellerDetails.get = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: getSellerDetails.url(args, options),
+    method: 'get',
+})
+/**
+* @see \App\Http\Controllers\Admin\AdminController::getSellerDetails
+ * @see app/Http/Controllers/Admin/AdminController.php:201
+ * @route '/admin/seller-approval/{userId}/details'
+ */
+getSellerDetails.head = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: getSellerDetails.url(args, options),
+    method: 'head',
+})
+
+    /**
+* @see \App\Http\Controllers\Admin\AdminController::getSellerDetails
+ * @see app/Http/Controllers/Admin/AdminController.php:201
+ * @route '/admin/seller-approval/{userId}/details'
+ */
+    const getSellerDetailsForm = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: getSellerDetails.url(args, options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\Admin\AdminController::getSellerDetails
+ * @see app/Http/Controllers/Admin/AdminController.php:201
+ * @route '/admin/seller-approval/{userId}/details'
+ */
+        getSellerDetailsForm.get = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: getSellerDetails.url(args, options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\Admin\AdminController::getSellerDetails
+ * @see app/Http/Controllers/Admin/AdminController.php:201
+ * @route '/admin/seller-approval/{userId}/details'
+ */
+        getSellerDetailsForm.head = (args: { userId: string | number } | [userId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: getSellerDetails.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    getSellerDetails.form = getSellerDetailsForm
+/**
+* @see \App\Http\Controllers\Admin\AdminController::downloadDocument
+ * @see app/Http/Controllers/Admin/AdminController.php:247
+ * @route '/admin/seller-approval/{userId}/download/{type}'
+ */
+export const downloadDocument = (args: { userId: string | number, type: string | number } | [userId: string | number, type: string | number ], options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: downloadDocument.url(args, options),
+    method: 'get',
+})
+
+downloadDocument.definition = {
+    methods: ["get","head"],
+    url: '/admin/seller-approval/{userId}/download/{type}',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+* @see \App\Http\Controllers\Admin\AdminController::downloadDocument
+ * @see app/Http/Controllers/Admin/AdminController.php:247
+ * @route '/admin/seller-approval/{userId}/download/{type}'
+ */
+downloadDocument.url = (args: { userId: string | number, type: string | number } | [userId: string | number, type: string | number ], options?: RouteQueryOptions) => {
+    if (Array.isArray(args)) {
+        args = {
+                    userId: args[0],
+                    type: args[1],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        userId: args.userId,
+                                type: args.type,
+                }
+
+    return downloadDocument.definition.url
+            .replace('{userId}', parsedArgs.userId.toString())
+            .replace('{type}', parsedArgs.type.toString())
+            .replace(/\/+$/, '') + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Admin\AdminController::downloadDocument
+ * @see app/Http/Controllers/Admin/AdminController.php:247
+ * @route '/admin/seller-approval/{userId}/download/{type}'
+ */
+downloadDocument.get = (args: { userId: string | number, type: string | number } | [userId: string | number, type: string | number ], options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: downloadDocument.url(args, options),
+    method: 'get',
+})
+/**
+* @see \App\Http\Controllers\Admin\AdminController::downloadDocument
+ * @see app/Http/Controllers/Admin/AdminController.php:247
+ * @route '/admin/seller-approval/{userId}/download/{type}'
+ */
+downloadDocument.head = (args: { userId: string | number, type: string | number } | [userId: string | number, type: string | number ], options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: downloadDocument.url(args, options),
+    method: 'head',
+})
+
+    /**
+* @see \App\Http\Controllers\Admin\AdminController::downloadDocument
+ * @see app/Http/Controllers/Admin/AdminController.php:247
+ * @route '/admin/seller-approval/{userId}/download/{type}'
+ */
+    const downloadDocumentForm = (args: { userId: string | number, type: string | number } | [userId: string | number, type: string | number ], options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: downloadDocument.url(args, options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\Admin\AdminController::downloadDocument
+ * @see app/Http/Controllers/Admin/AdminController.php:247
+ * @route '/admin/seller-approval/{userId}/download/{type}'
+ */
+        downloadDocumentForm.get = (args: { userId: string | number, type: string | number } | [userId: string | number, type: string | number ], options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: downloadDocument.url(args, options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\Admin\AdminController::downloadDocument
+ * @see app/Http/Controllers/Admin/AdminController.php:247
+ * @route '/admin/seller-approval/{userId}/download/{type}'
+ */
+        downloadDocumentForm.head = (args: { userId: string | number, type: string | number } | [userId: string | number, type: string | number ], options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: downloadDocument.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    downloadDocument.form = downloadDocumentForm
+/**
 * @see \App\Http\Controllers\Admin\AdminController::approveSellerRegistration
  * @see app/Http/Controllers/Admin/AdminController.php:163
  * @route '/admin/seller-approval/{userId}/approve'
@@ -664,7 +856,7 @@ disapproveSellerRegistration.post = (args: { userId: string | number } | [userId
     disapproveSellerRegistration.form = disapproveSellerRegistrationForm
 /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:201
+ * @see app/Http/Controllers/Admin/AdminController.php:269
  * @route '/admin/logout'
  */
 export const logout = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -679,7 +871,7 @@ logout.definition = {
 
 /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:201
+ * @see app/Http/Controllers/Admin/AdminController.php:269
  * @route '/admin/logout'
  */
 logout.url = (options?: RouteQueryOptions) => {
@@ -688,7 +880,7 @@ logout.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:201
+ * @see app/Http/Controllers/Admin/AdminController.php:269
  * @route '/admin/logout'
  */
 logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -698,7 +890,7 @@ logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:201
+ * @see app/Http/Controllers/Admin/AdminController.php:269
  * @route '/admin/logout'
  */
     const logoutForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -708,7 +900,7 @@ logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\Admin\AdminController::logout
- * @see app/Http/Controllers/Admin/AdminController.php:201
+ * @see app/Http/Controllers/Admin/AdminController.php:269
  * @route '/admin/logout'
  */
         logoutForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -717,6 +909,6 @@ logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
         })
     
     logout.form = logoutForm
-const AdminController = { index, verify, dashboard, manageRegistrations, approveRegistration, disapproveRegistration, sellerApproval, approveSellerRegistration, disapproveSellerRegistration, logout }
+const AdminController = { index, verify, dashboard, manageRegistrations, approveRegistration, disapproveRegistration, sellerApproval, getSellerDetails, downloadDocument, approveSellerRegistration, disapproveSellerRegistration, logout }
 
 export default AdminController

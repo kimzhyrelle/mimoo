@@ -261,8 +261,8 @@ export default function Registration() {
         ...d,
         contact_number: normalizeMobile(d.contact_number),
         email: d.email.trim(),
-        // Always include an accepted flag — FormData can drop false booleans.
-        terms_accepted: d.terms_accepted ? true : false,
+        // Always include an accepted flag — FormData needs '1' for true, '0' for false
+        terms_accepted: d.terms_accepted ? '1' : '0',
     }));
 
     const age = calcAge(data.birthday);
@@ -448,16 +448,24 @@ export default function Registration() {
         if (step < TOTAL_STEPS) goTo(step + 1);
         else {
             const email = data.email.trim();
-            // Na-normalize na ng transform() sa taas
+            console.log('Submitting buyer registration for:', email);
+            // Na-normalized na ng transform() sa taas
             post('/register', {
                 forceFormData: true,
-                preserveScroll: true,
-                onSuccess: () => {
-                    // Fallback if the backend returns a normal Inertia visit instead of a location redirect
+                onSuccess: (response) => {
+                    console.log('Buyer registration success, redirecting to OTP...', response);
+                    // Force redirect to OTP page
                     window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
                 },
                 onError: (errs) => {
-                    console.error('Registration failed:', errs);
+                    console.error('Buyer registration failed with errors:', JSON.stringify(errs, null, 2));
+                    // Also log each individual error
+                    Object.keys(errs).forEach(key => {
+                        console.error(`Error in ${key}:`, errs[key]);
+                    });
+                },
+                onFinish: () => {
+                    console.log('Buyer registration request finished');
                 },
             });
         }

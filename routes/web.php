@@ -379,6 +379,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         
         // Seller approval routes
         Route::get('/seller-approval', [AdminController::class, 'sellerApproval'])->name('seller-approval');
+        Route::get('/seller-approval/{userId}/details', [AdminController::class, 'getSellerDetails'])->name('seller-approval.details');
+        Route::get('/seller-approval/{userId}/download/{type}', [AdminController::class, 'downloadDocument'])->name('download-document');
         Route::post('/seller-approval/{userId}/approve', [AdminController::class, 'approveSellerRegistration'])->name('seller-approval.approve');
         Route::post('/seller-approval/{userId}/disapprove', [AdminController::class, 'disapproveSellerRegistration'])->name('seller-approval.disapprove');
         

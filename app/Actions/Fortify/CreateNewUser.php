@@ -41,25 +41,6 @@ class CreateNewUser implements CreatesNewUsers
         $input['last_name'] = trim($input['last_name'] ?? '');
         $input['tin'] = trim($input['tin'] ?? '');
         
-        // Check if terms accepted (required for buyers) OR privacy policy accepted (required for sellers)
-        if (($input['account_type'] ?? 'buyer') === 'buyer' && empty($input['terms_accepted'])) {
-            throw ValidationException::withMessages([
-                'terms_accepted' => 'You must accept the Terms and Privacy Policy.',
-            ]);
-        }
-        
-        if (($input['account_type'] ?? '') === 'seller' && empty($input['privacy_policy_accepted'])) {
-            throw ValidationException::withMessages([
-                'privacy_policy_accepted' => 'You must accept the Privacy Policy.',
-            ]);
-        }
-        
-        if (($input['account_type'] ?? '') === 'logistics' && empty($input['privacy_policy_accepted'])) {
-            throw ValidationException::withMessages([
-                'privacy_policy_accepted' => 'You must accept the Privacy Policy.',
-            ]);
-        }
-        
         $validator = Validator::make($input, [
             // ── Personal details ──────────────────────────────────────────
             'first_name'      => ['required', 'string', new ValidName()],
@@ -71,8 +52,8 @@ class CreateNewUser implements CreatesNewUsers
             'tin'             => ['nullable', 'string', 'max:50'], // For sellers
             'birthday'        => ['required', 'date', 'before:-18 years'],
             'account_type'    => ['required', 'in:buyer,seller,logistics'],
-            'terms_accepted'  => ['required_if:account_type,buyer', 'accepted'],
-            'privacy_policy_accepted' => ['required_if:account_type,seller,logistics', 'accepted'],
+            'terms_accepted'  => ['sometimes', 'required_if:account_type,buyer', 'accepted'],
+            'privacy_policy_accepted' => ['sometimes', 'required_if:account_type,seller,logistics', 'accepted'],
 
             // ── Address ───────────────────────────────────────────────────
             'region'           => ['required', 'string', 'max:100'],
