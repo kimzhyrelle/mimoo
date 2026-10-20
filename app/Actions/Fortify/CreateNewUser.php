@@ -54,6 +54,12 @@ class CreateNewUser implements CreatesNewUsers
             ]);
         }
         
+        if (($input['account_type'] ?? '') === 'logistics' && empty($input['privacy_policy_accepted'])) {
+            throw ValidationException::withMessages([
+                'privacy_policy_accepted' => 'You must accept the Privacy Policy.',
+            ]);
+        }
+        
         $validator = Validator::make($input, [
             // ── Personal details ──────────────────────────────────────────
             'first_name'      => ['required', 'string', new ValidName()],
@@ -66,7 +72,7 @@ class CreateNewUser implements CreatesNewUsers
             'birthday'        => ['required', 'date', 'before:-18 years'],
             'account_type'    => ['required', 'in:buyer,seller,logistics'],
             'terms_accepted'  => ['required_if:account_type,buyer', 'accepted'],
-            'privacy_policy_accepted' => ['required_if:account_type,seller', 'accepted'],
+            'privacy_policy_accepted' => ['required_if:account_type,seller,logistics', 'accepted'],
 
             // ── Address ───────────────────────────────────────────────────
             'region'           => ['required', 'string', 'max:100'],
@@ -109,7 +115,7 @@ class CreateNewUser implements CreatesNewUsers
         $validator->validate();
 
         // Use transaction for atomicity
-        return DB::transaction(function () use ($input) {
+        $result = DB::transaction(function () use ($input) {
             // ── Store uploaded files ───────────────────────────────────────────
             $idDocumentPath    = $this->storeFile($input['id_document'], 'id_documents');
             $businessPermitPath = isset($input['business_permit']) && $input['business_permit'] instanceof UploadedFile
@@ -153,23 +159,40 @@ class CreateNewUser implements CreatesNewUsers
                 'dti_registration'  => $dtiRegistrationPath,
                 'bir_2303'          => $bir2303Path,
                 'sec_certificate'   => $secCertificatePath,
-                'privacy_policy_accepted' => $input['privacy_policy_accepted'] ?? false,
+                'privacy_policy_accepted' => filter_var($input['privacy_policy_accepted'] ?? false, FILTER_VALIDATE_BOOLEAN),
                 'password'          => $input['password'],
                 // All accounts start as pending and unverified
                 'status'            => 'pending',
                 'verification_status' => 'unverified',
                 'approved_at'       => null,
             ]);
-            
-            // ── Create OTP and send verification email ────────────────────────
+
+            // Create OTP inside the transaction; send email after commit so SMTP
+            // cannot roll back the user or block the HTTP response.
             $verification = EmailVerification::createForEmail($user->email);
-            
-            // Send OTP email
-            Notification::route('mail', $user->email)
-                ->notify(new EmailVerificationNotification($verification->code));
-            
-            return $user;
+
+            return [$user, $verification->code];
         });
+
+        [$user, $otpCode] = $result;
+
+        // Never block registration on email delivery — log OTP and attempt send quickly.
+        \Log::info('Registration OTP created', [
+            'email' => $user->email,
+            'code' => $otpCode,
+        ]);
+
+        try {
+            Notification::route('mail', $user->email)
+                ->notifyNow(new EmailVerificationNotification($otpCode));
+        } catch (\Throwable $e) {
+            \Log::warning('Registration OTP email failed (user can resend on verify page)', [
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return $user;
     }
 
     /**

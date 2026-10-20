@@ -261,6 +261,8 @@ export default function Registration() {
         ...d,
         contact_number: normalizeMobile(d.contact_number),
         email: d.email.trim(),
+        // Always include an accepted flag — FormData can drop false booleans.
+        terms_accepted: d.terms_accepted ? true : false,
     }));
 
     const age = calcAge(data.birthday);
@@ -445,10 +447,18 @@ export default function Registration() {
         setClientErrors({});
         if (step < TOTAL_STEPS) goTo(step + 1);
         else {
+            const email = data.email.trim();
             // Na-normalize na ng transform() sa taas
-            post('/register', { 
+            post('/register', {
                 forceFormData: true,
                 preserveScroll: true,
+                onSuccess: () => {
+                    // Fallback if the backend returns a normal Inertia visit instead of a location redirect
+                    window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
+                },
+                onError: (errs) => {
+                    console.error('Registration failed:', errs);
+                },
             });
         }
     };

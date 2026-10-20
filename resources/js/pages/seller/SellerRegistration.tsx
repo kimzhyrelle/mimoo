@@ -357,7 +357,7 @@ export default function SellerRegistration() {
     const [barangays, setBarangays] = useState<Barangay[]>([]);
     const [loading, setLoading] = useState({ regions: false, provinces: false, cities: false, barangays: false });
 
-    const { data, setData, post, processing, errors } = useForm<FormShape>({
+    const { data, setData, post, processing, errors, transform } = useForm<FormShape>({
         first_name: '',
         last_name: '',
         middle_initial: '',
@@ -386,6 +386,14 @@ export default function SellerRegistration() {
         password: '',
         password_confirmation: '',
     });
+
+    transform((d) => ({
+        ...d,
+        email: d.email.trim(),
+        // Always include an accepted flag — FormData needs '1' for true, '0' for false
+        privacy_policy_accepted: d.privacy_policy_accepted ? '1' : '0',
+        terms_accepted: d.privacy_policy_accepted ? '1' : '0', // Also send as terms_accepted for backend compatibility
+    }));
 
     const age = calcAge(data.birthday);
     const allErrors: Errs = { ...(errors as Errs), ...clientErrors };
@@ -529,14 +537,24 @@ export default function SellerRegistration() {
         setClientErrors({});
         if (step < TOTAL_STEPS) goTo(step + 1);
         else {
-            post('/register', { 
+            const email = data.email.trim();
+            console.log('Submitting registration for:', email);
+            post('/register', {
                 forceFormData: true,
-                onSuccess: () => {
-                    // Registration successful - backend will redirect to OTP page
-                    console.log('Registration submitted successfully');
+                onSuccess: (response) => {
+                    console.log('Registration success, redirecting to OTP...', response);
+                    // Force redirect to OTP page
+                    window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
                 },
                 onError: (errors) => {
-                    console.error('Registration failed:', errors);
+                    console.error('Registration failed with errors:', JSON.stringify(errors, null, 2));
+                    // Also log each individual error
+                    Object.keys(errors).forEach(key => {
+                        console.error(`Error in ${key}:`, errors[key]);
+                    });
+                },
+                onFinish: () => {
+                    console.log('Registration request finished');
                 },
             });
         }

@@ -176,6 +176,11 @@ Route::post('/verify-email', [\App\Http\Controllers\Auth\EmailVerificationContro
 Route::post('/verify-email/resend', [\App\Http\Controllers\Auth\EmailVerificationController::class, 'resendOtp'])
     ->name('otp.resend');
 
+// Seller pending approval page
+Route::get('/seller/pending-approval', function () {
+    return Inertia::render('seller/PendingApproval');
+})->name('seller.pending-approval');
+
 // Privacy Policy page
 Route::get('/privacy-policy', function () {
     return Inertia::render('PrivacyPolicy');

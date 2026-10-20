@@ -432,6 +432,77 @@ account.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
     
     account.form = accountForm
+/**
+ * @see routes/web.php:180
+ * @route '/seller/pending-approval'
+ */
+export const pendingApproval = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: pendingApproval.url(options),
+    method: 'get',
+})
+
+pendingApproval.definition = {
+    methods: ["get","head"],
+    url: '/seller/pending-approval',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+ * @see routes/web.php:180
+ * @route '/seller/pending-approval'
+ */
+pendingApproval.url = (options?: RouteQueryOptions) => {
+    return pendingApproval.definition.url + queryParams(options)
+}
+
+/**
+ * @see routes/web.php:180
+ * @route '/seller/pending-approval'
+ */
+pendingApproval.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: pendingApproval.url(options),
+    method: 'get',
+})
+/**
+ * @see routes/web.php:180
+ * @route '/seller/pending-approval'
+ */
+pendingApproval.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: pendingApproval.url(options),
+    method: 'head',
+})
+
+    /**
+ * @see routes/web.php:180
+ * @route '/seller/pending-approval'
+ */
+    const pendingApprovalForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: pendingApproval.url(options),
+        method: 'get',
+    })
+
+            /**
+ * @see routes/web.php:180
+ * @route '/seller/pending-approval'
+ */
+        pendingApprovalForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: pendingApproval.url(options),
+            method: 'get',
+        })
+            /**
+ * @see routes/web.php:180
+ * @route '/seller/pending-approval'
+ */
+        pendingApprovalForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: pendingApproval.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    pendingApproval.form = pendingApprovalForm
 const seller = {
     landing: Object.assign(landing, landing),
 dashboard: Object.assign(dashboard, dashboard),
@@ -439,6 +510,7 @@ orders: Object.assign(orders, orders),
 products: Object.assign(products, products),
 settings: Object.assign(settings, settings),
 account: Object.assign(account, account),
+pendingApproval: Object.assign(pendingApproval, pendingApproval),
 }
 
 export default seller

@@ -38,32 +38,9 @@ class EmailVerificationController extends Controller
             'code.regex' => 'Verification code must be exactly 6 digits.',
         ]);
         
-        // Debug logging
-        \Log::info('OTP VERIFICATION ATTEMPT', [
-            'email' => $request->email,
-            'code' => $request->code,
-            'code_length' => strlen($request->code),
-        ]);
-        
         $verification = EmailVerification::findValid($request->email, $request->code);
         
         if (!$verification) {
-            // Debug: check what codes exist for this email
-            $allCodes = EmailVerification::where('email', $request->email)
-                ->orderBy('created_at', 'desc')
-                ->get(['code', 'verified', 'expires_at']);
-            
-            \Log::info('NO VALID CODE FOUND', [
-                'email' => $request->email,
-                'submitted_code' => $request->code,
-                'existing_codes' => $allCodes->map(fn($c) => [
-                    'code' => $c->code,
-                    'verified' => $c->verified,
-                    'expired' => $c->isExpired(),
-                    'expires_at' => $c->expires_at,
-                ])->toArray(),
-            ]);
-            
             // Check if there's an expired code
             $expired = EmailVerification::where('email', $request->email)
                 ->where('code', $request->code)
@@ -81,11 +58,6 @@ class EmailVerificationController extends Controller
             ]);
         }
         
-        \Log::info('OTP VERIFICATION SUCCESS', [
-            'email' => $request->email,
-            'code' => $request->code,
-        ]);
-        
         // Mark verification as used
         $verification->update(['verified' => true]);
         
@@ -97,10 +69,21 @@ class EmailVerificationController extends Controller
                 'verification_status' => 'verified',
                 'email_verified_at' => now(),
             ]);
+            
+            // Redirect based on account type
+            if ($user->account_type === 'seller' || $user->account_type === 'logistics') {
+                // Sellers and logistics need admin approval
+                return redirect()->route('seller.pending-approval')
+                    ->with('status', 'Email verified! Your account is pending admin approval.');
+            }
+            
+            // Buyers can login immediately
+            return redirect()->route('login')
+                ->with('status', 'Email verified successfully! You can now log in.');
         }
         
-        // Redirect to login with success message
-        return redirect()->route('login')->with('status', 'Email verified successfully! You can now log in.');
+        return redirect()->route('login')
+            ->with('status', 'Email verified successfully! You can now log in.');
     }
     
     /**
@@ -123,11 +106,21 @@ class EmailVerificationController extends Controller
         
         // Create new OTP
         $verification = EmailVerification::createForEmail($request->email);
-        
-        // Send OTP email
-        Notification::route('mail', $request->email)
-            ->notify(new EmailVerificationNotification($verification->code));
-        
+
+        try {
+            Notification::route('mail', $request->email)
+                ->notifyNow(new EmailVerificationNotification($verification->code));
+        } catch (\Throwable $e) {
+            \Log::error('Failed to resend OTP email', [
+                'email' => $request->email,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->withErrors([
+                'email' => 'We could not send the verification email right now. Please try again in a moment.',
+            ]);
+        }
+
         return back()->with('status', 'A new verification code has been sent to your email.');
     }
 }

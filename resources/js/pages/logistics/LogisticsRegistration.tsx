@@ -408,7 +408,19 @@ export default function LogisticsRegistration() {
         }
         setClientErrors({});
         if (step < TOTAL_STEPS) goTo(step + 1);
-        else post('/register', { forceFormData: true, onSuccess: () => setSubmitted(true) });
+        else {
+            const email = data.email.trim();
+            post('/register', {
+                forceFormData: true,
+                onSuccess: () => {
+                    // Force redirect to OTP page
+                    window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
+                },
+                onError: (errors) => {
+                    console.error('Registration failed:', errors);
+                },
+            });
+        }
     };
 
     const goBack = () => {
