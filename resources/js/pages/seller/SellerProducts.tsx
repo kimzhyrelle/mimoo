@@ -78,6 +78,8 @@ interface Product {
     sku: string;
     weight?: number | null;
     status: Status;
+    approval_status?: 'pending' | 'approved' | 'rejected';
+    rejection_reason?: string | null;
     updated: number;
     has_variants?: boolean;
     variant_options?: VariantOption[];
@@ -304,6 +306,8 @@ export default function SellerProducts({ auth, seller, products: initialProducts
                     sku: p.sku || '',
                     weight: p.weight ? parseFloat(p.weight) : null,
                     status: p.status === 'active' ? 'published' as Status : 'draft' as Status,
+                    approval_status: p.approval_status || 'pending',
+                    rejection_reason: p.rejection_reason || null,
                     updated: p.updated_at || Date.now(),
                     has_variants: p.has_variants || false,
                     variant_options: p.variant_options || [],
@@ -874,6 +878,7 @@ export default function SellerProducts({ auth, seller, products: initialProducts
                                         <th className={`${TH} hidden md:table-cell`}>Category</th>
                                         <th className={TH}>Price</th>
                                         <th className={`${TH} hidden sm:table-cell`}>Stock</th>
+                                        <th className={`${TH} hidden lg:table-cell`}>Approval</th>
                                         <th className={`${TH} w-14 pr-5`}><span className="sr-only">Actions</span></th>
                                     </tr>
                                 </thead>
@@ -915,6 +920,22 @@ export default function SellerProducts({ auth, seller, products: initialProducts
                                                             </small>
                                                         )}
                                                     </div>
+                                                </td>
+                                                <td className={`px-4 py-3.5 text-sm hidden lg:table-cell ${rowBorder}`}>
+                                                    <span
+                                                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                                            p.approval_status === 'pending'
+                                                                ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+                                                                : p.approval_status === 'approved'
+                                                                ? 'bg-green-50 text-green-700 border border-green-200'
+                                                                : 'bg-red-50 text-red-700 border border-red-200'
+                                                        }`}
+                                                        title={p.approval_status === 'rejected' && p.rejection_reason ? p.rejection_reason : undefined}
+                                                    >
+                                                        {p.approval_status === 'pending' && '⏳ Pending'}
+                                                        {p.approval_status === 'approved' && '✓ Approved'}
+                                                        {p.approval_status === 'rejected' && '✗ Rejected'}
+                                                    </span>
                                                 </td>
                                                 <td className={`px-4 py-3.5 pr-5 text-right ${rowBorder}`}>
                                                     <button

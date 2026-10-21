@@ -425,6 +425,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/seller-approval/{userId}/approve', [AdminController::class, 'approveSellerRegistration'])->name('seller-approval.approve');
         Route::post('/seller-approval/{userId}/disapprove', [AdminController::class, 'disapproveSellerRegistration'])->name('seller-approval.disapprove');
         
+        // Product approval routes
+        Route::get('/product-approval', [AdminController::class, 'productApproval'])->name('product-approval');
+        Route::get('/api/admin/products/pending', [ProductController::class, 'adminPendingProducts']);
+        Route::get('/api/admin/products', [ProductController::class, 'adminAllProducts']);
+        Route::post('/api/admin/products/{id}/approve', [ProductController::class, 'adminApproveProduct']);
+        Route::post('/api/admin/products/{id}/reject', [ProductController::class, 'adminRejectProduct']);
+        
         Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
     });
 });

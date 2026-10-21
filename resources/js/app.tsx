@@ -32,17 +32,16 @@ createInertiaApp({
                 </TooltipProvider>
             );
 
-            // Check if SSR was used (if el has content, hydrate; otherwise create)
-            if (el.innerHTML) {
-                hydrateRoot(el, appElement);
-            } else {
-                const root = createRoot(el);
-                root.render(appElement);
-            }
+            // Remove old content to avoid hydration mismatches
+            el.innerHTML = '';
+            
+            const root = createRoot(el);
+            root.render(appElement);
         }
     },
     progress: {
         color: '#4B5563',
+        showSpinner: true,
     },
 });
 

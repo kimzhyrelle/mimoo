@@ -128,6 +128,14 @@ class AdminController extends Controller
     }
 
     /**
+     * Show the product approval page.
+     */
+    public function productApproval(): Response
+    {
+        return Inertia::render('admin/product-approval');
+    }
+
+    /**
      * Approve a user registration.
      */
     public function approveRegistration(Request $request, int $userId): RedirectResponse

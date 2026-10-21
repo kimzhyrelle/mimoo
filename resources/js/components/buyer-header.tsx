@@ -56,8 +56,8 @@ export function BuyerHeader({
   // Close dropdown on route change
   useEffect(() => {
     const handleRouteChange = () => setShowMenu(false);
-    router.on('navigate', handleRouteChange);
-    return () => router.off('navigate', handleRouteChange);
+    const removeListener = router.on('navigate', handleRouteChange);
+    return () => removeListener();
   }, []);
 
   // Close dropdown when clicking outside

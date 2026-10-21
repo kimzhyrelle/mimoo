@@ -198,8 +198,13 @@ export default function Checkout() {
   async function handlePlaceOrder(e: React.FormEvent) {
     e.preventDefault();
 
+    console.log('Place Order clicked'); // DEBUG
+
     // Prevent double submit
-    if (submitting) return;
+    if (submitting) {
+      console.log('Already submitting, prevented double submit'); // DEBUG
+      return;
+    }
 
     // Validate
     if (!shippingName.trim()) {
@@ -236,6 +241,7 @@ export default function Checkout() {
       ? `${street}, ${barangay}, ${city}, ${region}`
       : `${street}, ${barangay}, ${city}, ${province}`;
 
+    console.log('All validations passed, submitting order...'); // DEBUG
     setSubmitting(true);
 
     try {
@@ -255,7 +261,9 @@ export default function Checkout() {
         }),
       });
 
+      console.log('Response status:', response.status); // DEBUG
       const data = await response.json();
+      console.log('Response data:', data); // DEBUG
 
       if (response.ok) {
         // Success - redirect to order success page

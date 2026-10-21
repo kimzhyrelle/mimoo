@@ -23,6 +23,10 @@ class Product extends Model
         'low_stock_threshold',
         'sku',
         'status',
+        'approval_status',
+        'rejection_reason',
+        'approved_at',
+        'approved_by',
         'images',
         'main_image_index',
         'weight',
@@ -43,6 +47,7 @@ class Product extends Model
         'has_variants' => 'boolean',
         'variant_options' => 'array',
         'variants' => 'array',
+        'approved_at' => 'datetime',
     ];
 
     /**
@@ -51,6 +56,14 @@ class Product extends Model
     public function seller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'seller_id');
+    }
+
+    /**
+     * Get the admin who approved the product.
+     */
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 
     /**

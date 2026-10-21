@@ -183,7 +183,7 @@ class OrderController extends Controller
                     'seller_id' => $product->seller_id,
                     'product_name' => $product->name, // Snapshot
                     'variant_id' => $cartItem->variant_id ?? null,
-                    'variant_snapshot' => $cartItem->variant_snapshot ?? null,
+                    'variant_snapshot' => $cartItem->variant_snapshot ? json_encode($cartItem->variant_snapshot) : null,
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
                 ];

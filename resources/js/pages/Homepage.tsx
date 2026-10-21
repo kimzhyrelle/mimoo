@@ -422,16 +422,27 @@ function ProductCard({
   return (
     <Link
       href={`/product/${product.id}`}
-      className="flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white transition-shadow hover:shadow-md"
+      className="group relative flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white transition-shadow hover:shadow-md"
     >
-      <div className="aspect-square w-full bg-neutral-200 overflow-hidden">
+      <div className="relative aspect-square w-full bg-neutral-200 overflow-hidden">
         {product.main_image ? (
-          <img src={product.main_image} alt={product.name} className="w-full h-full object-cover" />
+          <img src={product.main_image} alt={product.name} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-neutral-400 text-xs">
             No image
           </div>
         )}
+        
+        {/* Hover overlay with "Find Similar" */}
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          <Link
+            href={`/category/${encodeURIComponent(product.category)}`}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white text-violet-700 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-violet-50 transition-colors shadow-lg"
+          >
+            Find Similar
+          </Link>
+        </div>
       </div>
       <div className="flex flex-1 flex-col gap-1 p-3">
         <span className="text-sm text-neutral-800 line-clamp-2">
@@ -461,46 +472,6 @@ function ProductCard({
           }`}>
             {product.stock_status}
           </span>
-        )}
-        {role === "guest" && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              onGuestAction?.();
-            }}
-            className="mt-2 rounded-md border border-violet-600 py-1.5 text-xs font-medium text-violet-600 transition-colors hover:bg-violet-50"
-          >
-            Log in to buy
-          </button>
-        )}
-        {role === "buyer" && product.is_in_stock && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              onAddToCart?.(product.id);
-            }}
-            className="mt-2 rounded-md bg-violet-600 py-1.5 text-xs font-medium text-white transition-colors hover:bg-violet-700"
-          >
-            Add to cart
-          </button>
-        )}
-        {role === "buyer" && !product.is_in_stock && (
-          <button
-            disabled
-            className="mt-2 rounded-md bg-neutral-300 py-1.5 text-xs font-medium text-neutral-500 cursor-not-allowed"
-          >
-            Out of stock
-          </button>
-        )}
-        {role === "seller" && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-            }}
-            className="mt-2 rounded-md border border-neutral-300 py-1.5 text-xs font-medium text-neutral-500"
-          >
-            View as buyer to purchase
-          </button>
         )}
       </div>
     </Link>

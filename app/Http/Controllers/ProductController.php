@@ -13,13 +13,262 @@ use Illuminate\Validation\Rule;
 class ProductController extends Controller
 {
     /**
+     * Admin: Get all pending products for approval.
+     */
+    public function adminPendingProducts(Request $request)
+    {
+        $user = Auth::user();
+
+        // Only admins can access this endpoint
+        if ($user->account_type !== 'admin') {
+            return response()->json(['error' => 'Unauthorized. Only admins can access this endpoint.'], 403);
+        }
+
+        $query = Product::with(['seller:id,business_name,name,email'])
+            ->where('approval_status', 'pending')
+            ->orderBy('created_at', 'asc');
+
+        // Search
+        if ($request->has('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%")
+                    ->orWhereHas('seller', function ($q) use ($search) {
+                        $q->where('business_name', 'like', "%{$search}%")
+                            ->orWhere('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        // Filter by category
+        if ($request->has('category')) {
+            $query->where('category', $request->input('category'));
+        }
+
+        // Pagination
+        $perPage = $request->input('per_page', 20);
+        $products = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $products->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'description' => $product->description,
+                    'category' => $product->category,
+                    'price' => (float) $product->price,
+                    'sale_price' => $product->sale_price ? (float) $product->sale_price : null,
+                    'stock' => $product->stock,
+                    'sku' => $product->sku,
+                    'status' => $product->status,
+                    'approval_status' => $product->approval_status,
+                    'images' => $product->images ?? [],
+                    'main_image' => $product->main_image,
+                    'brand' => $product->brand,
+                    'seller' => [
+                        'id' => $product->seller->id,
+                        'name' => $product->seller->business_name ?? $product->seller->name,
+                        'email' => $product->seller->email,
+                    ],
+                    'created_at' => $product->created_at->toISOString(),
+                ];
+            }),
+            'meta' => [
+                'current_page' => $products->currentPage(),
+                'last_page' => $products->lastPage(),
+                'per_page' => $products->perPage(),
+                'total' => $products->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * Admin: Approve a product.
+     */
+    public function adminApproveProduct($id)
+    {
+        $user = Auth::user();
+
+        // Only admins can approve products
+        if ($user->account_type !== 'admin') {
+            return response()->json(['error' => 'Unauthorized. Only admins can approve products.'], 403);
+        }
+
+        $product = Product::findOrFail($id);
+
+        // Check if already approved
+        if ($product->approval_status === 'approved') {
+            return response()->json(['error' => 'Product is already approved.'], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $product->update([
+                'approval_status' => 'approved',
+                'approved_at' => now(),
+                'approved_by' => $user->id,
+                'rejection_reason' => null, // Clear any previous rejection reason
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Product approved successfully.',
+                'product' => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'approval_status' => $product->approval_status,
+                    'approved_at' => $product->approved_at->toISOString(),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Failed to approve product.',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Admin: Reject a product.
+     */
+    public function adminRejectProduct(Request $request, $id)
+    {
+        $user = Auth::user();
+
+        // Only admins can reject products
+        if ($user->account_type !== 'admin') {
+            return response()->json(['error' => 'Unauthorized. Only admins can reject products.'], 403);
+        }
+
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
+        ], [
+            'reason.required' => 'Rejection reason is required.',
+        ]);
+
+        $product = Product::findOrFail($id);
+
+        try {
+            DB::beginTransaction();
+
+            $product->update([
+                'approval_status' => 'rejected',
+                'rejection_reason' => $validated['reason'],
+                'approved_at' => null,
+                'approved_by' => null,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Product rejected successfully.',
+                'product' => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'approval_status' => $product->approval_status,
+                    'rejection_reason' => $product->rejection_reason,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Failed to reject product.',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Admin: Get all products (pending, approved, rejected) with filters.
+     */
+    public function adminAllProducts(Request $request)
+    {
+        $user = Auth::user();
+
+        // Only admins can access this endpoint
+        if ($user->account_type !== 'admin') {
+            return response()->json(['error' => 'Unauthorized. Only admins can access this endpoint.'], 403);
+        }
+
+        $query = Product::with(['seller:id,business_name,name,email', 'approvedBy:id,name']);
+
+        // Filter by approval status
+        if ($request->has('approval_status')) {
+            $query->where('approval_status', $request->input('approval_status'));
+        }
+
+        // Search
+        if ($request->has('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%")
+                    ->orWhereHas('seller', function ($q) use ($search) {
+                        $q->where('business_name', 'like', "%{$search}%")
+                            ->orWhere('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        // Sort
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortDir = $request->input('sort_dir', 'desc');
+        
+        if (in_array($sortBy, ['name', 'price', 'created_at', 'approval_status'])) {
+            $query->orderBy($sortBy, $sortDir);
+        }
+
+        // Pagination
+        $perPage = $request->input('per_page', 20);
+        $products = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $products->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'description' => $product->description,
+                    'category' => $product->category,
+                    'price' => (float) $product->price,
+                    'stock' => $product->stock,
+                    'sku' => $product->sku,
+                    'status' => $product->status,
+                    'approval_status' => $product->approval_status,
+                    'rejection_reason' => $product->rejection_reason,
+                    'images' => $product->images ?? [],
+                    'main_image' => $product->main_image,
+                    'seller' => [
+                        'id' => $product->seller->id,
+                        'name' => $product->seller->business_name ?? $product->seller->name,
+                        'email' => $product->seller->email,
+                    ],
+                    'approved_by' => $product->approvedBy ? $product->approvedBy->name : null,
+                    'approved_at' => $product->approved_at ? $product->approved_at->toISOString() : null,
+                    'created_at' => $product->created_at->toISOString(),
+                ];
+            }),
+            'meta' => [
+                'current_page' => $products->currentPage(),
+                'last_page' => $products->lastPage(),
+                'per_page' => $products->perPage(),
+                'total' => $products->total(),
+            ],
+        ]);
+    }
+
+    /**
      * Display a listing of products for buyers (public).
      * Supports search, category filter, price sort, and pagination.
      */
     public function index(Request $request)
     {
         $query = Product::with('seller:id,business_name,name')
-            ->where('status', 'active');
+            ->where('status', 'active')
+            ->where('approval_status', 'approved'); // Only show approved products to buyers
 
         // Search
         if ($request->has('search')) {
@@ -179,6 +428,8 @@ class ProductController extends Controller
                     'low_stock_threshold' => $product->low_stock_threshold ?? 5,
                     'sku' => $product->sku,
                     'status' => $product->status,
+                    'approval_status' => $product->approval_status ?? 'pending',
+                    'rejection_reason' => $product->rejection_reason,
                     'sold' => (int) $product->sold,
                     'images' => $product->images ?? [],
                     'main_image_index' => $product->main_image_index,
