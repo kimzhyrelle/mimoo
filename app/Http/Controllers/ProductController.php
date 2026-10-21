@@ -17,12 +17,7 @@ class ProductController extends Controller
      */
     public function adminPendingProducts(Request $request)
     {
-        $user = Auth::user();
-
-        // Only admins can access this endpoint
-        if ($user->account_type !== 'admin') {
-            return response()->json(['error' => 'Unauthorized. Only admins can access this endpoint.'], 403);
-        }
+        // Admin verification is handled by middleware, no need to check Auth::user()
 
         $query = Product::with(['seller:id,business_name,name,email'])
             ->where('approval_status', 'pending')
@@ -88,12 +83,7 @@ class ProductController extends Controller
      */
     public function adminApproveProduct($id)
     {
-        $user = Auth::user();
-
-        // Only admins can approve products
-        if ($user->account_type !== 'admin') {
-            return response()->json(['error' => 'Unauthorized. Only admins can approve products.'], 403);
-        }
+        // Admin verification is handled by middleware
 
         $product = Product::findOrFail($id);
 
@@ -108,7 +98,7 @@ class ProductController extends Controller
             $product->update([
                 'approval_status' => 'approved',
                 'approved_at' => now(),
-                'approved_by' => $user->id,
+                'approved_by' => null, // No user ID for session-based admin
                 'rejection_reason' => null, // Clear any previous rejection reason
             ]);
 
@@ -137,12 +127,7 @@ class ProductController extends Controller
      */
     public function adminRejectProduct(Request $request, $id)
     {
-        $user = Auth::user();
-
-        // Only admins can reject products
-        if ($user->account_type !== 'admin') {
-            return response()->json(['error' => 'Unauthorized. Only admins can reject products.'], 403);
-        }
+        // Admin verification is handled by middleware
 
         $validated = $request->validate([
             'reason' => 'required|string|max:500',
@@ -187,12 +172,7 @@ class ProductController extends Controller
      */
     public function adminAllProducts(Request $request)
     {
-        $user = Auth::user();
-
-        // Only admins can access this endpoint
-        if ($user->account_type !== 'admin') {
-            return response()->json(['error' => 'Unauthorized. Only admins can access this endpoint.'], 403);
-        }
+        // Admin verification is handled by middleware
 
         $query = Product::with(['seller:id,business_name,name,email', 'approvedBy:id,name']);
 

@@ -427,11 +427,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
         
         // Product approval routes
         Route::get('/product-approval', [AdminController::class, 'productApproval'])->name('product-approval');
-        Route::get('/api/admin/products/pending', [ProductController::class, 'adminPendingProducts']);
-        Route::get('/api/admin/products', [ProductController::class, 'adminAllProducts']);
-        Route::post('/api/admin/products/{id}/approve', [ProductController::class, 'adminApproveProduct']);
-        Route::post('/api/admin/products/{id}/reject', [ProductController::class, 'adminRejectProduct']);
         
         Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
     });
+});
+
+// Product approval API routes (outside admin prefix but still protected)
+Route::middleware(['web', 'admin.verified'])->prefix('api/admin')->group(function () {
+    Route::get('/products/pending', [ProductController::class, 'adminPendingProducts']);
+    Route::get('/products', [ProductController::class, 'adminAllProducts']);
+    Route::post('/products/{id}/approve', [ProductController::class, 'adminApproveProduct']);
+    Route::post('/products/{id}/reject', [ProductController::class, 'adminRejectProduct']);
 });

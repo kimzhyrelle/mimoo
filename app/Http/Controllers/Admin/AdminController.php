@@ -132,7 +132,7 @@ class AdminController extends Controller
      */
     public function productApproval(): Response
     {
-        return Inertia::render('admin/product-approval');
+        return Inertia::render('admin/ProductApproval');
     }
 
     /**

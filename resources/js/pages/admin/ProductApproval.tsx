@@ -40,25 +40,36 @@ interface ProductsResponse {
 
 export default function ProductApprovalPage() {
     const [products, setProducts] = useState<Product[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
     const [meta, setMeta] = useState({ current_page: 1, last_page: 1, per_page: 20, total: 0 });
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
     const [search, setSearch] = useState('');
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [showModal, setShowModal] = useState(false);
+    const [showConfirmApprove, setShowConfirmApprove] = useState(false);
+    const [showConfirmReject, setShowConfirmReject] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
     const [actionLoading, setActionLoading] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    // Wait for component to mount before making API calls
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
-        fetchProducts();
-    }, [filter, meta.current_page]);
+        if (mounted) {
+            fetchProducts();
+        }
+    }, [filter, currentPage, mounted]);
 
     const fetchProducts = async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams({
                 per_page: meta.per_page.toString(),
-                page: meta.current_page.toString(),
+                page: currentPage.toString(),
             });
 
             if (filter !== 'all') {
@@ -69,21 +80,53 @@ export default function ProductApprovalPage() {
                 params.append('search', search);
             }
 
-            const response = await fetch(`/api/admin/products?${params}`);
+            console.log('Fetching products from:', `/api/admin/products?${params}`);
+
+            const response = await fetch(`/api/admin/products?${params}`, {
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            console.log('Response status:', response.status);
+
+            if (!response.ok) {
+                console.error('Response not OK:', response.status, response.statusText);
+                
+                // Try to read response as text first
+                const responseText = await response.text();
+                console.error('Response body:', responseText);
+                
+                if (response.status === 403) {
+                    try {
+                        const errorData = JSON.parse(responseText);
+                        console.error('Admin access forbidden:', errorData);
+                    } catch (e) {
+                        console.error('Could not parse error as JSON');
+                    }
+                    alert('Session expired. Please refresh the page.');
+                    return;
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const data: ProductsResponse = await response.json();
+            console.log('Products fetched successfully:', data);
             
-            setProducts(data.data);
-            setMeta(data.meta);
+            setProducts(data.data || []);
+            setMeta(data.meta || { current_page: 1, last_page: 1, per_page: 20, total: 0 });
         } catch (error) {
-            console.error('Failed to fetch products:', error);
+            console.error('Failed to fetch products - Error details:', error);
+            // Don't alert on every error, just log it
+            setProducts([]);
         } finally {
             setLoading(false);
         }
     };
 
     const handleApprove = async (productId: number) => {
-        if (!confirm('Approve this product?')) return;
-
         setActionLoading(true);
         try {
             const response = await fetch(`/api/admin/products/${productId}/approve`, {
@@ -97,6 +140,8 @@ export default function ProductApprovalPage() {
             if (response.ok) {
                 fetchProducts();
                 setShowModal(false);
+                setShowConfirmApprove(false);
+                alert('Product approved successfully!');
             } else {
                 const error = await response.json();
                 alert(error.error || 'Failed to approve product');
@@ -129,7 +174,9 @@ export default function ProductApprovalPage() {
             if (response.ok) {
                 fetchProducts();
                 setShowModal(false);
+                setShowConfirmReject(false);
                 setRejectionReason('');
+                alert('Product rejected successfully!');
             } else {
                 const error = await response.json();
                 alert(error.error || 'Failed to reject product');
@@ -145,13 +192,15 @@ export default function ProductApprovalPage() {
     const openModal = (product: Product) => {
         setSelectedProduct(product);
         setShowModal(true);
+        setShowConfirmApprove(false);
+        setShowConfirmReject(false);
         setRejectionReason('');
     };
 
     const stats = {
-        pending: products.filter(p => p.approval_status === 'pending').length,
-        approved: products.filter(p => p.approval_status === 'approved').length,
-        rejected: products.filter(p => p.approval_status === 'rejected').length,
+        pending: meta.total || 0, // Use total from API instead of filtering local products
+        approved: 0,
+        rejected: 0,
     };
 
     return (
@@ -383,18 +432,18 @@ export default function ProductApprovalPage() {
                     </p>
                     <div className="flex gap-2">
                         <button
-                            onClick={() => setMeta({ ...meta, current_page: meta.current_page - 1 })}
-                            disabled={meta.current_page === 1}
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            disabled={currentPage === 1}
                             className="rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Previous
                         </button>
                         <span className="flex items-center px-3 text-sm text-gray-700">
-                            Page {meta.current_page} of {meta.last_page}
+                            Page {currentPage} of {meta.last_page}
                         </span>
                         <button
-                            onClick={() => setMeta({ ...meta, current_page: meta.current_page + 1 })}
-                            disabled={meta.current_page === meta.last_page}
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            disabled={currentPage === meta.last_page}
                             className="rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Next
@@ -406,119 +455,223 @@ export default function ProductApprovalPage() {
             {/* Product Details Modal */}
             {showModal && selectedProduct && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6">
-                        <div className="mb-4 flex items-start justify-between">
-                            <div>
-                                <h2 className="text-2xl font-bold text-gray-900">{selectedProduct.name}</h2>
-                                <p className="text-sm text-gray-500">SKU: {selectedProduct.sku}</p>
+                    <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white shadow-2xl">
+                        {/* Header */}
+                        <div className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4">
+                            <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                    <h2 className="text-2xl font-bold text-gray-900">{selectedProduct.name}</h2>
+                                    <p className="mt-1 text-sm text-gray-500">SKU: {selectedProduct.sku}</p>
+                                    <div className="mt-2">
+                                        <span
+                                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                                                selectedProduct.approval_status === 'pending'
+                                                    ? 'bg-yellow-100 text-yellow-800'
+                                                    : selectedProduct.approval_status === 'approved'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : 'bg-red-100 text-red-800'
+                                            }`}
+                                        >
+                                            {selectedProduct.approval_status === 'pending' && '⏳ Pending Review'}
+                                            {selectedProduct.approval_status === 'approved' && '✓ Approved'}
+                                            {selectedProduct.approval_status === 'rejected' && '✗ Rejected'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowModal(false);
+                                        setShowConfirmApprove(false);
+                                        setShowConfirmReject(false);
+                                    }}
+                                    className="ml-4 rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                                >
+                                    <X className="h-6 w-6" />
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setShowModal(false)}
-                                className="text-gray-400 hover:text-gray-600"
-                            >
-                                <X className="h-6 w-6" />
-                            </button>
                         </div>
 
-                        {/* Images */}
-                        {selectedProduct.images && selectedProduct.images.length > 0 && (
-                            <div className="mb-6 grid grid-cols-4 gap-2">
-                                {selectedProduct.images.map((img, idx) => (
-                                    <img
-                                        key={idx}
-                                        src={img}
-                                        alt={`${selectedProduct.name} - ${idx + 1}`}
-                                        className="h-32 w-full rounded-lg object-cover border border-gray-200"
-                                    />
-                                ))}
-                            </div>
-                        )}
+                        {/* Content */}
+                        <div className="p-6">
+                            {/* Images */}
+                            {selectedProduct.images && selectedProduct.images.length > 0 && (
+                                <div className="mb-6">
+                                    <h3 className="mb-3 text-sm font-semibold text-gray-700 uppercase tracking-wide">Product Images</h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        {selectedProduct.images.map((img, idx) => (
+                                            <img
+                                                key={idx}
+                                                src={img}
+                                                alt={`${selectedProduct.name} - ${idx + 1}`}
+                                                className="h-40 w-full rounded-lg object-cover border-2 border-gray-200 hover:border-purple-400 transition-colors cursor-pointer"
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
-                        {/* Product Details */}
-                        <div className="mb-6 grid grid-cols-2 gap-4">
-                            <div>
-                                <p className="text-sm font-medium text-gray-500">Price</p>
-                                <p className="text-lg font-bold text-gray-900">
-                                    ₱{selectedProduct.sale_price ? selectedProduct.sale_price.toFixed(2) : selectedProduct.price.toFixed(2)}
-                                    {selectedProduct.sale_price && (
-                                        <span className="ml-2 text-sm text-gray-500 line-through">
-                                            ₱{selectedProduct.price.toFixed(2)}
-                                        </span>
-                                    )}
+                            {/* Product Details Grid */}
+                            <div className="mb-6 rounded-lg bg-gray-50 p-6">
+                                <h3 className="mb-4 text-sm font-semibold text-gray-700 uppercase tracking-wide">Product Details</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500 uppercase mb-1">Price</p>
+                                        <p className="text-2xl font-bold text-gray-900">
+                                            ₱{selectedProduct.sale_price ? selectedProduct.sale_price.toFixed(2) : selectedProduct.price.toFixed(2)}
+                                        </p>
+                                        {selectedProduct.sale_price && (
+                                            <p className="text-sm text-gray-500 line-through">
+                                                Regular: ₱{selectedProduct.price.toFixed(2)}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500 uppercase mb-1">Stock Available</p>
+                                        <p className="text-2xl font-bold text-gray-900">{selectedProduct.stock} units</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500 uppercase mb-1">Category</p>
+                                        <p className="text-base text-gray-900">{selectedProduct.category || 'Uncategorized'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500 uppercase mb-1">Brand</p>
+                                        <p className="text-base text-gray-900">{selectedProduct.brand || 'N/A'}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Seller Info */}
+                            <div className="mb-6 rounded-lg border-2 border-purple-100 bg-purple-50 p-6">
+                                <h3 className="mb-3 text-sm font-semibold text-purple-900 uppercase tracking-wide">Seller Information</h3>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-600 text-white font-bold text-lg">
+                                        {selectedProduct.seller.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-gray-900">{selectedProduct.seller.name}</p>
+                                        <p className="text-sm text-gray-600">{selectedProduct.seller.email}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Description */}
+                            <div className="mb-6">
+                                <h3 className="mb-2 text-sm font-semibold text-gray-700 uppercase tracking-wide">Description</h3>
+                                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                    {selectedProduct.description || 'No description provided by the seller.'}
                                 </p>
                             </div>
-                            <div>
-                                <p className="text-sm font-medium text-gray-500">Stock</p>
-                                <p className="text-lg font-bold text-gray-900">{selectedProduct.stock} units</p>
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-gray-500">Category</p>
-                                <p className="text-gray-900">{selectedProduct.category || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-gray-500">Brand</p>
-                                <p className="text-gray-900">{selectedProduct.brand || 'N/A'}</p>
-                            </div>
-                            <div className="col-span-2">
-                                <p className="text-sm font-medium text-gray-500">Seller</p>
-                                <p className="text-gray-900">{selectedProduct.seller.name}</p>
-                                <p className="text-sm text-gray-500">{selectedProduct.seller.email}</p>
-                            </div>
-                            <div className="col-span-2">
-                                <p className="text-sm font-medium text-gray-500 mb-1">Description</p>
-                                <p className="text-gray-900">{selectedProduct.description || 'No description provided'}</p>
-                            </div>
+
+                            {/* Rejection Reason if rejected */}
+                            {selectedProduct.approval_status === 'rejected' && selectedProduct.rejection_reason && (
+                                <div className="mb-6 rounded-lg bg-red-50 border-2 border-red-200 p-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-100">
+                                            <X className="h-5 w-5 text-red-600" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sm font-semibold text-red-900 mb-1">Rejection Reason</p>
+                                            <p className="text-sm text-red-700">{selectedProduct.rejection_reason}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Rejection Reason if rejected */}
-                        {selectedProduct.approval_status === 'rejected' && selectedProduct.rejection_reason && (
-                            <div className="mb-6 rounded-lg bg-red-50 p-4 border border-red-200">
-                                <p className="text-sm font-medium text-red-900 mb-1">Rejection Reason</p>
-                                <p className="text-sm text-red-700">{selectedProduct.rejection_reason}</p>
-                            </div>
-                        )}
-
-                        {/* Actions */}
+                        {/* Actions Footer */}
                         {selectedProduct.approval_status === 'pending' && (
-                            <div className="space-y-4 border-t border-gray-200 pt-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Rejection Reason (optional if approving)
-                                    </label>
-                                    <textarea
-                                        value={rejectionReason}
-                                        onChange={(e) => setRejectionReason(e.target.value)}
-                                        placeholder="Provide a reason if rejecting..."
-                                        rows={3}
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                                    />
-                                </div>
+                            <div className="sticky bottom-0 border-t border-gray-200 bg-white px-6 py-4">
+                                {!showConfirmApprove && !showConfirmReject && (
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => setShowConfirmApprove(true)}
+                                            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-600 px-6 py-3 text-base font-semibold text-white hover:bg-green-700 transition-colors shadow-lg hover:shadow-xl"
+                                        >
+                                            <Check className="h-5 w-5" />
+                                            Approve Product
+                                        </button>
+                                        <button
+                                            onClick={() => setShowConfirmReject(true)}
+                                            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-6 py-3 text-base font-semibold text-white hover:bg-red-700 transition-colors shadow-lg hover:shadow-xl"
+                                        >
+                                            <X className="h-5 w-5" />
+                                            Reject Product
+                                        </button>
+                                    </div>
+                                )}
 
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={() => handleApprove(selectedProduct.id)}
-                                        disabled={actionLoading}
-                                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        <Check className="h-4 w-4" />
-                                        {actionLoading ? 'Processing...' : 'Approve Product'}
-                                    </button>
-                                    <button
-                                        onClick={() => handleReject(selectedProduct.id)}
-                                        disabled={actionLoading}
-                                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        <X className="h-4 w-4" />
-                                        {actionLoading ? 'Processing...' : 'Reject Product'}
-                                    </button>
-                                </div>
+                                {/* Approve Confirmation */}
+                                {showConfirmApprove && (
+                                    <div className="rounded-lg bg-green-50 border-2 border-green-200 p-4">
+                                        <div className="mb-4">
+                                            <h4 className="text-lg font-bold text-green-900 mb-2">Confirm Approval</h4>
+                                            <p className="text-sm text-green-700">
+                                                Once approved, this product will be visible to all buyers on the platform. Are you sure you want to approve "{selectedProduct.name}"?
+                                            </p>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={() => handleApprove(selectedProduct.id)}
+                                                disabled={actionLoading}
+                                                className="flex-1 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                {actionLoading ? 'Approving...' : 'Yes, Approve'}
+                                            </button>
+                                            <button
+                                                onClick={() => setShowConfirmApprove(false)}
+                                                disabled={actionLoading}
+                                                className="flex-1 rounded-lg bg-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-300 disabled:opacity-50 transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Reject Confirmation */}
+                                {showConfirmReject && (
+                                    <div className="rounded-lg bg-red-50 border-2 border-red-200 p-4">
+                                        <div className="mb-4">
+                                            <h4 className="text-lg font-bold text-red-900 mb-2">Reject Product</h4>
+                                            <p className="text-sm text-red-700 mb-3">
+                                                Please provide a clear reason for rejecting this product. The seller will see this message.
+                                            </p>
+                                            <textarea
+                                                value={rejectionReason}
+                                                onChange={(e) => setRejectionReason(e.target.value)}
+                                                placeholder="e.g., Images are unclear, description is incomplete, product violates guidelines..."
+                                                rows={4}
+                                                className="w-full rounded-lg border-2 border-red-300 px-4 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                                            />
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={() => handleReject(selectedProduct.id)}
+                                                disabled={actionLoading || !rejectionReason.trim()}
+                                                className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                {actionLoading ? 'Rejecting...' : 'Confirm Rejection'}
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setShowConfirmReject(false);
+                                                    setRejectionReason('');
+                                                }}
+                                                disabled={actionLoading}
+                                                className="flex-1 rounded-lg bg-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-300 disabled:opacity-50 transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 
                         {selectedProduct.approval_status !== 'pending' && (
-                            <div className="border-t border-gray-200 pt-4">
-                                <p className="text-center text-sm text-gray-500">
-                                    This product has already been {selectedProduct.approval_status}
+                            <div className="border-t border-gray-200 bg-gray-50 px-6 py-4">
+                                <p className="text-center text-sm text-gray-600">
+                                    This product has already been <span className="font-semibold">{selectedProduct.approval_status}</span>.
                                 </p>
                             </div>
                         )}

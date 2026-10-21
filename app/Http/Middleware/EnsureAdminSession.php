@@ -16,7 +16,21 @@ class EnsureAdminSession
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->session()->get('admin_verified', false)) {
+        $isVerified = $request->session()->get('admin_verified', false);
+        
+        // Debug logging
+        \Log::info('Admin middleware check', [
+            'path' => $request->path(),
+            'admin_verified' => $isVerified,
+            'session_id' => $request->session()->getId(),
+        ]);
+        
+        if (!$isVerified) {
+            // Return JSON error for API requests
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['error' => 'Unauthorized admin access'], 403);
+            }
+            
             return redirect()->route('admin.login');
         }
 
