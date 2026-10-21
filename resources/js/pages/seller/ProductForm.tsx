@@ -230,6 +230,12 @@ export default function ProductForm({ product }: ProductFormProps) {
         setSaving(true);
 
         try {
+            // Auto-calculate stock from variants if variants are enabled
+            let finalStock = form.stock;
+            if (form.has_variants && form.variants.length > 0) {
+                finalStock = form.variants.reduce((total, variant) => total + (variant.stock || 0), 0).toString();
+            }
+
             const payload = {
                 name: form.name,
                 category: form.category,
@@ -237,7 +243,7 @@ export default function ProductForm({ product }: ProductFormProps) {
                 description: form.description,
                 price: parseFloat(form.price),
                 sale_price: form.salePrice ? parseFloat(form.salePrice) : null,
-                stock: form.has_variants ? 0 : parseInt(form.stock),
+                stock: form.has_variants ? parseInt(finalStock) : parseInt(form.stock),
                 sku: form.sku,
                 weight: form.weight ? parseFloat(form.weight) : null,
                 status: form.status === 'published' ? 'active' : 'draft', // Convert published → active
@@ -611,60 +617,77 @@ export default function ProductForm({ product }: ProductFormProps) {
 
                             {/* Generated Variants Table */}
                             {form.variants.length > 0 && (
-                                <div className="rounded-lg border-2 border-gray-200 overflow-hidden">
-                                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                                        <h3 className="text-sm font-semibold text-gray-700">
-                                            Generated Variants ({form.variants.length})
-                                        </h3>
+                                <div className="space-y-3">
+                                    {/* Total Stock Display */}
+                                    <div className="rounded-lg bg-green-50 border-2 border-green-200 px-4 py-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-semibold text-green-900">
+                                                Total Product Stock (Auto-calculated):
+                                            </span>
+                                            <span className="text-xl font-bold text-green-700">
+                                                {form.variants.reduce((total, v) => total + (v.stock || 0), 0)} units
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-green-700 mt-1">
+                                            This is the sum of all variant stocks below
+                                        </p>
                                     </div>
-                                    <div className="max-h-96 overflow-y-auto">
-                                        <table className="w-full">
-                                            <thead className="bg-gray-100 sticky top-0">
-                                                <tr>
-                                                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Variant</th>
-                                                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">SKU</th>
-                                                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Price (₱)</th>
-                                                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Stock</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {form.variants.map((variant) => (
-                                                    <tr key={variant.id} className="border-b border-gray-100 hover:bg-gray-50">
-                                                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                                                            {Object.values(variant.combination).join(' / ')}
-                                                        </td>
-                                                        <td className="px-4 py-3">
-                                                            <input
-                                                                type="text"
-                                                                value={variant.sku}
-                                                                onChange={(e) => updateVariant(variant.id, 'sku', e.target.value)}
-                                                                className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-[#4B2E7E] focus:outline-none"
-                                                                placeholder="SKU"
-                                                            />
-                                                        </td>
-                                                        <td className="px-4 py-3">
-                                                            <input
-                                                                type="number"
-                                                                value={variant.price}
-                                                                onChange={(e) => updateVariant(variant.id, 'price', parseFloat(e.target.value) || 0)}
-                                                                step="0.01"
-                                                                min="0"
-                                                                className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-[#4B2E7E] focus:outline-none"
-                                                            />
-                                                        </td>
-                                                        <td className="px-4 py-3">
-                                                            <input
-                                                                type="number"
-                                                                value={variant.stock}
-                                                                onChange={(e) => updateVariant(variant.id, 'stock', parseInt(e.target.value) || 0)}
-                                                                min="0"
-                                                                className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-[#4B2E7E] focus:outline-none"
-                                                            />
-                                                        </td>
+
+                                    <div className="rounded-lg border-2 border-gray-200 overflow-hidden">
+                                        <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                                            <h3 className="text-sm font-semibold text-gray-700">
+                                                Generated Variants ({form.variants.length})
+                                            </h3>
+                                        </div>
+                                        <div className="max-h-96 overflow-y-auto">
+                                            <table className="w-full">
+                                                <thead className="bg-gray-100 sticky top-0">
+                                                    <tr>
+                                                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Variant</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">SKU</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Price (₱)</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">Stock</th>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                                </thead>
+                                                <tbody>
+                                                    {form.variants.map((variant) => (
+                                                        <tr key={variant.id} className="border-b border-gray-100 hover:bg-gray-50">
+                                                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                                {Object.values(variant.combination).join(' / ')}
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <input
+                                                                    type="text"
+                                                                    value={variant.sku}
+                                                                    onChange={(e) => updateVariant(variant.id, 'sku', e.target.value)}
+                                                                    className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-[#4B2E7E] focus:outline-none"
+                                                                    placeholder="SKU"
+                                                                />
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <input
+                                                                    type="number"
+                                                                    value={variant.price}
+                                                                    onChange={(e) => updateVariant(variant.id, 'price', parseFloat(e.target.value) || 0)}
+                                                                    step="0.01"
+                                                                    min="0"
+                                                                    className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-[#4B2E7E] focus:outline-none"
+                                                                />
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <input
+                                                                    type="number"
+                                                                    value={variant.stock}
+                                                                    onChange={(e) => updateVariant(variant.id, 'stock', parseInt(e.target.value) || 0)}
+                                                                    min="0"
+                                                                    className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-[#4B2E7E] focus:outline-none"
+                                                                />
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
                             )}

@@ -371,6 +371,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Orders data refresh endpoint
     Route::get('/orders/data', [\App\Http\Controllers\OrderController::class, 'getData']);
+    
+    // Product Reports
+    Route::post('/api/products/{id}/report', [ProductController::class, 'reportProduct']);
 });
 
 // Protected seller product routes
@@ -428,6 +431,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Product approval routes
         Route::get('/product-approval', [AdminController::class, 'productApproval'])->name('product-approval');
         
+        // Product reports routes
+        Route::get('/reports', [AdminController::class, 'productReports'])->name('reports');
+        
         Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
     });
 });
@@ -438,4 +444,9 @@ Route::middleware(['web', 'admin.verified'])->prefix('api/admin')->group(functio
     Route::get('/products', [ProductController::class, 'adminAllProducts']);
     Route::post('/products/{id}/approve', [ProductController::class, 'adminApproveProduct']);
     Route::post('/products/{id}/reject', [ProductController::class, 'adminRejectProduct']);
+    
+    // Product Reports
+    Route::get('/reports', [ProductController::class, 'adminGetReports']);
+    Route::post('/reports/{id}/approve', [ProductController::class, 'adminApproveReport']); // Delete product
+    Route::post('/reports/{id}/reject', [ProductController::class, 'adminRejectReport']); // Keep product
 });

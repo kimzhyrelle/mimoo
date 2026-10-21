@@ -1,5 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import {
+    AlertTriangle,
     Bell,
     CheckSquare,
     CircleDollarSign,
@@ -27,9 +28,9 @@ export type AdminNavKey =
 const navItems: { key: AdminNavKey; label: string; icon: React.ElementType; href: string }[] = [
     { key: 'dashboard',         label: 'Dashboard',         icon: LayoutDashboard,  href: '/admin/dashboard'         },
     { key: 'commission',        label: 'Commission',        icon: CircleDollarSign, href: '/admin/commission'        },
-    { key: 'reports',           label: 'Reports',           icon: FileText,         href: '/admin/reports'           },
     { key: 'seller-approval',   label: 'Seller Approval',   icon: UserCheck,        href: '/admin/seller-approval'   },
     { key: 'product-approval',  label: 'Product Approval',  icon: CheckSquare,      href: '/admin/product-approval'  },
+    { key: 'reports',           label: 'Product Reports',   icon: AlertTriangle,    href: '/admin/reports'           },
     { key: 'monitoring',        label: 'Monitoring',        icon: Eye,              href: '/admin/monitoring'        },
 ];
 

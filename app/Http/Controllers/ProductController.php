@@ -871,4 +871,195 @@ class ProductController extends Controller
 
         return $sku;
     }
+
+    /**
+     * Buyer: Report a product.
+     */
+    public function reportProduct(Request $request, $id)
+    {
+        $user = Auth::user();
+        $product = Product::findOrFail($id);
+
+        $validated = $request->validate([
+            'reason' => 'required|string|in:misleading,inappropriate,counterfeit,spam,other',
+            'description' => 'required|string|max:500',
+        ], [
+            'reason.required' => 'Please select a reason for reporting.',
+            'description.required' => 'Please provide details about why you are reporting this product.',
+        ]);
+
+        // Check if user already reported this product
+        $existingReport = \App\Models\ProductReport::where('product_id', $id)
+            ->where('reported_by', $user->id)
+            ->where('status', 'pending')
+            ->first();
+
+        if ($existingReport) {
+            return response()->json(['error' => 'You have already reported this product.'], 400);
+        }
+
+        $report = \App\Models\ProductReport::create([
+            'product_id' => $id,
+            'reported_by' => $user->id,
+            'reason' => $validated['reason'],
+            'description' => $validated['description'],
+            'status' => 'pending',
+        ]);
+
+        return response()->json([
+            'message' => 'Product reported successfully. Our team will review it shortly.',
+            'report' => [
+                'id' => $report->id,
+                'reason' => $report->reason,
+                'status' => $report->status,
+            ],
+        ], 201);
+    }
+
+    /**
+     * Admin: Get all product reports.
+     */
+    public function adminGetReports(Request $request)
+    {
+        $query = \App\Models\ProductReport::with(['product.seller:id,business_name,name', 'reporter:id,name,email'])
+            ->orderBy('created_at', 'desc');
+
+        // Filter by status
+        if ($request->has('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        // Pagination
+        $perPage = $request->input('per_page', 20);
+        $reports = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $reports->map(function ($report) {
+                return [
+                    'id' => $report->id,
+                    'product' => $report->product ? [
+                        'id' => $report->product->id,
+                        'name' => $report->product->name,
+                        'sku' => $report->product->sku,
+                        'images' => $report->product->images ?? [],
+                        'main_image' => $report->product->main_image,
+                        'seller' => [
+                            'id' => $report->product->seller->id,
+                            'name' => $report->product->seller->business_name ?? $report->product->seller->name,
+                        ],
+                    ] : null,
+                    'reporter' => [
+                        'id' => $report->reporter->id,
+                        'name' => $report->reporter->name,
+                        'email' => $report->reporter->email,
+                    ],
+                    'reason' => $report->reason,
+                    'description' => $report->description,
+                    'status' => $report->status,
+                    'admin_notes' => $report->admin_notes,
+                    'reviewed_at' => $report->reviewed_at ? $report->reviewed_at->toISOString() : null,
+                    'created_at' => $report->created_at->toISOString(),
+                ];
+            }),
+            'meta' => [
+                'current_page' => $reports->currentPage(),
+                'last_page' => $reports->lastPage(),
+                'per_page' => $reports->perPage(),
+                'total' => $reports->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * Admin: Approve a report (delete the product).
+     */
+    public function adminApproveReport(Request $request, $id)
+    {
+        $report = \App\Models\ProductReport::with('product')->findOrFail($id);
+
+        if ($report->status !== 'pending') {
+            return response()->json(['error' => 'This report has already been reviewed.'], 400);
+        }
+
+        $validated = $request->validate([
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Update report status
+            $report->update([
+                'status' => 'approved',
+                'reviewed_at' => now(),
+                'admin_notes' => $validated['notes'] ?? null,
+            ]);
+
+            // Delete the product (soft delete)
+            if ($report->product) {
+                $report->product->delete();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Report approved and product removed successfully.',
+                'report' => [
+                    'id' => $report->id,
+                    'status' => $report->status,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Failed to approve report.',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Admin: Reject a report (keep the product).
+     */
+    public function adminRejectReport(Request $request, $id)
+    {
+        $report = \App\Models\ProductReport::findOrFail($id);
+
+        if ($report->status !== 'pending') {
+            return response()->json(['error' => 'This report has already been reviewed.'], 400);
+        }
+
+        $validated = $request->validate([
+            'notes' => 'required|string|max:500',
+        ], [
+            'notes.required' => 'Please provide a reason for rejecting this report.',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $report->update([
+                'status' => 'rejected',
+                'reviewed_at' => now(),
+                'admin_notes' => $validated['notes'],
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Report rejected successfully.',
+                'report' => [
+                    'id' => $report->id,
+                    'status' => $report->status,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Failed to reject report.',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 }

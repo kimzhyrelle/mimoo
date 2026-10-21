@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
-import { Star, ChevronRight, Minus, Plus, Package, ShoppingCart } from "lucide-react";
+import { Star, ChevronRight, Minus, Plus, Package, ShoppingCart, Flag } from "lucide-react";
 import { BuyerHeader } from "@/components/buyer-header";
 import { toast } from "sonner";
 
@@ -230,12 +230,14 @@ function ProductInfo({
   product, 
   role,
   onAddToCart,
+  onReportProduct,
   selectedVariant,
   onVariantChange,
 }: { 
   product: ProductDetailProps['product']; 
   role: UserRole;
   onAddToCart: (quantity: number, variantId?: string) => void;
+  onReportProduct: () => void;
   selectedVariant: Record<string, string>;
   onVariantChange: (selection: Record<string, string>) => void;
 }) {
@@ -448,6 +450,16 @@ function ProductInfo({
         </div>
       )}
 
+      {/* Report Product Button - Available for buyers */}
+      {role === "buyer" && (
+        <button 
+          onClick={() => onReportProduct()}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+        >
+          <Flag className="h-4 w-4" />
+          Report this product
+        </button>
+      )}
       {role === "seller" && (
         <div className="rounded-lg bg-neutral-100 p-4 text-sm text-neutral-600">
           You're viewing this as a seller. Switch to a buyer account to purchase products.
@@ -499,6 +511,10 @@ export default function ProductDetail({ auth, product }: ProductDetailProps) {
   const role: UserRole = user?.account_type ? (user.account_type as UserRole) : "guest";
   const [cartCount, setCartCount] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState<Record<string, string>>({});
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('misleading');
+  const [reportDescription, setReportDescription] = useState('');
+  const [reportLoading, setReportLoading] = useState(false);
   
   // Find selected variant from combinations
   const currentVariant = product.has_variants && product.variants
@@ -580,6 +596,53 @@ export default function ProductDetail({ auth, product }: ProductDetailProps) {
     }
   }
 
+  function handleReportProduct() {
+    if (!user) {
+      router.visit('/login');
+      return;
+    }
+    setShowReportModal(true);
+  }
+
+  async function submitReport() {
+    if (!reportReason || !reportDescription.trim()) {
+      toast.error('Please select a reason and provide details');
+      return;
+    }
+
+    setReportLoading(true);
+    try {
+      const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+      const response = await fetch(`/api/products/${product.id}/report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrfToken || '',
+        },
+        body: JSON.stringify({
+          reason: reportReason,
+          description: reportDescription,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(data.message || 'Product reported successfully');
+        setShowReportModal(false);
+        setReportReason('');
+        setReportDescription('');
+      } else {
+        toast.error(data.error || 'Failed to report product');
+      }
+    } catch (error) {
+      console.error('Report error:', error);
+      toast.error('Failed to report product');
+    } finally {
+      setReportLoading(false);
+    }
+  }
+
   function handleLogout() {
     router.post('/logout');
   }
@@ -611,6 +674,7 @@ export default function ProductDetail({ auth, product }: ProductDetailProps) {
             product={product} 
             role={role}
             onAddToCart={handleAddToCart}
+            onReportProduct={handleReportProduct}
             selectedVariant={selectedVariant}
             onVariantChange={setSelectedVariant}
           />
@@ -621,6 +685,75 @@ export default function ProductDetail({ auth, product }: ProductDetailProps) {
           <SellerInfo sellerName={product.seller_name} />
         </div>
       </main>
+
+      {/* Report Product Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h2 className="text-xl font-bold text-neutral-900 mb-4">Report Product</h2>
+            
+            <div className="space-y-4">
+              {/* Reason Dropdown */}
+              <div>
+                <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                  Reason for reporting <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-violet-900 focus:outline-none focus:ring-2 focus:ring-violet-900/20"
+                >
+                  <option value="misleading">Misleading or false information</option>
+                  <option value="inappropriate">Inappropriate content</option>
+                  <option value="counterfeit">Counterfeit or fake product</option>
+                  <option value="spam">Spam or duplicate listing</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              {/* Description Textarea */}
+              <div>
+                <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                  Additional details <span className="text-red-600">*</span>
+                </label>
+                <textarea
+                  value={reportDescription}
+                  onChange={(e) => setReportDescription(e.target.value)}
+                  placeholder="Please provide more details about why you're reporting this product..."
+                  rows={4}
+                  maxLength={500}
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-violet-900 focus:outline-none focus:ring-2 focus:ring-violet-900/20 resize-none"
+                />
+                <p className="mt-1 text-xs text-neutral-500 text-right">
+                  {reportDescription.length}/500 characters
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowReportModal(false);
+                    setReportReason('misleading');
+                    setReportDescription('');
+                  }}
+                  disabled={reportLoading}
+                  className="flex-1 rounded-lg border border-neutral-300 py-2 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitReport}
+                  disabled={reportLoading || !reportReason || !reportDescription.trim()}
+                  className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {reportLoading ? 'Submitting...' : 'Submit Report'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

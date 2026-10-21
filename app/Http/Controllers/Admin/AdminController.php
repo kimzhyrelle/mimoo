@@ -136,6 +136,14 @@ class AdminController extends Controller
     }
 
     /**
+     * Show the product reports page.
+     */
+    public function productReports(): Response
+    {
+        return Inertia::render('admin/ProductReports');
+    }
+
+    /**
      * Approve a user registration.
      */
     public function approveRegistration(Request $request, int $userId): RedirectResponse

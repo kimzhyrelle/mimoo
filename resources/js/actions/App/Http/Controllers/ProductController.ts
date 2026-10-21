@@ -175,6 +175,80 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
     
     show.form = showForm
 /**
+* @see \App\Http\Controllers\ProductController::reportProduct
+ * @see app/Http/Controllers/ProductController.php:878
+ * @route '/api/products/{id}/report'
+ */
+export const reportProduct = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: reportProduct.url(args, options),
+    method: 'post',
+})
+
+reportProduct.definition = {
+    methods: ["post"],
+    url: '/api/products/{id}/report',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\ProductController::reportProduct
+ * @see app/Http/Controllers/ProductController.php:878
+ * @route '/api/products/{id}/report'
+ */
+reportProduct.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
+    if (typeof args === 'string' || typeof args === 'number') {
+        args = { id: args }
+    }
+
+    
+    if (Array.isArray(args)) {
+        args = {
+                    id: args[0],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        id: args.id,
+                }
+
+    return reportProduct.definition.url
+            .replace('{id}', parsedArgs.id.toString())
+            .replace(/\/+$/, '') + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\ProductController::reportProduct
+ * @see app/Http/Controllers/ProductController.php:878
+ * @route '/api/products/{id}/report'
+ */
+reportProduct.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: reportProduct.url(args, options),
+    method: 'post',
+})
+
+    /**
+* @see \App\Http\Controllers\ProductController::reportProduct
+ * @see app/Http/Controllers/ProductController.php:878
+ * @route '/api/products/{id}/report'
+ */
+    const reportProductForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: reportProduct.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\ProductController::reportProduct
+ * @see app/Http/Controllers/ProductController.php:878
+ * @route '/api/products/{id}/report'
+ */
+        reportProductForm.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: reportProduct.url(args, options),
+            method: 'post',
+        })
+    
+    reportProduct.form = reportProductForm
+/**
 * @see \App\Http\Controllers\ProductController::sellerIndex
  * @see app/Http/Controllers/ProductController.php:350
  * @route '/api/seller/products'
@@ -1042,6 +1116,232 @@ adminRejectProduct.post = (args: { id: string | number } | [id: string | number 
         })
     
     adminRejectProduct.form = adminRejectProductForm
-const ProductController = { index, show, sellerIndex, store, update, updateStock, updateVariantStock, destroy, getStockLogs, adminPendingProducts, adminAllProducts, adminApproveProduct, adminRejectProduct }
+/**
+* @see \App\Http\Controllers\ProductController::adminGetReports
+ * @see app/Http/Controllers/ProductController.php:922
+ * @route '/api/admin/reports'
+ */
+export const adminGetReports = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: adminGetReports.url(options),
+    method: 'get',
+})
+
+adminGetReports.definition = {
+    methods: ["get","head"],
+    url: '/api/admin/reports',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+* @see \App\Http\Controllers\ProductController::adminGetReports
+ * @see app/Http/Controllers/ProductController.php:922
+ * @route '/api/admin/reports'
+ */
+adminGetReports.url = (options?: RouteQueryOptions) => {
+    return adminGetReports.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\ProductController::adminGetReports
+ * @see app/Http/Controllers/ProductController.php:922
+ * @route '/api/admin/reports'
+ */
+adminGetReports.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: adminGetReports.url(options),
+    method: 'get',
+})
+/**
+* @see \App\Http\Controllers\ProductController::adminGetReports
+ * @see app/Http/Controllers/ProductController.php:922
+ * @route '/api/admin/reports'
+ */
+adminGetReports.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: adminGetReports.url(options),
+    method: 'head',
+})
+
+    /**
+* @see \App\Http\Controllers\ProductController::adminGetReports
+ * @see app/Http/Controllers/ProductController.php:922
+ * @route '/api/admin/reports'
+ */
+    const adminGetReportsForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: adminGetReports.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\ProductController::adminGetReports
+ * @see app/Http/Controllers/ProductController.php:922
+ * @route '/api/admin/reports'
+ */
+        adminGetReportsForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: adminGetReports.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\ProductController::adminGetReports
+ * @see app/Http/Controllers/ProductController.php:922
+ * @route '/api/admin/reports'
+ */
+        adminGetReportsForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: adminGetReports.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    adminGetReports.form = adminGetReportsForm
+/**
+* @see \App\Http\Controllers\ProductController::adminApproveReport
+ * @see app/Http/Controllers/ProductController.php:976
+ * @route '/api/admin/reports/{id}/approve'
+ */
+export const adminApproveReport = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: adminApproveReport.url(args, options),
+    method: 'post',
+})
+
+adminApproveReport.definition = {
+    methods: ["post"],
+    url: '/api/admin/reports/{id}/approve',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\ProductController::adminApproveReport
+ * @see app/Http/Controllers/ProductController.php:976
+ * @route '/api/admin/reports/{id}/approve'
+ */
+adminApproveReport.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
+    if (typeof args === 'string' || typeof args === 'number') {
+        args = { id: args }
+    }
+
+    
+    if (Array.isArray(args)) {
+        args = {
+                    id: args[0],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        id: args.id,
+                }
+
+    return adminApproveReport.definition.url
+            .replace('{id}', parsedArgs.id.toString())
+            .replace(/\/+$/, '') + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\ProductController::adminApproveReport
+ * @see app/Http/Controllers/ProductController.php:976
+ * @route '/api/admin/reports/{id}/approve'
+ */
+adminApproveReport.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: adminApproveReport.url(args, options),
+    method: 'post',
+})
+
+    /**
+* @see \App\Http\Controllers\ProductController::adminApproveReport
+ * @see app/Http/Controllers/ProductController.php:976
+ * @route '/api/admin/reports/{id}/approve'
+ */
+    const adminApproveReportForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: adminApproveReport.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\ProductController::adminApproveReport
+ * @see app/Http/Controllers/ProductController.php:976
+ * @route '/api/admin/reports/{id}/approve'
+ */
+        adminApproveReportForm.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: adminApproveReport.url(args, options),
+            method: 'post',
+        })
+    
+    adminApproveReport.form = adminApproveReportForm
+/**
+* @see \App\Http\Controllers\ProductController::adminRejectReport
+ * @see app/Http/Controllers/ProductController.php:1024
+ * @route '/api/admin/reports/{id}/reject'
+ */
+export const adminRejectReport = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: adminRejectReport.url(args, options),
+    method: 'post',
+})
+
+adminRejectReport.definition = {
+    methods: ["post"],
+    url: '/api/admin/reports/{id}/reject',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\ProductController::adminRejectReport
+ * @see app/Http/Controllers/ProductController.php:1024
+ * @route '/api/admin/reports/{id}/reject'
+ */
+adminRejectReport.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
+    if (typeof args === 'string' || typeof args === 'number') {
+        args = { id: args }
+    }
+
+    
+    if (Array.isArray(args)) {
+        args = {
+                    id: args[0],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        id: args.id,
+                }
+
+    return adminRejectReport.definition.url
+            .replace('{id}', parsedArgs.id.toString())
+            .replace(/\/+$/, '') + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\ProductController::adminRejectReport
+ * @see app/Http/Controllers/ProductController.php:1024
+ * @route '/api/admin/reports/{id}/reject'
+ */
+adminRejectReport.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: adminRejectReport.url(args, options),
+    method: 'post',
+})
+
+    /**
+* @see \App\Http\Controllers\ProductController::adminRejectReport
+ * @see app/Http/Controllers/ProductController.php:1024
+ * @route '/api/admin/reports/{id}/reject'
+ */
+    const adminRejectReportForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: adminRejectReport.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\ProductController::adminRejectReport
+ * @see app/Http/Controllers/ProductController.php:1024
+ * @route '/api/admin/reports/{id}/reject'
+ */
+        adminRejectReportForm.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: adminRejectReport.url(args, options),
+            method: 'post',
+        })
+    
+    adminRejectReport.form = adminRejectReportForm
+const ProductController = { index, show, reportProduct, sellerIndex, store, update, updateStock, updateVariantStock, destroy, getStockLogs, adminPendingProducts, adminAllProducts, adminApproveProduct, adminRejectProduct, adminGetReports, adminApproveReport, adminRejectReport }
 
 export default ProductController
