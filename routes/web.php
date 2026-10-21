@@ -24,7 +24,16 @@ Route::get('/logistics', function () {
 })->name('logistics.landing');
 
 Route::middleware(['auth', 'verified', 'approved'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+    // Generic dashboard - redirect based on account type
+    Route::get('dashboard', function () {
+        $user = auth()->user();
+        
+        return match ($user->account_type) {
+            'seller' => redirect()->route('seller.dashboard'),
+            'logistics' => redirect('/homepage'), // TODO: Create logistics dashboard later
+            default => redirect('/homepage'), // Buyers go to homepage
+        };
+    })->name('dashboard');
     
     // Debug route - check your account type
     Route::get('/debug/me', function () {
@@ -43,35 +52,15 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     
     // Seller Orders Page
     Route::get('/seller/orders', function () {
-        return Inertia::render('seller/SellerOrders');
+        // Don't load orders here - let the frontend fetch via API
+        return Inertia::render('seller/SellerOrders', [
+            'orders' => [], // Empty - frontend will fetch
+        ]);
     })->name('seller.orders');
     
     // Seller Products page
     Route::get('/seller/products', function () {
         $user = Auth::user();
-        
-        // Fetch products for the authenticated seller
-        $products = \App\Models\Product::where('seller_id', $user->id)
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($product) {
-                return [
-                    'id' => (string) $product->id,
-                    'name' => $product->name,
-                    'description' => $product->description ?? '',
-                    'category' => $product->category ?? '',
-                    'price' => (float) $product->price,
-                    'salePrice' => $product->sale_price ? (float) $product->sale_price : null,
-                    'stock' => $product->stock,
-                    'sku' => $product->sku,
-                    'status' => $product->status === 'active' ? 'published' : 'draft',
-                    'images' => $product->images ?? [],
-                    'mainIdx' => $product->main_image_index ?? 0,
-                    'weight' => $product->weight ? (float) $product->weight : null,
-                    'brand' => $product->brand ?? '',
-                    'updated' => $product->updated_at->timestamp * 1000, // Convert to milliseconds for JS
-                ];
-            })->toArray();
         
         return Inertia::render('seller/SellerProducts', [
             'auth' => [
@@ -86,9 +75,45 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
                 'store_name' => $user->business_name ?? 'Your Store',
                 'business_name' => $user->business_name,
             ],
-            'products' => $products,
+            'products' => [], // Empty - let frontend fetch via API for faster navigation
         ]);
     })->name('seller.products');
+    
+    // Add Product page
+    Route::get('/seller/products/create', function () {
+        return Inertia::render('seller/ProductForm');
+    })->name('seller.products.create');
+    
+    // Edit Product page
+    Route::get('/seller/products/{id}/edit', function ($id) {
+        $product = \App\Models\Product::findOrFail($id);
+        
+        // Check if product belongs to this seller
+        if ($product->seller_id !== auth()->id()) {
+            abort(403);
+        }
+        
+        return Inertia::render('seller/ProductForm', [
+            'product' => [
+                'id' => (string) $product->id,
+                'name' => $product->name,
+                'category' => $product->category ?? '',
+                'brand' => $product->brand ?? '',
+                'description' => $product->description ?? '',
+                'images' => $product->images ?? [],
+                'mainIdx' => $product->main_image_index ?? 0,
+                'price' => (float) $product->price,
+                'salePrice' => $product->sale_price ? (float) $product->sale_price : null,
+                'stock' => $product->stock,
+                'sku' => $product->sku,
+                'weight' => $product->weight ? (float) $product->weight : null,
+                'status' => $product->status === 'active' ? 'published' : 'draft', // Convert active → published
+                'has_variants' => $product->has_variants ?? false,
+                'variant_options' => $product->variant_options ?? [],
+                'variants' => $product->variants ?? [],
+            ],
+        ]);
+    })->name('seller.products.edit');
     
     // Seller Settings page
     Route::get('/seller/settings', function () {
@@ -150,6 +175,21 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
             ],
         ]);
     })->name('seller.account');
+    
+    // Seller Customers page
+    Route::get('/seller/customers', function () {
+        return Inertia::render('seller/SellerCustomers');
+    })->name('seller.customers');
+    
+    // Seller Analytics page
+    Route::get('/seller/analytics', function () {
+        return Inertia::render('seller/SellerAnalytics');
+    })->name('seller.analytics');
+    
+    // Seller Messages page
+    Route::get('/seller/messages', function () {
+        return Inertia::render('seller/SellerMessages');
+    })->name('seller.messages');
 });
 
 Route::get('/register', function () {
@@ -234,7 +274,7 @@ Route::get('/messages', function () {
 })->middleware(['auth', 'approved'])->name('messages');
 
 // Buyer checkout and order routes
-Route::middleware(['auth', 'verified', 'approved'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/cart', function () {
         return Inertia::render('Cart');
     })->name('cart');
@@ -317,7 +357,7 @@ Route::get('/api/products', [ProductController::class, 'index']); // List active
 Route::get('/api/products/{id}', [ProductController::class, 'show']); // Single product
 
 // Protected buyer routes - Cart & Orders API
-Route::middleware(['auth', 'verified', 'approved'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     // Cart
     Route::get('/api/cart', [\App\Http\Controllers\CartController::class, 'index']);
     Route::get('/api/cart/count', [\App\Http\Controllers\CartController::class, 'getCount']);
@@ -343,6 +383,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::post('/api/products', [ProductController::class, 'store']); // Create product
     Route::patch('/api/products/{id}', [ProductController::class, 'update']); // Update product (all fields)
     Route::patch('/api/products/{id}/stock', [ProductController::class, 'updateStock']); // Update stock only
+    Route::patch('/api/products/{id}/variants/{variantId}/stock', [ProductController::class, 'updateVariantStock']); // Update variant stock
     Route::delete('/api/products/{id}', [ProductController::class, 'destroy']); // Soft delete product
     
     // Stock logs

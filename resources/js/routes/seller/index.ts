@@ -1,4 +1,5 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
+import products237d17 from './products'
 /**
  * @see routes/web.php:13
  * @route '/seller'
@@ -149,7 +150,7 @@ dashboard.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     
     dashboard.form = dashboardForm
 /**
- * @see routes/web.php:45
+ * @see routes/web.php:54
  * @route '/seller/orders'
  */
 export const orders = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -163,7 +164,7 @@ orders.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:45
+ * @see routes/web.php:54
  * @route '/seller/orders'
  */
 orders.url = (options?: RouteQueryOptions) => {
@@ -171,7 +172,7 @@ orders.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:45
+ * @see routes/web.php:54
  * @route '/seller/orders'
  */
 orders.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -179,7 +180,7 @@ orders.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     method: 'get',
 })
 /**
- * @see routes/web.php:45
+ * @see routes/web.php:54
  * @route '/seller/orders'
  */
 orders.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -188,7 +189,7 @@ orders.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
     /**
- * @see routes/web.php:45
+ * @see routes/web.php:54
  * @route '/seller/orders'
  */
     const ordersForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -197,7 +198,7 @@ orders.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     })
 
             /**
- * @see routes/web.php:45
+ * @see routes/web.php:54
  * @route '/seller/orders'
  */
         ordersForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -205,7 +206,7 @@ orders.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             method: 'get',
         })
             /**
- * @see routes/web.php:45
+ * @see routes/web.php:54
  * @route '/seller/orders'
  */
         ordersForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -220,7 +221,7 @@ orders.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     
     orders.form = ordersForm
 /**
- * @see routes/web.php:50
+ * @see routes/web.php:62
  * @route '/seller/products'
  */
 export const products = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -234,7 +235,7 @@ products.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:50
+ * @see routes/web.php:62
  * @route '/seller/products'
  */
 products.url = (options?: RouteQueryOptions) => {
@@ -242,7 +243,7 @@ products.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:50
+ * @see routes/web.php:62
  * @route '/seller/products'
  */
 products.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -250,7 +251,7 @@ products.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     method: 'get',
 })
 /**
- * @see routes/web.php:50
+ * @see routes/web.php:62
  * @route '/seller/products'
  */
 products.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -259,7 +260,7 @@ products.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
     /**
- * @see routes/web.php:50
+ * @see routes/web.php:62
  * @route '/seller/products'
  */
     const productsForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -268,7 +269,7 @@ products.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     })
 
             /**
- * @see routes/web.php:50
+ * @see routes/web.php:62
  * @route '/seller/products'
  */
         productsForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -276,7 +277,7 @@ products.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             method: 'get',
         })
             /**
- * @see routes/web.php:50
+ * @see routes/web.php:62
  * @route '/seller/products'
  */
         productsForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -291,7 +292,7 @@ products.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     
     products.form = productsForm
 /**
- * @see routes/web.php:94
+ * @see routes/web.php:119
  * @route '/seller/settings'
  */
 export const settings = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -305,7 +306,7 @@ settings.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:94
+ * @see routes/web.php:119
  * @route '/seller/settings'
  */
 settings.url = (options?: RouteQueryOptions) => {
@@ -313,7 +314,7 @@ settings.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:94
+ * @see routes/web.php:119
  * @route '/seller/settings'
  */
 settings.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -321,7 +322,7 @@ settings.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     method: 'get',
 })
 /**
- * @see routes/web.php:94
+ * @see routes/web.php:119
  * @route '/seller/settings'
  */
 settings.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -330,7 +331,7 @@ settings.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
     /**
- * @see routes/web.php:94
+ * @see routes/web.php:119
  * @route '/seller/settings'
  */
     const settingsForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -339,7 +340,7 @@ settings.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     })
 
             /**
- * @see routes/web.php:94
+ * @see routes/web.php:119
  * @route '/seller/settings'
  */
         settingsForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -347,7 +348,7 @@ settings.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             method: 'get',
         })
             /**
- * @see routes/web.php:94
+ * @see routes/web.php:119
  * @route '/seller/settings'
  */
         settingsForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -362,7 +363,7 @@ settings.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     
     settings.form = settingsForm
 /**
- * @see routes/web.php:119
+ * @see routes/web.php:144
  * @route '/seller/account'
  */
 export const account = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -376,7 +377,7 @@ account.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:119
+ * @see routes/web.php:144
  * @route '/seller/account'
  */
 account.url = (options?: RouteQueryOptions) => {
@@ -384,7 +385,7 @@ account.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:119
+ * @see routes/web.php:144
  * @route '/seller/account'
  */
 account.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -392,7 +393,7 @@ account.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     method: 'get',
 })
 /**
- * @see routes/web.php:119
+ * @see routes/web.php:144
  * @route '/seller/account'
  */
 account.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -401,7 +402,7 @@ account.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
     /**
- * @see routes/web.php:119
+ * @see routes/web.php:144
  * @route '/seller/account'
  */
     const accountForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -410,7 +411,7 @@ account.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     })
 
             /**
- * @see routes/web.php:119
+ * @see routes/web.php:144
  * @route '/seller/account'
  */
         accountForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -418,7 +419,7 @@ account.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             method: 'get',
         })
             /**
- * @see routes/web.php:119
+ * @see routes/web.php:144
  * @route '/seller/account'
  */
         accountForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -434,6 +435,219 @@ account.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     account.form = accountForm
 /**
  * @see routes/web.php:180
+ * @route '/seller/customers'
+ */
+export const customers = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: customers.url(options),
+    method: 'get',
+})
+
+customers.definition = {
+    methods: ["get","head"],
+    url: '/seller/customers',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+ * @see routes/web.php:180
+ * @route '/seller/customers'
+ */
+customers.url = (options?: RouteQueryOptions) => {
+    return customers.definition.url + queryParams(options)
+}
+
+/**
+ * @see routes/web.php:180
+ * @route '/seller/customers'
+ */
+customers.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: customers.url(options),
+    method: 'get',
+})
+/**
+ * @see routes/web.php:180
+ * @route '/seller/customers'
+ */
+customers.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: customers.url(options),
+    method: 'head',
+})
+
+    /**
+ * @see routes/web.php:180
+ * @route '/seller/customers'
+ */
+    const customersForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: customers.url(options),
+        method: 'get',
+    })
+
+            /**
+ * @see routes/web.php:180
+ * @route '/seller/customers'
+ */
+        customersForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: customers.url(options),
+            method: 'get',
+        })
+            /**
+ * @see routes/web.php:180
+ * @route '/seller/customers'
+ */
+        customersForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: customers.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    customers.form = customersForm
+/**
+ * @see routes/web.php:185
+ * @route '/seller/analytics'
+ */
+export const analytics = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: analytics.url(options),
+    method: 'get',
+})
+
+analytics.definition = {
+    methods: ["get","head"],
+    url: '/seller/analytics',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+ * @see routes/web.php:185
+ * @route '/seller/analytics'
+ */
+analytics.url = (options?: RouteQueryOptions) => {
+    return analytics.definition.url + queryParams(options)
+}
+
+/**
+ * @see routes/web.php:185
+ * @route '/seller/analytics'
+ */
+analytics.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: analytics.url(options),
+    method: 'get',
+})
+/**
+ * @see routes/web.php:185
+ * @route '/seller/analytics'
+ */
+analytics.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: analytics.url(options),
+    method: 'head',
+})
+
+    /**
+ * @see routes/web.php:185
+ * @route '/seller/analytics'
+ */
+    const analyticsForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: analytics.url(options),
+        method: 'get',
+    })
+
+            /**
+ * @see routes/web.php:185
+ * @route '/seller/analytics'
+ */
+        analyticsForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: analytics.url(options),
+            method: 'get',
+        })
+            /**
+ * @see routes/web.php:185
+ * @route '/seller/analytics'
+ */
+        analyticsForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: analytics.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    analytics.form = analyticsForm
+/**
+ * @see routes/web.php:190
+ * @route '/seller/messages'
+ */
+export const messages = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: messages.url(options),
+    method: 'get',
+})
+
+messages.definition = {
+    methods: ["get","head"],
+    url: '/seller/messages',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+ * @see routes/web.php:190
+ * @route '/seller/messages'
+ */
+messages.url = (options?: RouteQueryOptions) => {
+    return messages.definition.url + queryParams(options)
+}
+
+/**
+ * @see routes/web.php:190
+ * @route '/seller/messages'
+ */
+messages.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: messages.url(options),
+    method: 'get',
+})
+/**
+ * @see routes/web.php:190
+ * @route '/seller/messages'
+ */
+messages.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: messages.url(options),
+    method: 'head',
+})
+
+    /**
+ * @see routes/web.php:190
+ * @route '/seller/messages'
+ */
+    const messagesForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: messages.url(options),
+        method: 'get',
+    })
+
+            /**
+ * @see routes/web.php:190
+ * @route '/seller/messages'
+ */
+        messagesForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: messages.url(options),
+            method: 'get',
+        })
+            /**
+ * @see routes/web.php:190
+ * @route '/seller/messages'
+ */
+        messagesForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: messages.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    messages.form = messagesForm
+/**
+ * @see routes/web.php:220
  * @route '/seller/pending-approval'
  */
 export const pendingApproval = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -447,7 +661,7 @@ pendingApproval.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:180
+ * @see routes/web.php:220
  * @route '/seller/pending-approval'
  */
 pendingApproval.url = (options?: RouteQueryOptions) => {
@@ -455,7 +669,7 @@ pendingApproval.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:180
+ * @see routes/web.php:220
  * @route '/seller/pending-approval'
  */
 pendingApproval.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -463,7 +677,7 @@ pendingApproval.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => (
     method: 'get',
 })
 /**
- * @see routes/web.php:180
+ * @see routes/web.php:220
  * @route '/seller/pending-approval'
  */
 pendingApproval.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -472,7 +686,7 @@ pendingApproval.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =>
 })
 
     /**
- * @see routes/web.php:180
+ * @see routes/web.php:220
  * @route '/seller/pending-approval'
  */
     const pendingApprovalForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -481,7 +695,7 @@ pendingApproval.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =>
     })
 
             /**
- * @see routes/web.php:180
+ * @see routes/web.php:220
  * @route '/seller/pending-approval'
  */
         pendingApprovalForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -489,7 +703,7 @@ pendingApproval.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =>
             method: 'get',
         })
             /**
- * @see routes/web.php:180
+ * @see routes/web.php:220
  * @route '/seller/pending-approval'
  */
         pendingApprovalForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -507,9 +721,12 @@ const seller = {
     landing: Object.assign(landing, landing),
 dashboard: Object.assign(dashboard, dashboard),
 orders: Object.assign(orders, orders),
-products: Object.assign(products, products),
+products: Object.assign(products, products237d17),
 settings: Object.assign(settings, settings),
 account: Object.assign(account, account),
+customers: Object.assign(customers, customers),
+analytics: Object.assign(analytics, analytics),
+messages: Object.assign(messages, messages),
 pendingApproval: Object.assign(pendingApproval, pendingApproval),
 }
 

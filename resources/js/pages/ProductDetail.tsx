@@ -285,12 +285,8 @@ function ProductInfo({
           {product.name}
         </h1>
         <div className="mt-2 flex items-center gap-3">
-          <span className="text-sm text-neutral-600">SKU: {product.sku}</span>
           {product.brand && (
-            <>
-              <span className="text-neutral-300">•</span>
-              <span className="text-sm text-neutral-600">Brand: {product.brand}</span>
-            </>
+            <span className="text-sm text-neutral-600">Brand: {product.brand}</span>
           )}
         </div>
       </div>
@@ -337,10 +333,23 @@ function ProductInfo({
 
       {/* Show variant-specific info if selected */}
       {currentVariant && (
-        <div className="rounded-lg bg-violet-50 border border-violet-200 p-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-neutral-600">SKU: <strong className="text-neutral-900">{currentVariant.sku || 'N/A'}</strong></span>
-            <span className="text-neutral-600">Stock: <strong className="text-neutral-900">{currentVariant.stock}</strong></span>
+        <div className="rounded-lg bg-violet-50 border-2 border-violet-300 p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-neutral-700">Stock Availability:</span>
+            <span className={`text-lg font-bold ${
+              currentVariant.stock === 0 
+                ? 'text-red-600' 
+                : currentVariant.stock <= 10 
+                ? 'text-orange-600' 
+                : 'text-green-600'
+            }`}>
+              {currentVariant.stock === 0 
+                ? 'Out of Stock' 
+                : currentVariant.stock <= 10 
+                ? `Only ${currentVariant.stock} left` 
+                : `${currentVariant.stock} Available`
+              }
+            </span>
           </div>
         </div>
       )}
@@ -353,18 +362,21 @@ function ProductInfo({
         </div>
       )}
 
-      {/* Stock status */}
-      <div>
-        <span className={`text-sm font-medium ${
-          effectiveStock > 0
-            ? effectiveStock <= 10 ? 'text-orange-600' : 'text-green-600'
-            : 'text-red-600'
-        }`}>
-          {effectiveStock > 0 
-            ? (effectiveStock <= 10 ? `Only ${effectiveStock} left in stock` : 'In Stock')
-            : 'Out of Stock'
-          }
-        </span>
+      {/* Stock status - Prominent */}
+      <div className="rounded-lg border-2 border-violet-200 bg-violet-50 p-4">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-neutral-700">Stock Availability:</span>
+          <span className={`text-lg font-bold ${
+            effectiveStock > 0
+              ? effectiveStock <= 10 ? 'text-orange-600' : 'text-green-600'
+              : 'text-red-600'
+          }`}>
+            {effectiveStock > 0 
+              ? (effectiveStock <= 10 ? `Only ${effectiveStock} left` : `${effectiveStock} Available`)
+              : 'Out of Stock'
+            }
+          </span>
+        </div>
       </div>
 
       {/* Quantity selector - only show if in stock */}

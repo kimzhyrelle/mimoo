@@ -105,6 +105,12 @@ export default function SellerDashboard({ auth, seller, stats, recentOrders, top
 
     // Setup SSE connection for real-time updates
     useEffect(() => {
+        // DISABLED - SSE causing slow navigation
+        // Let's just use static data for now
+        console.log('📊 Using static dashboard data (SSE disabled for performance)');
+        return;
+        
+        /* COMMENTED OUT - SSE CODE
         let reconnectTimeout: NodeJS.Timeout;
         let reconnectAttempts = 0;
         const maxReconnectAttempts = 5;
@@ -185,6 +191,7 @@ export default function SellerDashboard({ auth, seller, stats, recentOrders, top
                 eventSourceRef.current.close();
             }
         };
+        */ // END COMMENTED SSE CODE
     }, []);
 
     // Use real-time stats if available, otherwise fall back to initial props
@@ -244,26 +251,6 @@ export default function SellerDashboard({ auth, seller, stats, recentOrders, top
                         <h1 className="text-[1.8rem] font-semibold leading-tight" style={fontSyne}>{storeName}</h1>
                         <p className="text-sm text-[#6E6570] mt-1">Here is how your store is performing this month.</p>
                     </div>
-                    {/* Real-time connection indicator */}
-                    {!connectionFailed ? (
-                        <div className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full transition-all ${
-                            isConnected 
-                                ? 'bg-green-50 text-green-700 border border-green-200' 
-                                : 'bg-yellow-50 text-yellow-700 border border-yellow-200 animate-pulse'
-                        }`}>
-                            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-yellow-500'}`}></span>
-                            {isConnected ? 'Live' : 'Connecting...'}
-                        </div>
-                    ) : (
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 transition-all"
-                            title="Click to retry live updates"
-                        >
-                            <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                            Offline • Click to retry
-                        </button>
-                    )}
                 </div>
             </div>
 

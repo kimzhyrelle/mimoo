@@ -490,6 +490,97 @@ class ProductController extends Controller
     }
 
     /**
+     * Update stock for a specific variant.
+     */
+    public function updateVariantStock(Request $request, $productId, $variantId)
+    {
+        $user = Auth::user();
+        $product = Product::findOrFail($productId);
+
+        // Only the product owner can update it
+        if ($product->seller_id !== $user->id) {
+            return response()->json(['error' => 'Unauthorized. You can only update your own products.'], 403);
+        }
+
+        // Validate stock
+        $validated = $request->validate([
+            'stock' => 'required|integer|min:0',
+        ], [
+            'stock.required' => 'Stock is required.',
+            'stock.integer' => 'Stock must be a whole number.',
+            'stock.min' => 'Stock cannot be negative.',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Get current variants
+            $variants = $product->variants ?? [];
+            
+            // Find and update the specific variant
+            $variantFound = false;
+            $oldStock = 0;
+            foreach ($variants as $index => $variant) {
+                if ($variant['id'] === $variantId) {
+                    $oldStock = $variant['stock'] ?? 0;
+                    $variants[$index]['stock'] = $validated['stock'];
+                    $variantFound = true;
+                    break;
+                }
+            }
+
+            if (!$variantFound) {
+                return response()->json(['error' => 'Variant not found.'], 404);
+            }
+
+            // Update product with new variants
+            $product->update(['variants' => $variants]);
+
+            // Recalculate total stock from all variants
+            $totalStock = array_sum(array_column($variants, 'stock'));
+            $product->update(['stock' => $totalStock]);
+
+            // Log the change
+            StockLog::log(
+                $product->id,
+                $validated['stock'] - $oldStock,
+                $oldStock,
+                $validated['stock'],
+                "variant restock: {$variantId}",
+                (string) $user->id
+            );
+
+            // Auto-update status based on total stock
+            if ($totalStock == 0 && $product->status === 'active') {
+                $product->update(['status' => 'out_of_stock']);
+            } elseif ($totalStock > 0 && $product->status === 'out_of_stock') {
+                $product->update(['status' => 'active']);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Variant stock updated successfully.',
+                'variant' => [
+                    'id' => $variantId,
+                    'stock' => $validated['stock'],
+                ],
+                'product' => [
+                    'id' => $product->id,
+                    'total_stock' => $totalStock,
+                    'status' => $product->status,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Failed to update variant stock.',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Get stock logs for a product.
      */
     public function getStockLogs($id)

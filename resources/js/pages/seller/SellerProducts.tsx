@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Copy, ImagePlus, MoreVertical, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { Copy, Eye, ImagePlus, MoreVertical, Package, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, MouseEvent, ReactNode } from 'react';
 import SellerShell from '@/layouts/seller/seller-shell';
@@ -262,6 +262,9 @@ export default function SellerProducts({ auth, seller, products: initialProducts
     const [page, setPage] = useState(1);
     const [menu, setMenu] = useState<{ id: string; top: number; left: number } | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [restockId, setRestockId] = useState<string | null>(null);
+    const [restockAmount, setRestockAmount] = useState('');
+    const [variantRestockAmounts, setVariantRestockAmounts] = useState<Record<string, string>>({});
     const [toast, setToast] = useState<{ msg: string; bad?: boolean } | null>(null);
     const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [saving, setSaving] = useState(false);
@@ -277,6 +280,44 @@ export default function SellerProducts({ auth, seller, products: initialProducts
     // Variation states
     const [newOptionName, setNewOptionName] = useState('');
     const [newOptionValue, setNewOptionValue] = useState<Record<number, string>>({});
+
+    // Fetch products from API on mount
+    useEffect(() => {
+        async function fetchProducts() {
+            try {
+                const response = await fetch('/api/seller/products');
+                if (!response.ok) throw new Error('Failed to fetch products');
+                const result = await response.json();
+                
+                // Map API data to Product format
+                const mappedProducts = (result.data || []).map((p: any) => ({
+                    id: String(p.id),
+                    name: p.name,
+                    category: p.category || '',
+                    brand: p.brand || '',
+                    desc: p.description || '',
+                    images: p.images || [],
+                    mainIdx: p.main_image_index || 0,
+                    price: parseFloat(p.price) || 0,
+                    salePrice: p.sale_price ? parseFloat(p.sale_price) : null,
+                    stock: p.stock || 0,
+                    sku: p.sku || '',
+                    weight: p.weight ? parseFloat(p.weight) : null,
+                    status: p.status === 'active' ? 'published' as Status : 'draft' as Status,
+                    updated: p.updated_at || Date.now(),
+                    has_variants: p.has_variants || false,
+                    variant_options: p.variant_options || [],
+                    variants: p.variants || [],
+                }));
+                
+                setProducts(mappedProducts);
+            } catch (error) {
+                console.error('Error fetching products:', error);
+            }
+        }
+        
+        fetchProducts();
+    }, []);
 
     const editing = editingId ? products.find((p) => p.id === editingId) ?? null : null;
 
@@ -686,6 +727,39 @@ export default function SellerProducts({ auth, seller, products: initialProducts
         showToast(`Duplicating "${src.name}". Update and save as a new product.`);
     };
 
+    const publishProduct = async (id: string) => {
+        setMenu(null);
+        const product = products.find(p => p.id === id);
+        if (!product) return;
+
+        try {
+            const response = await fetch(`/api/products/${id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                },
+                body: JSON.stringify({ status: 'active' }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to publish product');
+            }
+
+            // Update local state
+            setProducts((list) => list.map((p) => 
+                p.id === id ? { ...p, status: 'published' as Status } : p
+            ));
+            
+            showToast(`"${product.name}" published successfully!`);
+        } catch (error: any) {
+            console.error('Failed to publish product:', error);
+            const message = error.message || 'Failed to publish product. Please try again.';
+            showToast(message, true);
+        }
+    };
+
     const deleting = products.find((p) => p.id === deleteId) ?? null;
 
     const confirmDelete = async () => {
@@ -736,7 +810,7 @@ export default function SellerProducts({ auth, seller, products: initialProducts
                     </div>
                     <button
                         type="button"
-                        onClick={openAdd}
+                        onClick={() => router.visit('/seller/products/create')}
                         className="inline-flex items-center justify-center gap-2 bg-[#4B2E7E] hover:bg-[color-mix(in_srgb,#4B2E7E_82%,black)] text-white text-sm font-bold px-5 py-2.5 rounded-lg transition whitespace-nowrap"
                     >
                         <Plus className="w-4 h-4" />
@@ -948,7 +1022,10 @@ export default function SellerProducts({ auth, seller, products: initialProducts
                     <button
                         type="button"
                         role="menuitem"
-                        onClick={() => openEdit(menu.id)}
+                        onClick={() => {
+                            setMenu(null); // Close menu
+                            router.visit(`/seller/products/${menu.id}/edit`);
+                        }}
                         className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-sm font-semibold text-[#2A1B4D] hover:bg-[color-mix(in_srgb,#B9A6DE_24%,white)] text-left"
                     >
                         <Pencil className="w-4 h-4" />
@@ -962,6 +1039,26 @@ export default function SellerProducts({ auth, seller, products: initialProducts
                     >
                         <Copy className="w-4 h-4" />
                         Duplicate
+                    </button>
+                    {menuProduct && menuProduct.status === 'draft' && (
+                        <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => publishProduct(menu.id)}
+                            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-sm font-semibold text-green-700 hover:bg-green-50 text-left"
+                        >
+                            <Eye className="w-4 h-4" />
+                            Publish
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => { setRestockId(menu.id); setMenu(null); }}
+                        className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-sm font-semibold text-[#2A1B4D] hover:bg-[color-mix(in_srgb,#B9A6DE_24%,white)] text-left"
+                    >
+                        <Package className="w-4 h-4" />
+                        Restock
                     </button>
                     <hr className="my-1.5 border-[color-mix(in_srgb,#B9A6DE_24%,white)]" />
                     <button
@@ -1459,6 +1556,293 @@ export default function SellerProducts({ auth, seller, products: initialProducts
                     </div>
                 </div>
             )}
+
+            {/* Restock modal */}
+            {restockId && (() => {
+                const product = products.find(p => p.id === restockId);
+                if (!product) return null;
+                
+                const hasVariants = product.has_variants && product.variants && product.variants.length > 0;
+                
+                return (
+                    <div
+                        className="fixed inset-0 z-[110] flex items-center justify-center bg-[#201A33]/55 p-4"
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) {
+                                setRestockId(null);
+                                setVariantRestockAmounts({});
+                            }
+                        }}
+                    >
+                        <div
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="restock-title"
+                            className={`relative w-full bg-white rounded-2xl p-6 shadow-[0_24px_70px_rgba(32,26,51,0.35)] ${
+                                hasVariants ? 'max-w-2xl max-h-[85vh] flex flex-col' : 'max-w-md'
+                            }`}
+                            style={fontPoppins}
+                        >
+                            <div className={hasVariants ? 'mb-4' : ''}>
+                                <h3 id="restock-title" className="text-lg font-semibold mb-1.5" style={fontSyne}>Restock Product</h3>
+                                <p className="text-sm text-[#6E6570]">
+                                    <b className="text-[#2A1B4D]">{product.name}</b>
+                                </p>
+                            </div>
+                            
+                            {hasVariants ? (
+                                // Variant-based restock
+                                <>
+                                    <div className="flex-1 overflow-y-auto mb-4 -mx-2 px-2">
+                                        <div className="space-y-3">
+                                            {product.variants!.map((variant) => {
+                                                const currentAmount = variantRestockAmounts[variant.id] || '';
+                                                const addAmount = parseInt(currentAmount) || 0;
+                                                const newStock = variant.stock + addAmount;
+                                                const isLowStock = variant.stock <= 5;
+                                                const isOutOfStock = variant.stock === 0;
+                                                
+                                                return (
+                                                    <div 
+                                                        key={variant.id} 
+                                                        className={`border-2 rounded-xl p-4 ${
+                                                            isOutOfStock 
+                                                                ? 'border-red-200 bg-red-50' 
+                                                                : isLowStock 
+                                                                ? 'border-yellow-200 bg-yellow-50' 
+                                                                : 'border-gray-200 bg-white'
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-start justify-between gap-3 mb-3">
+                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                {variant.image && (
+                                                                    <img 
+                                                                        src={variant.image} 
+                                                                        alt="" 
+                                                                        className="w-12 h-12 rounded-lg object-cover shrink-0" 
+                                                                    />
+                                                                )}
+                                                                <div className="min-w-0">
+                                                                    <div className="text-sm font-bold text-[#2A1B4D]">
+                                                                        {formatCombination(variant.combination)}
+                                                                    </div>
+                                                                    <div className="text-xs text-[#6E6570] mt-0.5">
+                                                                        SKU: {variant.sku || 'N/A'}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right shrink-0">
+                                                                <div className={`text-sm font-bold ${
+                                                                    isOutOfStock ? 'text-red-600' : isLowStock ? 'text-yellow-700' : 'text-[#2A1B4D]'
+                                                                }`}>
+                                                                    {variant.stock} units
+                                                                </div>
+                                                                {isOutOfStock && (
+                                                                    <div className="text-[0.65rem] font-bold uppercase tracking-wide text-red-600 mt-0.5">
+                                                                        Out of stock
+                                                                    </div>
+                                                                )}
+                                                                {!isOutOfStock && isLowStock && (
+                                                                    <div className="text-[0.65rem] font-bold uppercase tracking-wide text-yellow-700 mt-0.5">
+                                                                        Low stock
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="flex-1">
+                                                                <input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    value={currentAmount}
+                                                                    onChange={(e) => setVariantRestockAmounts(prev => ({
+                                                                        ...prev,
+                                                                        [variant.id]: e.target.value
+                                                                    }))}
+                                                                    placeholder="Add units"
+                                                                    className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-sm focus:border-[#4B2E7E] focus:outline-none"
+                                                                />
+                                                            </div>
+                                                            {addAmount > 0 && (
+                                                                <div className="text-sm text-green-700 font-semibold shrink-0">
+                                                                    → {newStock} units
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex justify-end gap-2.5 pt-3 border-t border-gray-200">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setRestockId(null); setVariantRestockAmounts({}); }}
+                                            className="px-5 py-2.5 rounded-lg text-sm font-bold bg-[color-mix(in_srgb,#B9A6DE_24%,white)] text-[#2A1B4D] hover:bg-[color-mix(in_srgb,#B9A6DE_44%,white)]"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                const updates = Object.entries(variantRestockAmounts)
+                                                    .filter(([_, amount]) => parseInt(amount) > 0)
+                                                    .map(([variantId, amount]) => {
+                                                        const variant = product.variants!.find(v => v.id === variantId);
+                                                        return {
+                                                            variantId,
+                                                            newStock: variant!.stock + parseInt(amount)
+                                                        };
+                                                    });
+                                                
+                                                if (updates.length === 0) {
+                                                    alert('Please enter at least one amount to add');
+                                                    return;
+                                                }
+                                                
+                                                try {
+                                                    // Update each variant
+                                                    const promises = updates.map(({ variantId, newStock }) =>
+                                                        fetch(`/api/products/${restockId}/variants/${variantId}/stock`, {
+                                                            method: 'PATCH',
+                                                            headers: {
+                                                                'Content-Type': 'application/json',
+                                                                'X-CSRF-TOKEN': getCsrfToken(),
+                                                            },
+                                                            body: JSON.stringify({ stock: newStock }),
+                                                        })
+                                                    );
+                                                    
+                                                    const results = await Promise.all(promises);
+                                                    
+                                                    if (results.some(r => !r.ok)) {
+                                                        throw new Error('Failed to update some variants');
+                                                    }
+                                                    
+                                                    // Refresh product from API
+                                                    const refreshResponse = await fetch(`/api/seller/products`);
+                                                    const refreshData = await refreshResponse.json();
+                                                    const mappedProducts = (refreshData.data || []).map((p: any) => ({
+                                                        id: String(p.id),
+                                                        name: p.name,
+                                                        category: p.category || '',
+                                                        brand: p.brand || '',
+                                                        desc: p.description || '',
+                                                        images: p.images || [],
+                                                        mainIdx: p.main_image_index || 0,
+                                                        price: parseFloat(p.price) || 0,
+                                                        salePrice: p.sale_price ? parseFloat(p.sale_price) : null,
+                                                        stock: p.stock || 0,
+                                                        sku: p.sku || '',
+                                                        weight: p.weight ? parseFloat(p.weight) : null,
+                                                        status: p.status === 'active' ? 'published' as Status : 'draft' as Status,
+                                                        updated: p.updated_at || Date.now(),
+                                                        has_variants: p.has_variants || false,
+                                                        variant_options: p.variant_options || [],
+                                                        variants: p.variants || [],
+                                                    }));
+                                                    setProducts(mappedProducts);
+                                                    
+                                                    setRestockId(null);
+                                                    setVariantRestockAmounts({});
+                                                    showToast(`Restocked ${updates.length} variant${updates.length > 1 ? 's' : ''} successfully!`);
+                                                } catch (error) {
+                                                    console.error('Restock error:', error);
+                                                    showToast('Failed to restock variants', true);
+                                                }
+                                            }}
+                                            disabled={Object.values(variantRestockAmounts).every(v => !v || parseInt(v) <= 0)}
+                                            className="px-5 py-2.5 rounded-lg text-sm font-bold bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Confirm Restock
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                // Simple product restock (no variants)
+                                <>
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Current Stock: <span className="text-[#4B2E7E]">{product.stock} units</span>
+                                        </label>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-1">
+                                            Add Stock Amount
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={restockAmount}
+                                            onChange={(e) => setRestockAmount(e.target.value)}
+                                            placeholder="Enter units to add"
+                                            className="w-full rounded-lg border-2 border-gray-200 px-4 py-2.5 focus:border-[#4B2E7E] focus:outline-none"
+                                            autoFocus
+                                        />
+                                        {restockAmount && parseInt(restockAmount) > 0 && (
+                                            <p className="mt-2 text-sm text-green-700">
+                                                New stock will be: <b>{product.stock + parseInt(restockAmount)} units</b>
+                                            </p>
+                                        )}
+                                    </div>
+                                    
+                                    <div className="flex justify-end gap-2.5 flex-wrap">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setRestockId(null); setRestockAmount(''); }}
+                                            className="px-5 py-2.5 rounded-lg text-sm font-bold bg-[color-mix(in_srgb,#B9A6DE_24%,white)] text-[#2A1B4D] hover:bg-[color-mix(in_srgb,#B9A6DE_44%,white)]"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                const amount = parseInt(restockAmount);
+                                                if (!amount || amount <= 0) {
+                                                    alert('Please enter a valid amount');
+                                                    return;
+                                                }
+                                                
+                                                try {
+                                                    const newStock = product.stock + amount;
+                                                    const response = await fetch(`/api/products/${restockId}/stock`, {
+                                                        method: 'PATCH',
+                                                        headers: {
+                                                            'Content-Type': 'application/json',
+                                                            'X-CSRF-TOKEN': getCsrfToken(),
+                                                        },
+                                                        body: JSON.stringify({ stock: newStock }),
+                                                    });
+                                                    
+                                                    if (!response.ok) throw new Error('Failed to restock');
+                                                    
+                                                    const data = await response.json();
+                                                    
+                                                    // Update local state
+                                                    setProducts(prev => prev.map(p => 
+                                                        p.id === restockId ? { ...p, stock: data.product.stock } : p
+                                                    ));
+                                                    
+                                                    setRestockId(null);
+                                                    setRestockAmount('');
+                                                    showToast(`${product.name} restocked successfully!`);
+                                                } catch (error) {
+                                                    console.error('Restock error:', error);
+                                                    showToast('Failed to restock product', true);
+                                                }
+                                            }}
+                                            disabled={!restockAmount || parseInt(restockAmount) <= 0}
+                                            className="px-5 py-2.5 rounded-lg text-sm font-bold bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Confirm Restock
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Toast */}
             {toast && (

@@ -13,7 +13,7 @@ import {
     User,
     Users,
 } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 
 // ─── Nav definition ───────────────────────────────────────────────────────────
@@ -37,6 +37,42 @@ const navItems: { key: SellerNavKey; label: string; icon: React.ElementType; hre
     { key: 'settings',   label: 'Settings',   icon: Cog,             href: '/seller/settings'   },
 ];
 
+// ─── Memoized Nav Item ────────────────────────────────────────────────────────
+
+interface NavItemProps {
+    item: typeof navItems[number];
+    isActive: boolean;
+}
+
+const NavItem = memo(({ item, isActive }: NavItemProps) => {
+    const Icon = item.icon;
+    
+    // Prefetch on hover for instant navigation
+    const handleMouseEnter = useCallback(() => {
+        router.prefetch(item.href);
+    }, [item.href]);
+    
+    return (
+        <Link
+            href={item.href}
+            className={[
+                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors',
+                isActive
+                    ? 'bg-[#3B1F6B] font-semibold text-white'
+                    : 'text-white/60 hover:bg-white/5 hover:text-white/90',
+            ].join(' ')}
+            preserveScroll={false}
+            preserveState={false}
+            onMouseEnter={handleMouseEnter}
+        >
+            <Icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+            <span className="truncate">{item.label}</span>
+        </Link>
+    );
+});
+
+NavItem.displayName = 'NavItem';
+
 // ─── Shell ────────────────────────────────────────────────────────────────────
 
 interface SellerShellProps {
@@ -48,21 +84,24 @@ export default function SellerShell({ active, children }: SellerShellProps) {
     const [accountMenuOpen, setAccountMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                setAccountMenuOpen(false);
-            }
+    // Close dropdown when clicking outside - optimized with useCallback
+    const handleClickOutside = useCallback((event: MouseEvent) => {
+        if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+            setAccountMenuOpen(false);
         }
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    function handleLogout(e: FormEvent) {
+    useEffect(() => {
+        if (accountMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [accountMenuOpen, handleClickOutside]);
+
+    const handleLogout = useCallback((e: FormEvent) => {
         e.preventDefault();
         router.post('/logout');
-    }
+    }, []);
 
     return (
         <div
@@ -84,20 +123,8 @@ export default function SellerShell({ active, children }: SellerShellProps) {
 
                 {/* Nav */}
                 <nav className="flex-1 overflow-y-auto px-2 py-4">
-                    {navItems.map(({ key, label, icon: Icon, href }) => (
-                        <Link
-                            key={key}
-                            href={href}
-                            className={[
-                                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors',
-                                active === key
-                                    ? 'bg-[#3B1F6B] font-semibold text-white'
-                                    : 'text-white/60 hover:bg-white/5 hover:text-white/90',
-                            ].join(' ')}
-                        >
-                            <Icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-                            <span className="truncate">{label}</span>
-                        </Link>
+                    {navItems.map((item) => (
+                        <NavItem key={item.key} item={item} isActive={active === item.key} />
                     ))}
                 </nav>
 
