@@ -175,6 +175,103 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
     
     show.form = showForm
 /**
+* @see \App\Http\Controllers\ProductController::getSellerStore
+ * @see app/Http/Controllers/ProductController.php:1066
+ * @route '/api/seller/{id}/store'
+ */
+export const getSellerStore = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: getSellerStore.url(args, options),
+    method: 'get',
+})
+
+getSellerStore.definition = {
+    methods: ["get","head"],
+    url: '/api/seller/{id}/store',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+* @see \App\Http\Controllers\ProductController::getSellerStore
+ * @see app/Http/Controllers/ProductController.php:1066
+ * @route '/api/seller/{id}/store'
+ */
+getSellerStore.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
+    if (typeof args === 'string' || typeof args === 'number') {
+        args = { id: args }
+    }
+
+    
+    if (Array.isArray(args)) {
+        args = {
+                    id: args[0],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        id: args.id,
+                }
+
+    return getSellerStore.definition.url
+            .replace('{id}', parsedArgs.id.toString())
+            .replace(/\/+$/, '') + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\ProductController::getSellerStore
+ * @see app/Http/Controllers/ProductController.php:1066
+ * @route '/api/seller/{id}/store'
+ */
+getSellerStore.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: getSellerStore.url(args, options),
+    method: 'get',
+})
+/**
+* @see \App\Http\Controllers\ProductController::getSellerStore
+ * @see app/Http/Controllers/ProductController.php:1066
+ * @route '/api/seller/{id}/store'
+ */
+getSellerStore.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: getSellerStore.url(args, options),
+    method: 'head',
+})
+
+    /**
+* @see \App\Http\Controllers\ProductController::getSellerStore
+ * @see app/Http/Controllers/ProductController.php:1066
+ * @route '/api/seller/{id}/store'
+ */
+    const getSellerStoreForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: getSellerStore.url(args, options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\ProductController::getSellerStore
+ * @see app/Http/Controllers/ProductController.php:1066
+ * @route '/api/seller/{id}/store'
+ */
+        getSellerStoreForm.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: getSellerStore.url(args, options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\ProductController::getSellerStore
+ * @see app/Http/Controllers/ProductController.php:1066
+ * @route '/api/seller/{id}/store'
+ */
+        getSellerStoreForm.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: getSellerStore.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    getSellerStore.form = getSellerStoreForm
+/**
 * @see \App\Http\Controllers\ProductController::reportProduct
  * @see app/Http/Controllers/ProductController.php:873
  * @route '/api/products/{id}/report'
@@ -1342,6 +1439,6 @@ adminRejectReport.post = (args: { id: string | number } | [id: string | number ]
         })
     
     adminRejectReport.form = adminRejectReportForm
-const ProductController = { index, show, reportProduct, sellerIndex, store, update, updateStock, updateVariantStock, destroy, getStockLogs, adminPendingProducts, adminAllProducts, adminApproveProduct, adminRejectProduct, adminGetReports, adminApproveReport, adminRejectReport }
+const ProductController = { index, show, getSellerStore, reportProduct, sellerIndex, store, update, updateStock, updateVariantStock, destroy, getStockLogs, adminPendingProducts, adminAllProducts, adminApproveProduct, adminRejectProduct, adminGetReports, adminApproveReport, adminRejectReport }
 
 export default ProductController

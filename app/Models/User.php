@@ -82,6 +82,8 @@ use Illuminate\Support\Carbon;
     'verification_status',
     'approved_at',
     'password',
+    'profile_photo',
+    'cover_photo',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable

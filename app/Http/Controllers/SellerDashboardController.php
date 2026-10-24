@@ -218,11 +218,15 @@ class SellerDashboardController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'account_type' => $user->account_type,
+                    'profile_photo' => $user->profile_photo ? asset('storage/' . $user->profile_photo) : null,
+                    'cover_photo' => $user->cover_photo ? asset('storage/' . $user->cover_photo) : null,
                 ],
             ],
             'seller' => [
                 'store_name' => $user->business_name ?? $user->name,
                 'business_name' => $user->business_name,
+                'profile_photo_url' => $user->profile_photo ? asset('storage/' . $user->profile_photo) : null,
+                'cover_photo_url' => $user->cover_photo ? asset('storage/' . $user->cover_photo) : null,
             ],
             'stats' => [
                 'total_sales' => (float) $totalSales,

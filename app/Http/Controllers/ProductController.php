@@ -1060,4 +1060,106 @@ class ProductController extends Controller
         }
     }
 
+    /**
+     * Get seller store data with products and stats.
+     */
+    public function getSellerStore(Request $request, $id)
+    {
+        $seller = \App\Models\User::where('id', $id)
+            ->where('account_type', 'seller')
+            ->firstOrFail();
+
+        // Get seller's active products
+        $query = Product::where('seller_id', $id)
+            ->where('status', 'active')
+            ->where('approval_status', 'approved');
+
+        // Search
+        if ($request->has('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by category
+        if ($request->has('category')) {
+            $query->where('category', $request->input('category'));
+        }
+
+        // Sort
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortDir = $request->input('sort_dir', 'desc');
+        
+        if ($sortBy === 'price') {
+            $query->orderByRaw('COALESCE(sale_price, price) ' . $sortDir);
+        } elseif (in_array($sortBy, ['name', 'created_at'])) {
+            $query->orderBy($sortBy, $sortDir);
+        }
+
+        // Pagination
+        $perPage = $request->input('per_page', 20);
+        $products = $query->paginate($perPage);
+
+        // Calculate stats
+        $totalProducts = Product::where('seller_id', $id)
+            ->where('status', 'active')
+            ->where('approval_status', 'approved')
+            ->count();
+
+        $totalSold = \App\Models\OrderItem::whereHas('product', function ($q) use ($id) {
+            $q->where('seller_id', $id);
+        })->whereHas('order', function ($q) {
+            $q->where('status', '!=', 'cancelled')
+                ->where('status', '!=', 'failed');
+        })->sum('quantity');
+
+        // TODO: Replace with actual follower count when follower system is implemented
+        $followers = 0;
+
+        // TODO: Replace with actual rating when review system is implemented
+        $rating = 4.5;
+        $totalReviews = 0;
+
+        // Calculate account age in years
+        $accountAge = $seller->created_at->diffInYears(now());
+
+        return response()->json([
+            'products' => $products->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'description' => $product->description,
+                    'category' => $product->category,
+                    'price' => (float) $product->price,
+                    'sale_price' => $product->sale_price ? (float) $product->sale_price : null,
+                    'effective_price' => (float) ($product->sale_price ?? $product->price),
+                    'is_on_sale' => $product->sale_price !== null,
+                    'stock' => $product->stock,
+                    'stock_status' => $product->stock_status,
+                    'is_in_stock' => $product->stock > 0,
+                    'images' => $product->images ?? [],
+                    'main_image' => $product->main_image,
+                    'brand' => $product->brand,
+                ];
+            }),
+            'stats' => [
+                'products' => $totalProducts,
+                'sold' => $totalSold,
+                'followers' => $followers,
+                'rating' => $rating,
+                'total_reviews' => $totalReviews,
+                'account_age_years' => $accountAge,
+                'verified' => $seller->verification_status === 'verified',
+            ],
+            'meta' => [
+                'current_page' => $products->currentPage(),
+                'last_page' => $products->lastPage(),
+                'per_page' => $products->perPage(),
+                'total' => $products->total(),
+            ],
+        ]);
+    }
+
 }

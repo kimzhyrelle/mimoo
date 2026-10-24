@@ -47,6 +47,11 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
         ]);
     });
     
+    // Buyer Settings/Account Page
+    Route::get('/settings', function () {
+        return Inertia::render('BuyerAcc');
+    })->name('buyer.settings');
+    
     // Seller Dashboard - for approved sellers only
     Route::get('/seller/dashboard', [\App\Http\Controllers\SellerDashboardController::class, 'index'])->name('seller.dashboard');
     
@@ -231,11 +236,30 @@ Route::get('/terms', function () {
     return Inertia::render('Terms');
 })->name('terms');
 
-Route::get('/homepage', function () {
-    // Fetch top-selling products from the last 7 days
-    $products = \App\Models\Product::with('seller:id,business_name,name')
+Route::get('/homepage', function (Illuminate\Http\Request $request) {
+    // Base query for products
+    $query = \App\Models\Product::with('seller:id,business_name,name')
         ->where('status', 'active')
-        ->withCount(['orderItems as total_sold' => function ($query) {
+        ->where('approval_status', 'approved');
+    
+    // Apply search filter
+    if ($request->has('search') && $request->input('search') !== '') {
+        $search = $request->input('search');
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%")
+                ->orWhere('category', 'like', "%{$search}%")
+                ->orWhere('brand', 'like', "%{$search}%");
+        });
+    }
+    
+    // Apply category filter
+    if ($request->has('category') && $request->input('category') !== '') {
+        $query->where('category', $request->input('category'));
+    }
+    
+    // Fetch top-selling products from the last 7 days with applied filters
+    $products = $query->withCount(['orderItems as total_sold' => function ($query) {
             $query->selectRaw('COALESCE(SUM(quantity), 0)')
                 ->whereHas('order', function ($q) {
                     $q->where('status', '!=', 'cancelled')
@@ -245,27 +269,34 @@ Route::get('/homepage', function () {
         }])
         ->orderBy('total_sold', 'desc')
         ->orderBy('created_at', 'desc')
-        ->take(20) // Top 20 products
+        ->take(50) // Increased to 50 for better filtering results
         ->get()
         ->map(function ($product) {
             return [
-                'id' => (string) $product->id,
+                'id' => $product->id,
                 'name' => $product->name,
-                'price' => '₱' . number_format($product->sale_price ?? $product->price, 2),
-                'raw_price' => (float) ($product->sale_price ?? $product->price),
-                'regular_price' => $product->sale_price ? ('₱' . number_format($product->price, 2)) : null,
+                'price' => (float) $product->price,
+                'sale_price' => $product->sale_price ? (float) $product->sale_price : null,
+                'effective_price' => (float) ($product->sale_price ?? $product->price),
                 'is_on_sale' => $product->sale_price !== null,
                 'stock' => $product->stock,
                 'stock_status' => $product->stock_status,
                 'is_in_stock' => $product->stock > 0,
-                'image' => $product->main_image,
+                'is_low_stock' => $product->stock > 0 && $product->stock <= ($product->low_stock_threshold ?? 5),
+                'main_image' => $product->main_image,
                 'seller_name' => $product->seller->business_name ?? $product->seller->name,
+                'category' => $product->category,
+                'brand' => $product->brand,
                 'total_sold' => $product->total_sold ?? 0,
             ];
-        })->toArray();
+        });
     
     return Inertia::render('Homepage', [
-        'products' => $products,
+        'initialProducts' => $products,
+        'filters' => [
+            'search' => $request->input('search', ''),
+            'category' => $request->input('category', ''),
+        ],
     ]);
 })->name('homepage');
 
@@ -317,6 +348,28 @@ Route::get('/product/{id}', function (string $id) {
     ]);
 })->name('product.show');
 
+Route::get('/seller/{id}', function (string $id) {
+    $seller = \App\Models\User::where('id', $id)
+        ->where('account_type', 'seller')
+        ->firstOrFail();
+    
+    $sellerData = [
+        'id' => $seller->id,
+        'name' => $seller->name,
+        'business_name' => $seller->business_name,
+        'email' => $seller->email,
+        'profile_photo_url' => $seller->profile_photo ? asset('storage/' . $seller->profile_photo) : null,
+        'cover_photo_url' => $seller->cover_photo ? asset('storage/' . $seller->cover_photo) : null,
+    ];
+    
+    // Debug logging
+    \Log::info('ViewSeller data:', $sellerData);
+    
+    return Inertia::render('ViewSeller', [
+        'seller' => $sellerData,
+    ]);
+})->name('seller.view');
+
 Route::get('/category/{category}', function (string $category) {
     $products = \App\Models\Product::with('seller:id,business_name,name')
         ->where('category', $category)
@@ -355,6 +408,9 @@ Route::get('/auth/google/callback', [SocialiteController::class, 'handleGoogleCa
 // Public product routes (buyers) - upgraded with search, filter, sort, pagination
 Route::get('/api/products', [ProductController::class, 'index']); // List active products
 Route::get('/api/products/{id}', [ProductController::class, 'show']); // Single product
+
+// Public seller store data
+Route::get('/api/seller/{id}/store', [ProductController::class, 'getSellerStore']); // Seller store with products and stats
 
 // Protected buyer routes - Cart & Orders API
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -399,6 +455,12 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     
     // Real-time seller dashboard stream (SSE)
     Route::get('/api/seller/dashboard/stream', [\App\Http\Controllers\SellerDashboardStreamController::class, 'stream']);
+    
+    // Store Photos Management
+    Route::post('/api/seller/profile-photo', [\App\Http\Controllers\Api\SellerStorePhotoController::class, 'uploadProfilePhoto']);
+    Route::post('/api/seller/cover-photo', [\App\Http\Controllers\Api\SellerStorePhotoController::class, 'uploadCoverPhoto']);
+    Route::delete('/api/seller/profile-photo', [\App\Http\Controllers\Api\SellerStorePhotoController::class, 'deleteProfilePhoto']);
+    Route::delete('/api/seller/cover-photo', [\App\Http\Controllers\Api\SellerStorePhotoController::class, 'deleteCoverPhoto']);
 });
 
 require __DIR__.'/settings.php';

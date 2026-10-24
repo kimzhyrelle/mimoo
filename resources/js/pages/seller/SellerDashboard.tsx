@@ -11,11 +11,15 @@ interface SellerDashboardProps {
             name: string;
             email: string;
             account_type: string;
+            profile_photo?: string | null;
+            cover_photo?: string | null;
         };
     };
     seller: {
         store_name: string;
         business_name?: string;
+        profile_photo_url?: string | null;
+        cover_photo_url?: string | null;
     };
     stats: {
         total_sales: number;
@@ -100,6 +104,14 @@ export default function SellerDashboard({ auth, seller, stats, recentOrders, top
     const [isConnected, setIsConnected] = useState(false);
     const [connectionFailed, setConnectionFailed] = useState(false);
     const eventSourceRef = useRef<EventSource | null>(null);
+    
+    // Photo upload states
+    const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(seller.profile_photo_url || null);
+    const [coverPhotoUrl, setCoverPhotoUrl] = useState<string | null>(seller.cover_photo_url || null);
+    const [uploadingProfile, setUploadingProfile] = useState(false);
+    const [uploadingCover, setUploadingCover] = useState(false);
+    const profileInputRef = useRef<HTMLInputElement>(null);
+    const coverInputRef = useRef<HTMLInputElement>(null);
     
     const storeName = seller?.store_name || seller?.business_name || auth.user.name;
 
@@ -213,6 +225,115 @@ export default function SellerDashboard({ auth, seller, stats, recentOrders, top
         }
     };
 
+    // Photo upload handlers
+    const handleProfilePhotoClick = () => {
+        profileInputRef.current?.click();
+    };
+
+    const handleCoverPhotoClick = () => {
+        coverInputRef.current?.click();
+    };
+
+    const handleProfilePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file size (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('File size must be less than 5MB');
+            return;
+        }
+
+        // Validate file type
+        if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+            alert('Only JPG and PNG files are allowed');
+            return;
+        }
+
+        setUploadingProfile(true);
+        const formData = new FormData();
+        formData.append('photo', file);
+
+        try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+            const response = await fetch('/api/seller/profile-photo', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken || '',
+                },
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setProfilePhotoUrl(data.photo_url);
+                alert('Profile photo uploaded successfully!');
+            } else {
+                console.error('Upload failed:', data);
+                alert(`Failed to upload profile photo: ${data.message || data.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert(`Failed to upload profile photo: ${error instanceof Error ? error.message : 'Network error'}`);
+        } finally {
+            setUploadingProfile(false);
+            if (profileInputRef.current) {
+                profileInputRef.current.value = '';
+            }
+        }
+    };
+
+    const handleCoverPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file size (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('File size must be less than 5MB');
+            return;
+        }
+
+        // Validate file type
+        if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+            alert('Only JPG and PNG files are allowed');
+            return;
+        }
+
+        setUploadingCover(true);
+        const formData = new FormData();
+        formData.append('photo', file);
+
+        try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+            const response = await fetch('/api/seller/cover-photo', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken || '',
+                },
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setCoverPhotoUrl(data.photo_url);
+                alert('Cover photo uploaded successfully!');
+            } else {
+                console.error('Upload failed:', data);
+                alert(`Failed to upload cover photo: ${data.message || data.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert(`Failed to upload cover photo: ${error instanceof Error ? error.message : 'Network error'}`);
+        } finally {
+            setUploadingCover(false);
+            if (coverInputRef.current) {
+                coverInputRef.current.value = '';
+            }
+        }
+    };
+
     return (
         <SellerShell active="dashboard">
             <Head title="Seller Dashboard" />
@@ -250,6 +371,171 @@ export default function SellerDashboard({ auth, seller, stats, recentOrders, top
                         <p className="text-[0.76rem] font-semibold text-[#4B2E7E] uppercase tracking-wider mb-1" style={fontPoppins}>Welcome back, {auth.user.name}</p>
                         <h1 className="text-[1.8rem] font-semibold leading-tight" style={fontSyne}>{storeName}</h1>
                         <p className="text-sm text-[#6E6570] mt-1">Here is how your store is performing this month.</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Store Profile Section */}
+            <div className="mb-6">
+                <div className="bg-white rounded-xl overflow-hidden border-2 border-[color-mix(in_srgb,#B9A6DE_44%,white)]">
+                    {/* Cover Photo */}
+                    <div className="relative h-48 bg-gradient-to-br from-[#4B2E7E] via-[#6a4d9c] to-[#B9A6DE]">
+                        {/* Actual cover image or gradient background */}
+                        {coverPhotoUrl ? (
+                            <img 
+                                src={coverPhotoUrl} 
+                                alt="Store Cover" 
+                                className="absolute inset-0 w-full h-full object-cover"
+                            />
+                        ) : (
+                            <div className="absolute inset-0 bg-[url('/images/store-pattern.png')] bg-cover bg-center opacity-20" />
+                        )}
+                        
+                        {/* Edit Cover Photo Button */}
+                        <input
+                            ref={coverInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/jpg"
+                            onChange={handleCoverPhotoChange}
+                            className="hidden"
+                        />
+                        <button 
+                            onClick={handleCoverPhotoClick}
+                            disabled={uploadingCover}
+                            className="absolute top-4 right-4 flex items-center gap-2 rounded-lg bg-white/90 backdrop-blur-sm px-4 py-2 text-sm font-semibold text-[#4B2E7E] hover:bg-white transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {uploadingCover ? (
+                                <>
+                                    <div className="animate-spin h-4 w-4 border-2 border-[#4B2E7E] border-t-transparent rounded-full"></div>
+                                    Uploading...
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    Edit Cover Photo
+                                </>
+                            )}
+                        </button>
+
+                        {/* File size hint */}
+                        <div className="absolute bottom-4 left-4 text-xs text-white/80 bg-black/20 backdrop-blur-sm px-2 py-1 rounded">
+                            Max 5MB
+                        </div>
+                    </div>
+
+                    {/* Store Info Section */}
+                    <div className="relative px-8 pb-6">
+                        {/* Store Avatar - overlapping cover */}
+                        <div className="flex items-end justify-between" style={{ marginTop: '-48px' }}>
+                            <div className="flex items-end gap-4">
+                                {/* Avatar with border - Editable */}
+                                <div className="relative group">
+                                    {profilePhotoUrl ? (
+                                        <img 
+                                            src={profilePhotoUrl} 
+                                            alt="Store Profile" 
+                                            className="h-32 w-32 rounded-2xl object-cover shadow-xl border-4 border-white"
+                                        />
+                                    ) : (
+                                        <div className="flex h-32 w-32 items-center justify-center rounded-2xl bg-gradient-to-br from-[#4B2E7E] to-[#B9A6DE] text-4xl font-bold text-white shadow-xl border-4 border-white">
+                                            {storeName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)}
+                                        </div>
+                                    )}
+                                    
+                                    {/* Edit Overlay */}
+                                    <input
+                                        ref={profileInputRef}
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/jpg"
+                                        onChange={handleProfilePhotoChange}
+                                        className="hidden"
+                                    />
+                                    <button 
+                                        onClick={handleProfilePhotoClick}
+                                        disabled={uploadingProfile}
+                                        className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                                    >
+                                        <div className="text-center">
+                                            {uploadingProfile ? (
+                                                <div className="animate-spin h-8 w-8 border-2 border-white border-t-transparent rounded-full mx-auto"></div>
+                                            ) : (
+                                                <>
+                                                    <svg className="w-8 h-8 text-white mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    </svg>
+                                                    <span className="text-xs font-semibold text-white">Edit Photo</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    </button>
+
+                                    {/* Verified Badge */}
+                                    <div className="absolute -bottom-2 -right-2 rounded-full bg-[#2c7a52] p-2">
+                                        <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                </div>
+
+                                {/* Store Name & Info */}
+                                <div className="pb-4">
+                                    <h2 className="text-2xl font-bold text-neutral-900 mb-1" style={fontSyne}>
+                                        {storeName}
+                                    </h2>
+                                    <div className="flex items-center gap-2 text-sm text-neutral-600">
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-semibold text-[#4B2E7E]">
+                                            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                            </svg>
+                                            VERIFIED SELLER
+                                        </span>
+                                        <span className="text-xs">mimoo Mall Certified</span>
+                                    </div>
+                                    <p className="text-xs text-[#6E6570] mt-2">
+                                        💡 Upload professional photos to make your store stand out to buyers
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Preview Store Button */}
+                            <div className="pb-4">
+                                <a 
+                                    href={`/seller/${auth.user.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 rounded-lg border-2 border-[#4B2E7E] bg-white px-6 py-2.5 text-sm font-semibold text-[#4B2E7E] hover:bg-violet-50 transition"
+                                >
+                                    👁️ Preview Store Page
+                                </a>
+                            </div>
+                        </div>
+
+                        {/* Upload Requirements Card */}
+                        <div className="mt-6 rounded-lg bg-[color-mix(in_srgb,#B9A6DE_12%,white)] border border-[color-mix(in_srgb,#B9A6DE_44%,white)] p-4">
+                            <h3 className="text-sm font-semibold text-[#4B2E7E] mb-2" style={fontSyne}>Photo Requirements</h3>
+                            <div className="grid grid-cols-2 gap-4 text-xs text-[#6E6570]">
+                                <div>
+                                    <p className="font-semibold text-neutral-900 mb-1">Cover Photo:</p>
+                                    <ul className="space-y-1">
+                                        <li>• Recommended size: 1200 x 300 pixels</li>
+                                        <li>• Max file size: 5MB</li>
+                                        <li>• Format: JPG, PNG</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-neutral-900 mb-1">Profile Photo:</p>
+                                    <ul className="space-y-1">
+                                        <li>• Recommended size: 400 x 400 pixels</li>
+                                        <li>• Max file size: 5MB</li>
+                                        <li>• Format: JPG, PNG</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
