@@ -704,7 +704,7 @@ function Header({
                       My Purchases
                     </Link>
                     <Link
-                      href="/settings/profile"
+                      href="/settings"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       onClick={() => setShowMenu(false)}
                     >

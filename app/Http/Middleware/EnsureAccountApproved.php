@@ -13,6 +13,7 @@ class EnsureAccountApproved
      * Handle an incoming request.
      *
      * Check if the authenticated user's account is approved.
+     * Only applies to sellers and logistics - buyers are auto-approved.
      * - approved: allow access
      * - pending: logout and redirect to pending page
      * - disapproved: logout and redirect to login with error
@@ -25,7 +26,12 @@ class EnsureAccountApproved
             return $next($request);
         }
 
-        // Check approval status
+        // Buyers don't need approval - skip this middleware for them
+        if ($user->account_type === 'buyer') {
+            return $next($request);
+        }
+
+        // Check approval status for sellers and logistics
         if ($user->status === 'pending') {
             Auth::logout();
             $request->session()->invalidate();

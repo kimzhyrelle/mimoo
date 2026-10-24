@@ -50,7 +50,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     // Buyer Settings/Account Page
     Route::get('/settings', function () {
         return Inertia::render('BuyerAcc');
-    })->name('buyer.settings');
+    });
     
     // Seller Dashboard - for approved sellers only
     Route::get('/seller/dashboard', [\App\Http\Controllers\SellerDashboardController::class, 'index'])->name('seller.dashboard');
@@ -317,7 +317,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::get('/product/{id}', function (string $id) {
-    $product = \App\Models\Product::with('seller:id,business_name,name')
+    $product = \App\Models\Product::with('seller:id,business_name,name,profile_photo')
         ->findOrFail($id);
     
     return Inertia::render('ProductDetail', [
@@ -341,6 +341,7 @@ Route::get('/product/{id}', function (string $id) {
             'sku' => $product->sku,
             'seller_name' => $product->seller->business_name ?? $product->seller->name,
             'seller_id' => $product->seller_id,
+            'seller_profile_photo' => $product->seller->profile_photo ? asset('storage/' . $product->seller->profile_photo) : null,
             'has_variants' => $product->has_variants ?? false,
             'variant_options' => $product->variant_options ?? null,
             'variants' => $product->variants ?? null,

@@ -5,7 +5,8 @@ use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'approved'])->group(function () {
-    Route::redirect('settings', '/settings/profile');
+    // Old redirect commented out - now using BuyerAcc.tsx at /settings
+    // Route::redirect('settings', '/settings/profile');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');

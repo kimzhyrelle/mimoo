@@ -34,6 +34,7 @@ interface ProductDetailProps {
     sku: string;
     seller_name: string;
     seller_id: number;
+    seller_profile_photo?: string | null;
     has_variants?: boolean;
     variant_options?: Array<{
       name: string;
@@ -453,7 +454,7 @@ function ProductInfo({
 // Seller Info Card
 // ---------------------------------------------------------------------------
 
-function SellerInfo({ sellerName, sellerId }: { sellerName: string; sellerId: number }) {
+function SellerInfo({ sellerName, sellerId, profilePhoto }: { sellerName: string; sellerId: number; profilePhoto?: string | null }) {
   const initials = sellerName
     .split(' ')
     .map(word => word[0])
@@ -469,9 +470,17 @@ function SellerInfo({ sellerName, sellerId }: { sellerName: string; sellerId: nu
     <div className="rounded-xl border border-neutral-200 bg-white p-6">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-violet-900 text-xl font-bold text-white">
-            {initials}
-          </div>
+          {profilePhoto ? (
+            <img 
+              src={profilePhoto} 
+              alt={sellerName} 
+              className="h-16 w-16 shrink-0 rounded-full object-cover border-2 border-violet-100"
+            />
+          ) : (
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-violet-900 text-xl font-bold text-white">
+              {initials}
+            </div>
+          )}
           <div>
             <p className="text-lg font-bold text-neutral-900">
               {sellerName}
@@ -699,7 +708,11 @@ export default function ProductDetail({ auth, product }: ProductDetailProps) {
 
         {/* Seller info card below */}
         <div className="mt-8">
-          <SellerInfo sellerName={product.seller_name} sellerId={product.seller_id} />
+          <SellerInfo 
+            sellerName={product.seller_name} 
+            sellerId={product.seller_id} 
+            profilePhoto={product.seller_profile_photo}
+          />
         </div>
 
         {/* Reviews Section */}
