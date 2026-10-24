@@ -161,11 +161,13 @@ export default function ProductReportsPage() {
     };
 
     const openModal = (report: Report) => {
+        console.log('Opening modal for report:', report);
         setSelectedReport(report);
         setShowModal(true);
         setShowConfirmApprove(false);
         setShowConfirmReject(false);
         setAdminNotes('');
+        console.log('Modal state set to true');
     };
 
     const getReasonLabel = (reason: string) => {

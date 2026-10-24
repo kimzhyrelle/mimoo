@@ -356,12 +356,7 @@ class ProductController extends Controller
             return response()->json(['error' => 'Unauthorized. Only sellers can access this endpoint.'], 403);
         }
 
-        $query = Product::where('seller_id', $user->id)
-            ->withCount(['orderItems as sold' => function ($q) {
-                $q->selectRaw('SUM(quantity)')->whereHas('order', function ($query) {
-                    $query->where('status', 'paid');
-                });
-            }]);
+        $query = Product::where('seller_id', $user->id);
 
         // Search
         if ($request->has('search')) {
@@ -940,12 +935,15 @@ class ProductController extends Controller
                     'product' => $report->product ? [
                         'id' => $report->product->id,
                         'name' => $report->product->name,
+                        'description' => $report->product->description,
+                        'price' => (float) $report->product->price,
                         'sku' => $report->product->sku,
                         'images' => $report->product->images ?? [],
                         'main_image' => $report->product->main_image,
                         'seller' => [
                             'id' => $report->product->seller->id,
                             'name' => $report->product->seller->business_name ?? $report->product->seller->name,
+                            'email' => $report->product->seller->email,
                         ],
                     ] : null,
                     'reporter' => [
