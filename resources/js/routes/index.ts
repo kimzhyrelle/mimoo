@@ -631,7 +631,7 @@ cart.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     cart.form = cartForm
 /**
 * @see \App\Http\Controllers\OrderController::checkout
- * @see app/Http/Controllers/OrderController.php:23
+ * @see app/Http/Controllers/OrderController.php:24
  * @route '/checkout'
  */
 export const checkout = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -646,7 +646,7 @@ checkout.definition = {
 
 /**
 * @see \App\Http\Controllers\OrderController::checkout
- * @see app/Http/Controllers/OrderController.php:23
+ * @see app/Http/Controllers/OrderController.php:24
  * @route '/checkout'
  */
 checkout.url = (options?: RouteQueryOptions) => {
@@ -655,7 +655,7 @@ checkout.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\OrderController::checkout
- * @see app/Http/Controllers/OrderController.php:23
+ * @see app/Http/Controllers/OrderController.php:24
  * @route '/checkout'
  */
 checkout.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -664,7 +664,7 @@ checkout.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\OrderController::checkout
- * @see app/Http/Controllers/OrderController.php:23
+ * @see app/Http/Controllers/OrderController.php:24
  * @route '/checkout'
  */
 checkout.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -674,7 +674,7 @@ checkout.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\OrderController::checkout
- * @see app/Http/Controllers/OrderController.php:23
+ * @see app/Http/Controllers/OrderController.php:24
  * @route '/checkout'
  */
     const checkoutForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -684,7 +684,7 @@ checkout.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\OrderController::checkout
- * @see app/Http/Controllers/OrderController.php:23
+ * @see app/Http/Controllers/OrderController.php:24
  * @route '/checkout'
  */
         checkoutForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -693,7 +693,7 @@ checkout.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\OrderController::checkout
- * @see app/Http/Controllers/OrderController.php:23
+ * @see app/Http/Controllers/OrderController.php:24
  * @route '/checkout'
  */
         checkoutForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({

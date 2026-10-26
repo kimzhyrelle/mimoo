@@ -8,7 +8,7 @@ import SellerShell from "@/layouts/seller/seller-shell";
 // Types
 // ---------------------------------------------------------------------------
 
-type Stage = "new" | "to_prepare" | "awaiting_pickup" | "in_transit" | "delivered";
+type Stage = "new" | "to_prepare" | "awaiting_pickup" | "in_transit" | "delivered" | "cancelled";
 type TabKey = "all" | Stage;
 
 interface OrderItem {
@@ -64,15 +64,16 @@ interface PageProps {
 // Constants / helpers
 // ---------------------------------------------------------------------------
 
-const STAGES: Stage[] = ["new", "to_prepare", "awaiting_pickup", "in_transit", "delivered"];
+const STAGES: Stage[] = ["new", "to_prepare", "awaiting_pickup", "in_transit", "delivered", "cancelled"];
 const LABEL: Record<Stage, string> = {
   new: "New",
   to_prepare: "To Prepare",
   awaiting_pickup: "Awaiting Pickup",
   in_transit: "In Transit",
   delivered: "Delivered",
+  cancelled: "Cancelled",
 };
-const PILL: Record<Stage, string> = { new: "gold", to_prepare: "gold", awaiting_pickup: "logi", in_transit: "accent", delivered: "ok" };
+const PILL: Record<Stage, string> = { new: "gold", to_prepare: "gold", awaiting_pickup: "logi", in_transit: "accent", delivered: "ok", cancelled: "bad" };
 const NEXT: Record<string, Stage | undefined> = { accept: "to_prepare", pack: "awaiting_pickup", pickup: "in_transit" };
 const DONE_MSG: Record<string, string> = {
   accept: "Order accepted. Now preparing.",
@@ -101,6 +102,7 @@ const TAB_ICON: Record<TabKey, ReactNode> = {
   awaiting_pickup: (<svg {...S} stroke="currentColor" strokeWidth="1.6"><path d="M3 6h11v9H3V6Z" strokeLinejoin="round" /><path d="M14 10h4l3 3v2h-7v-5Z" strokeLinejoin="round" /><circle cx="7" cy="17" r="1.6" /><circle cx="17.5" cy="17" r="1.6" /></svg>),
   in_transit: (<svg {...S} stroke="currentColor" strokeWidth="1.6"><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21Z" strokeLinejoin="round" /><circle cx="12" cy="9.5" r="2.2" /></svg>),
   delivered: (<svg {...S} stroke="currentColor" strokeWidth="1.6"><circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.3 2.3L16 10" strokeLinecap="round" strokeLinejoin="round" /></svg>),
+  cancelled: (<svg {...S} stroke="currentColor" strokeWidth="1.6"><circle cx="12" cy="12" r="9" /><path d="M8 8l8 8M16 8l-8 8" strokeLinecap="round" /></svg>),
 };
 
 const csrf = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
@@ -223,6 +225,9 @@ function OrderModal({
         )}
         {order.stage === "delivered" && (
           <div className="stage-note ok"><ICheck /><span>Delivered {order.delivered_on}. Confirmed once the buyer received the order.</span></div>
+        )}
+        {order.stage === "cancelled" && (
+          <div className="stage-note bad"><svg {...S}><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" /><path d="M8 8l8 8M16 8l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg><span>This order was cancelled and will not be processed.</span></div>
         )}
 
         <div className="detail-section">
@@ -358,7 +363,7 @@ function OrderModal({
           {order.stage === "awaiting_pickup" && (
             <button type="button" className="btn btn-primary" disabled={busy} onClick={() => onAct("pickup", { courier, pickup_date: pickupDate })}><ICheck />Confirm pickup</button>
           )}
-          {(order.stage === "in_transit" || order.stage === "delivered") && (
+          {(order.stage === "in_transit" || order.stage === "delivered" || order.stage === "cancelled") && (
             <button type="button" className="btn btn-ghost" onClick={onClose}>Close</button>
           )}
         </div>
@@ -438,10 +443,15 @@ export default function SellerOrders({ orders: initial }: PageProps) {
         return 'new';
       case 'paid':
         return 'to_prepare';
+      case 'packed':
+        return 'awaiting_pickup';
       case 'shipped':
         return 'in_transit';
       case 'completed':
         return 'delivered';
+      case 'cancelled':
+      case 'failed':
+        return 'cancelled';
       default:
         return 'new';
     }
@@ -703,7 +713,7 @@ const CSS = `
   .cell-strong{ font-weight:700; }
   .cell-muted{ color:var(--muted); font-size:.78rem; }
   .mini-pill{ font-size:.76rem; font-weight:800; text-transform:uppercase; letter-spacing:.02em; white-space:nowrap; }
-  .mini-pill.gold{ color:var(--gold); } .mini-pill.accent{ color:var(--primary); } .mini-pill.ok{ color:var(--ok); } .mini-pill.logi{ color:var(--logi); }
+  .mini-pill.gold{ color:var(--gold); } .mini-pill.accent{ color:var(--primary); } .mini-pill.ok{ color:var(--ok); } .mini-pill.logi{ color:var(--logi); } .mini-pill.bad{ color:#DC2626; }
   .icon-btn{ appearance:none; border:1.5px solid var(--lav-200); background:#fff; cursor:pointer; width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--muted); }
   .icon-btn:hover{ background:var(--lav-100); color:var(--primary); }
   .icon-btn svg{ width:15px; height:15px; }
@@ -724,6 +734,7 @@ const CSS = `
   .stage-note.accent{ background:color-mix(in srgb, var(--primary) 14%, white); color:var(--primary); }
   .stage-note.logi{ background:var(--logi-bg); color:var(--logi); }
   .stage-note.ok{ background:var(--ok-bg); color:var(--ok); }
+  .stage-note.bad{ background:#FEE2E2; color:#DC2626; }
 
   .detail-section{ margin-bottom:1.2rem; }
   .detail-section h4{ font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin:0 0 .7rem; }

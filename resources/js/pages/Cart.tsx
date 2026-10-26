@@ -65,6 +65,7 @@ export default function Cart() {
   const [cart, setCart] = useState<CartData | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<number | null>(null);
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
 
   const peso = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -78,6 +79,9 @@ export default function Cart() {
       const response = await fetch('/api/cart');
       const data = await response.json();
       setCart(data);
+      // Auto-select all valid items by default
+      const validItemIds = new Set(data.items.filter((item: CartItem) => item.is_valid).map((item: CartItem) => item.id));
+      setSelectedItems(validItemIds);
     } catch (error) {
       console.error('Failed to fetch cart:', error);
       toast.error('Failed to load cart');
@@ -142,12 +146,51 @@ export default function Cart() {
     router.post('/logout');
   }
 
+  function toggleItemSelection(itemId: number) {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  }
+
+  function toggleSelectAll() {
+    const validItems = items.filter(item => item.is_valid);
+    if (selectedItems.size === validItems.length) {
+      // Deselect all
+      setSelectedItems(new Set());
+    } else {
+      // Select all valid items
+      setSelectedItems(new Set(validItems.map(item => item.id)));
+    }
+  }
+
   function handleCheckout() {
-    if (cart?.has_invalid_items) {
+    if (selectedItems.size === 0) {
+      toast.error('Please select at least one item to checkout');
+      return;
+    }
+    
+    const selectedItemsHaveIssues = items
+      .filter(item => selectedItems.has(item.id))
+      .some(item => !item.is_valid);
+    
+    if (selectedItemsHaveIssues) {
       toast.error('Please fix invalid items before checkout');
       return;
     }
-    router.visit('/checkout');
+    
+    // Pass selected item IDs to checkout page
+    router.visit('/checkout', {
+      method: 'get',
+      data: {
+        items: Array.from(selectedItems).join(',')
+      }
+    });
   }
 
   if (loading) {
@@ -167,6 +210,13 @@ export default function Cart() {
 
   const items = cart?.items || [];
   const isEmpty = items.length === 0;
+  const validItems = items.filter(item => item.is_valid);
+  const allValidSelected = validItems.length > 0 && selectedItems.size === validItems.length;
+  
+  // Calculate selected items total
+  const selectedTotal = items
+    .filter(item => selectedItems.has(item.id))
+    .reduce((sum, item) => sum + item.line_total, 0);
 
   return (
     <div className="min-h-screen bg-[#f5f4f8] font-[Syne]">
@@ -207,7 +257,16 @@ export default function Cart() {
         {/* Cart items card */}
         <div className="bg-white rounded-[14px] shadow-sm border border-[rgba(185,166,222,0.18)] p-5 mb-4">
           {/* Column headers */}
-          <div className="grid grid-cols-[72px_1fr_110px_132px_110px_60px] items-center gap-x-6 pb-3 mb-1 border-b-[1.5px] border-[#E6DFF2] text-[0.72rem] font-bold text-[#6E6570] uppercase tracking-wide">
+          <div className="grid grid-cols-[40px_72px_1fr_110px_132px_110px_60px] items-center gap-x-6 pb-3 mb-1 border-b-[1.5px] border-[#E6DFF2] text-[0.72rem] font-bold text-[#6E6570] uppercase tracking-wide">
+            <div className="flex items-center justify-center">
+              <input
+                type="checkbox"
+                checked={allValidSelected}
+                onChange={toggleSelectAll}
+                disabled={validItems.length === 0}
+                className="w-4 h-4 text-violet-900 bg-white border-2 border-violet-300 rounded focus:ring-2 focus:ring-violet-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+              />
+            </div>
             <span></span>
             <span>Product</span>
             <span className="text-right">Unit Price</span>
@@ -233,10 +292,19 @@ export default function Cart() {
             items.map((item) => (
               <div
                 key={item.id}
-                className={`grid grid-cols-[72px_1fr_110px_132px_110px_60px] items-center gap-x-6 py-4 border-b border-[#E6DFF2] last:border-b-0 ${
+                className={`grid grid-cols-[40px_72px_1fr_110px_132px_110px_60px] items-center gap-x-6 py-4 border-b border-[#E6DFF2] last:border-b-0 ${
                   !item.is_valid ? 'bg-red-50/30' : ''
                 }`}
               >
+                <div className="flex items-center justify-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.has(item.id)}
+                    onChange={() => toggleItemSelection(item.id)}
+                    disabled={!item.is_valid}
+                    className="w-4 h-4 text-violet-900 bg-white border-2 border-violet-300 rounded focus:ring-2 focus:ring-violet-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  />
+                </div>
                 <div className="w-[72px] h-[72px] rounded-[10px] bg-[#F9F7FC] border border-[#E6DFF2] flex items-center justify-center text-[#B9A6DE] overflow-hidden">
                   {item.product_image ? (
                     <img src={item.product_image} alt={item.product_name} className="w-full h-full object-cover" />
@@ -321,18 +389,18 @@ export default function Cart() {
             <div className="flex items-center justify-between gap-6 flex-wrap">
               <div>
                 <div className="text-[0.83rem] text-[#6E6570] mb-2">
-                  Total (<span style={{ fontFamily: "'Poppins', sans-serif" }}>{items.length}</span> items):
+                  Total (<span style={{ fontFamily: "'Poppins', sans-serif" }}>{selectedItems.size}</span> selected {selectedItems.size === 1 ? 'item' : 'items'}):
                 </div>
                 <div className="text-[1.8rem] font-extrabold text-[#4B2E7E]" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                  {peso(cart?.total || 0)}
+                  {peso(selectedTotal)}
                 </div>
               </div>
               <button
-                disabled={isEmpty || cart?.has_invalid_items}
+                disabled={selectedItems.size === 0}
                 onClick={handleCheckout}
                 className="appearance-none border-none cursor-pointer bg-gradient-to-r from-[#2A1B4D] to-[#4B2E7E] text-white font-extrabold text-[0.92rem] px-9 py-3 rounded-full flex items-center gap-2 shadow-[0_4px_18px_rgba(75,46,126,0.45)] transition-all hover:translate-y-[-2px] hover:shadow-[0_8px_28px_rgba(75,46,126,0.55)] disabled:bg-[#E6DFF2] disabled:text-[#6E6570] disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none whitespace-nowrap"
               >
-                Proceed to Checkout
+                Proceed to Checkout ({selectedItems.size})
               </button>
             </div>
           </div>

@@ -57,8 +57,8 @@ class CreateNewUser implements CreatesNewUsers
 
             // ── Address ───────────────────────────────────────────────────
             'region'           => ['required', 'string', 'max:100'],
-            'province'         => ['required', 'string', 'max:100'],
-            'district'         => ['nullable', 'string', 'max:100'], // NCR only
+            'province'         => ['nullable', 'string', 'max:100'], // Not required for NCR
+            'district'         => ['nullable', 'string', 'max:100'], // NCR: required, non-NCR: not used
             'municipality_city'=> ['required', 'string', 'max:100'],
             'barangay'         => ['required', 'string', 'max:100'],
             'postal_code'      => ['nullable', 'string', 'max:10'], // For sellers

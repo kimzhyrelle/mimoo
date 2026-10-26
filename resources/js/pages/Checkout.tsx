@@ -73,16 +73,17 @@ export default function Checkout() {
 
   // State
   const [submitting, setSubmitting] = useState(false);
+  const [showAddressModal, setShowAddressModal] = useState(false);
   const [shippingName, setShippingName] = useState(user?.name || "");
-  const [shippingPhone, setShippingPhone] = useState("");
+  const [shippingPhone, setShippingPhone] = useState(user?.contact_number || "");
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "gcash" | "paymongo">("cod");
 
-  // Address fields
-  const [region, setRegion] = useState("");
-  const [province, setProvince] = useState("");
-  const [city, setCity] = useState("");
-  const [barangay, setBarangay] = useState("");
-  const [street, setStreet] = useState("");
+  // Address fields - pre-fill from user registration
+  const [region, setRegion] = useState(user?.region || "");
+  const [province, setProvince] = useState(user?.province || "");
+  const [city, setCity] = useState(user?.municipality_city || "");
+  const [barangay, setBarangay] = useState(user?.barangay || "");
+  const [street, setStreet] = useState(user?.street_address || "");
 
   // PSGC API states
   const [regions, setRegions] = useState<Region[]>([]);
@@ -98,6 +99,9 @@ export default function Checkout() {
 
   // Check if selected region is NCR
   const isNCR = region === "National Capital Region (NCR)";
+  
+  // Check if user has saved address
+  const hasSavedAddress = user?.region && user?.municipality_city && user?.barangay && user?.street_address;
 
   // Created ONCE per checkout page, so double-clicks/retries reuse the same key
   const idempotencyKeyRef = useRef(
@@ -258,6 +262,7 @@ export default function Checkout() {
           shipping_address: fullAddress,
           shipping_phone: shippingPhone,
           idempotency_key: idempotencyKeyRef.current,
+          cart_item_ids: cartItems.map(item => item.id), // Send selected cart item IDs
         }),
       });
 
@@ -317,189 +322,55 @@ export default function Checkout() {
           <div className="grid lg:grid-cols-[1fr_400px] gap-5">
             {/* Left column - Forms */}
             <div className="space-y-5">
-              {/* Shipping Information */}
+              {/* Shipping Information - Compact Display */}
               <div className="bg-white rounded-[14px] shadow-sm border border-[rgba(185,166,222,0.18)] p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <MapPin className="w-5 h-5 text-[#4B2E7E]" />
-                  <h2 className="text-[1.05rem] font-bold text-[#2A1B4D]">Shipping Information</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-[#4B2E7E]" />
+                    <h2 className="text-[1.05rem] font-bold text-[#2A1B4D]">Shipping Information</h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddressModal(true)}
+                    className="text-sm font-semibold text-[#4B2E7E] hover:underline"
+                  >
+                    {hasSavedAddress ? 'Change Address' : 'Add Address'}
+                  </button>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-[0.83rem] font-semibold text-[#2A1B4D] mb-1.5">
-                      <User className="w-4 h-4 inline mr-1" />
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      value={shippingName}
-                      onChange={(e) => setShippingName(e.target.value)}
-                      placeholder="Enter your full name"
-                      className={inputClass}
-                      required
-                    />
+                {hasSavedAddress ? (
+                  // Compact address display
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-2">
+                      <User className="w-4 h-4 text-[#6E6570] mt-0.5 flex-none" />
+                      <div>
+                        <p className="text-sm font-semibold text-[#2A1B4D]">{shippingName}</p>
+                        <p className="text-sm text-[#6E6570]">{shippingPhone}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <MapPin className="w-4 h-4 text-[#6E6570] mt-0.5 flex-none" />
+                      <p className="text-sm text-[#2A1B4D] leading-relaxed">
+                        {street}, {barangay}, {city}
+                        {!isNCR && province && `, ${province}`}, {region}
+                      </p>
+                    </div>
                   </div>
-
-                  <div>
-                    <label className="block text-[0.83rem] font-semibold text-[#2A1B4D] mb-1.5">
-                      <MapPin className="w-4 h-4 inline mr-1" />
-                      Region
-                    </label>
-                    <select
-                      value={region}
-                      onChange={(e) => {
-                        setRegion(e.target.value);
-                        setProvince("");
-                        setCity("");
-                        setBarangay("");
-                      }}
-                      className={inputClass}
-                      disabled={loading.regions}
-                      required
+                ) : (
+                  // No address - show message
+                  <div className="text-center py-8">
+                    <MapPin className="w-12 h-12 text-[#E6DFF2] mx-auto mb-3" />
+                    <p className="text-sm text-[#6E6570] mb-4">No shipping address yet</p>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddressModal(true)}
+                      className="inline-flex items-center gap-2 bg-[#4B2E7E] text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#3a2360] transition"
                     >
-                      <option value="">
-                        {loading.regions ? "Loading regions..." : "Select Region"}
-                      </option>
-                      {regions.map((r) => (
-                        <option key={r.code} value={r.name}>
-                          {r.name}
-                        </option>
-                      ))}
-                    </select>
+                      <MapPin className="w-4 h-4" />
+                      Add Shipping Address
+                    </button>
                   </div>
-
-                  <div>
-                    <label className="block text-[0.83rem] font-semibold text-[#2A1B4D] mb-1.5">
-                      <MapPin className="w-4 h-4 inline mr-1" />
-                      Province
-                    </label>
-                    <select
-                      value={province}
-                      onChange={(e) => {
-                        setProvince(e.target.value);
-                        setCity("");
-                        setBarangay("");
-                      }}
-                      className={inputClass}
-                      disabled={!region || loading.provinces || isNCR}
-                      required
-                    >
-                      {isNCR ? (
-                        <option value="N/A">N/A (NCR has no provinces)</option>
-                      ) : (
-                        <>
-                          <option value="">
-                            {loading.provinces
-                              ? "Loading provinces..."
-                              : !region
-                              ? "Select region first"
-                              : "Select Province"}
-                          </option>
-                          {provinces.map((p) => (
-                            <option key={p.code} value={p.name}>
-                              {p.name}
-                            </option>
-                          ))}
-                        </>
-                      )}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[0.83rem] font-semibold text-[#2A1B4D] mb-1.5">
-                      <MapPin className="w-4 h-4 inline mr-1" />
-                      City / Municipality
-                    </label>
-                    <select
-                      value={city}
-                      onChange={(e) => {
-                        setCity(e.target.value);
-                        setBarangay("");
-                      }}
-                      className={inputClass}
-                      disabled={
-                        isNCR
-                          ? !region || loading.cities
-                          : !province || loading.cities
-                      }
-                      required
-                    >
-                      <option value="">
-                        {loading.cities
-                          ? "Loading cities..."
-                          : isNCR
-                          ? !region
-                            ? "Select region first"
-                            : "Select City/Municipality"
-                          : !province
-                          ? "Select province first"
-                          : "Select City/Municipality"}
-                      </option>
-                      {cities.map((c) => (
-                        <option key={c.code} value={c.name}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[0.83rem] font-semibold text-[#2A1B4D] mb-1.5">
-                      <MapPin className="w-4 h-4 inline mr-1" />
-                      Barangay
-                    </label>
-                    <select
-                      value={barangay}
-                      onChange={(e) => setBarangay(e.target.value)}
-                      className={inputClass}
-                      disabled={!city || loading.barangays}
-                      required
-                    >
-                      <option value="">
-                        {loading.barangays
-                          ? "Loading barangays..."
-                          : !city
-                          ? "Select city first"
-                          : "Select Barangay"}
-                      </option>
-                      {barangays.map((b) => (
-                        <option key={b.code} value={b.name}>
-                          {b.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[0.83rem] font-semibold text-[#2A1B4D] mb-1.5">
-                      <MapPin className="w-4 h-4 inline mr-1" />
-                      Street Address
-                    </label>
-                    <input
-                      type="text"
-                      value={street}
-                      onChange={(e) => setStreet(e.target.value)}
-                      placeholder="House No., Street Name"
-                      className={inputClass}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[0.83rem] font-semibold text-[#2A1B4D] mb-1.5">
-                      <Phone className="w-4 h-4 inline mr-1" />
-                      Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      value={shippingPhone}
-                      onChange={(e) => setShippingPhone(e.target.value)}
-                      placeholder="09XX XXX XXXX"
-                      className={inputClass}
-                      required
-                    />
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Payment Method */}
@@ -668,6 +539,67 @@ export default function Checkout() {
           </div>
         </form>
       </main>
+
+      {/* Address Modal */}
+      {showAddressModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-[#E6DFF2] px-6 py-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-[#2A1B4D]">Shipping Address</h3>
+              <button onClick={() => setShowAddressModal(false)} className="text-[#6E6570] hover:text-[#2A1B4D]">
+                ✕
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-[#2A1B4D] mb-1">Full Name</label>
+                <input type="text" value={shippingName} onChange={(e) => setShippingName(e.target.value)} className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#2A1B4D] mb-1">Phone Number</label>
+                <input type="tel" value={shippingPhone} onChange={(e) => setShippingPhone(e.target.value)} placeholder="09XX XXX XXXX" className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#2A1B4D] mb-1">Region</label>
+                <select value={region} onChange={(e) => { setRegion(e.target.value); setProvince(""); setCity(""); setBarangay(""); }} className={inputClass}>
+                  <option value="">Select Region</option>
+                  {regions.map((r) => <option key={r.code} value={r.name}>{r.name}</option>)}
+                </select>
+              </div>
+              {!isNCR && (
+                <div>
+                  <label className="block text-sm font-semibold text-[#2A1B4D] mb-1">Province</label>
+                  <select value={province} onChange={(e) => { setProvince(e.target.value); setCity(""); setBarangay(""); }} className={inputClass} disabled={!region}>
+                    <option value="">Select Province</option>
+                    {provinces.map((p) => <option key={p.code} value={p.name}>{p.name}</option>)}
+                  </select>
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-semibold text-[#2A1B4D] mb-1">City / Municipality</label>
+                <select value={city} onChange={(e) => { setCity(e.target.value); setBarangay(""); }} className={inputClass} disabled={isNCR ? !region : !province}>
+                  <option value="">Select City/Municipality</option>
+                  {cities.map((c) => <option key={c.code} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#2A1B4D] mb-1">Barangay</label>
+                <select value={barangay} onChange={(e) => setBarangay(e.target.value)} className={inputClass} disabled={!city}>
+                  <option value="">Select Barangay</option>
+                  {barangays.map((b) => <option key={b.code} value={b.name}>{b.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#2A1B4D] mb-1">Street Address</label>
+                <input type="text" value={street} onChange={(e) => setStreet(e.target.value)} placeholder="House No., Street Name" className={inputClass} />
+              </div>
+              <button onClick={() => setShowAddressModal(false)} className="w-full bg-[#4B2E7E] text-white font-semibold py-3 rounded-lg hover:bg-[#3a2360] transition">
+                Save Address
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -60,10 +60,10 @@ export default function OrderSuccess() {
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-4">
             <CheckCircle className="w-12 h-12 text-green-600" />
           </div>
-          <h1 className="text-[1.6rem] font-bold mb-2" style={{ fontFamily: "'Syne', sans-serif" }}>Order Placed Successfully!</h1>
-          <p className="text-[0.92rem] text-[#6E6570] mb-4">Thank you for your purchase</p>
+          <h1 className="text-[1.6rem] font-bold mb-2 text-[#2A1B4D]" style={{ fontFamily: "'Syne', sans-serif" }}>Order Placed Successfully!</h1>
+          <p className="text-[0.92rem] text-[#4A4556] mb-4">Thank you for your purchase</p>
           <div className="inline-block bg-[#F9F7FC] border border-[#E6DFF2] rounded-lg px-6 py-3">
-            <div className="text-[0.76rem] text-[#6E6570] mb-1">Order Number</div>
+            <div className="text-[0.76rem] text-[#4A4556] font-semibold mb-1">Order Number</div>
             <div className="text-[1.3rem] font-extrabold text-[#4B2E7E]" style={{ fontFamily: "'Poppins', sans-serif" }}>
               {order.order_number}
             </div>

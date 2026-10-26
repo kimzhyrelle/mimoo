@@ -237,7 +237,7 @@ function ProductInfo({
 }: { 
   product: ProductDetailProps['product']; 
   role: UserRole;
-  onAddToCart: (quantity: number, variantId?: string) => void;
+  onAddToCart: (quantity: number, variantId?: string, replaceQuantity?: boolean) => Promise<any>;
   onReportProduct: () => void;
   selectedVariant: Record<string, string>;
   onVariantChange: (selection: Record<string, string>) => void;
@@ -254,7 +254,7 @@ function ProductInfo({
   // Use variant price/stock if available
   const effectivePrice = currentVariant?.price ?? product.effective_price;
   const effectiveStock = currentVariant?.stock ?? product.stock;
-  const maxQuantity = Math.min(effectiveStock, 99);
+  const maxQuantity = effectiveStock; // Max = available stock
   
   // Check if all variant options are selected
   const isVariantComplete = !product.has_variants || 
@@ -375,9 +375,23 @@ function ProductInfo({
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
-              <span className="w-8 text-center text-sm font-medium text-neutral-900">
-                {quantity}
-              </span>
+              <input
+                type="number"
+                min="1"
+                max={maxQuantity}
+                value={quantity}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value) || 1;
+                  if (val >= 1 && val <= maxQuantity) {
+                    setQuantity(val);
+                  } else if (val > maxQuantity) {
+                    setQuantity(maxQuantity);
+                  } else {
+                    setQuantity(1);
+                  }
+                }}
+                className="w-16 text-center text-sm font-medium text-neutral-900 border-0 focus:outline-none focus:ring-0"
+              />
               <button
                 onClick={increaseQuantity}
                 disabled={quantity >= maxQuantity}
@@ -387,6 +401,9 @@ function ProductInfo({
                 <Plus className="h-3.5 w-3.5" />
               </button>
             </div>
+            <span className="text-xs text-neutral-500">
+              {maxQuantity} available
+            </span>
           </div>
         </div>
       )}
@@ -414,6 +431,21 @@ function ProductInfo({
             Add to cart
           </button>
           <button 
+            onClick={async () => {
+              if (product.has_variants && !isVariantComplete) {
+                toast.error('Please select all options');
+                return;
+              }
+              // Add to cart with REPLACE mode (for Buy Now)
+              const cartItemData = await onAddToCart(quantity, currentVariant?.id, true);
+              
+              if (cartItemData && cartItemData.id) {
+                // Redirect to checkout with only this item selected
+                setTimeout(() => {
+                  router.visit(`/checkout?items=${cartItemData.id}`);
+                }, 500);
+              }
+            }}
             disabled={!isVariantComplete}
             className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-violet-900 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -578,7 +610,7 @@ export default function ProductDetail({ auth, product }: ProductDetailProps) {
     }
   }
 
-  async function handleAddToCart(quantity: number, variantId?: string) {
+  async function handleAddToCart(quantity: number, variantId?: string, replaceQuantity: boolean = false) {
     if (!user) {
       router.visit('/login');
       return;
@@ -600,6 +632,7 @@ export default function ProductDetail({ auth, product }: ProductDetailProps) {
           product_id: product.id,
           quantity: quantity,
           variant_id: variantId,
+          replace_quantity: replaceQuantity, // For Buy Now
         }),
       });
 
@@ -613,12 +646,15 @@ export default function ProductDetail({ auth, product }: ProductDetailProps) {
           },
         });
         setCartCount(data.cart_count || 0);
+        return data.cart_item; // Return cart item data for Buy Now
       } else {
         toast.error(data.error || 'Failed to add to cart');
+        return null;
       }
     } catch (error) {
       console.error('Add to cart error:', error);
       toast.error('Failed to add to cart');
+      return null;
     }
   }
 

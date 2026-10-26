@@ -119,7 +119,7 @@ class SellerOrderController extends Controller
             // Map actions to status updates
             $newStatus = match ($action) {
                 'accept' => 'paid',           // Accept order → mark as paid
-                'pack' => 'paid',             // Packed, stays paid until pickup
+                'pack' => 'packed',           // Packed, ready for pickup
                 'pickup' => 'shipped',        // Handed to courier → shipped
                 'waybill_printed' => null,    // No status change, just tracking
                 default => null,
@@ -130,7 +130,7 @@ class SellerOrderController extends Controller
                 
                 $messages = [
                     'accept' => 'Order accepted and now preparing.',
-                    'pack' => 'Order marked as packed. Ready for courier pickup.',
+                    'pack' => 'Order marked as packed. Waiting for pickup.',
                     'pickup' => 'Order handed to courier. Tracking started.',
                 ];
                 
@@ -159,7 +159,7 @@ class SellerOrderController extends Controller
 
         // Legacy status-based request
         $validated = $request->validate([
-            'status' => ['required', 'in:paid,shipped,completed'],
+            'status' => ['required', 'in:paid,packed,shipped,completed'],
         ]);
 
         $order->update(['status' => $validated['status']]);

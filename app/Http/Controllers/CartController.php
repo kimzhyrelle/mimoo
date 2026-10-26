@@ -110,6 +110,7 @@ class CartController extends Controller
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|integer|min:1',
             'variant_id' => 'nullable|string',
+            'replace_quantity' => 'nullable|boolean', // For Buy Now: replace instead of add
         ], [
             'product_id.required' => 'Product ID is required.',
             'product_id.exists' => 'Product not found.',
@@ -133,7 +134,7 @@ class CartController extends Controller
         $stockToCheck = $product->stock;
         $variantData = null;
         
-        if ($validated['variant_id'] && $product->has_variants && $product->variants) {
+        if (isset($validated['variant_id']) && $validated['variant_id'] && $product->has_variants && $product->variants) {
             $variant = collect($product->variants)->firstWhere('id', $validated['variant_id']);
             if ($variant) {
                 $stockToCheck = $variant['stock'];
@@ -164,8 +165,18 @@ class CartController extends Controller
                 ->first();
 
             if ($cartItem) {
-                // Update existing item - cap to stock
-                $newQuantity = $cartItem->quantity + $requestedQuantity;
+                // Check if we should replace or add quantity
+                $replaceMode = $validated['replace_quantity'] ?? false;
+                
+                if ($replaceMode) {
+                    // Buy Now mode: Replace quantity (don't add to existing)
+                    $newQuantity = $requestedQuantity;
+                } else {
+                    // Add to Cart mode: Add to existing quantity
+                    $newQuantity = $cartItem->quantity + $requestedQuantity;
+                }
+                
+                // Cap to stock
                 if ($newQuantity > $stockToCheck) {
                     $newQuantity = $stockToCheck;
                 }

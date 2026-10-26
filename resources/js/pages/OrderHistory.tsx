@@ -86,6 +86,8 @@ export default function OrderHistory() {
         return 'bg-yellow-100 text-yellow-700 border-yellow-200';
       case 'paid':
         return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'packed':
+        return 'bg-indigo-100 text-indigo-700 border-indigo-200';
       case 'shipped':
         return 'bg-purple-100 text-purple-700 border-purple-200';
       case 'completed':
@@ -140,7 +142,7 @@ export default function OrderHistory() {
                         {order.order_number}
                       </div>
                       <span className={`text-[0.72rem] font-bold px-2.5 py-1 rounded-full border uppercase ${getStatusColor(order.status)}`}>
-                        {order.status}
+                        {order.status === 'packed' ? 'Packed, waiting for pickup' : order.status}
                       </span>
                     </div>
                     <div className="text-[0.82rem] text-[#6E6570] space-y-1">

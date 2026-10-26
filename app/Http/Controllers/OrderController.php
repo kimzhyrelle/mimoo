@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -38,8 +39,26 @@ class OrderController extends Controller
             return redirect()->route('cart')->with('error', 'Your cart is empty.');
         }
 
+        // Get selected item IDs from query string (comma-separated: ?items=1,2,5)
+        $selectedItemIds = [];
+        if ($request->has('items') && !empty($request->input('items'))) {
+            $selectedItemIds = array_map('intval', explode(',', $request->input('items')));
+        }
+
+        // Filter items based on selection (if no selection, use all items)
+        $cartItems = $cart->items;
+        if (!empty($selectedItemIds)) {
+            $cartItems = $cartItems->filter(function ($item) use ($selectedItemIds) {
+                return in_array($item->id, $selectedItemIds);
+            });
+        }
+
+        if ($cartItems->isEmpty()) {
+            return redirect()->route('cart')->with('error', 'No items selected for checkout.');
+        }
+
         // Validate all items
-        $items = $cart->items->map(function ($item) {
+        $items = $cartItems->map(function ($item) {
             return [
                 'id' => $item->id,
                 'product_id' => $item->product_id,
@@ -59,10 +78,13 @@ class OrderController extends Controller
             return redirect()->route('cart')->with('error', 'Some items in your cart are invalid. Please review before checkout.');
         }
 
+        // Calculate totals for selected items only
+        $subtotal = $items->sum('line_total');
+
         return Inertia::render('Checkout', [
             'cartItems' => $items->values(),
-            'subtotal' => (float) $cart->subtotal,
-            'total' => (float) $cart->subtotal,
+            'subtotal' => (float) $subtotal,
+            'total' => (float) $subtotal,
         ]);
     }
 
@@ -77,6 +99,8 @@ class OrderController extends Controller
             'shipping_address' => ['required', 'string', 'max:500'],
             'shipping_phone' => ['required', 'string', 'max:20'],
             'idempotency_key' => ['nullable', 'string', 'max:64'],
+            'cart_item_ids' => ['nullable', 'array'], // Selected cart item IDs
+            'cart_item_ids.*' => ['integer'],
         ]);
 
         $user = Auth::user();
@@ -113,12 +137,25 @@ class OrderController extends Controller
                 return response()->json(['error' => 'Your cart is empty.'], 400);
             }
 
+            // Filter items if specific cart_item_ids provided
+            $cartItems = $cart->items;
+            if (!empty($validated['cart_item_ids'])) {
+                $cartItems = $cartItems->filter(function ($item) use ($validated) {
+                    return in_array($item->id, $validated['cart_item_ids']);
+                });
+            }
+
+            if ($cartItems->isEmpty()) {
+                DB::rollBack();
+                return response()->json(['error' => 'No items selected for checkout.'], 400);
+            }
+
             // 2. Re-validate every item on server
             $orderItems = [];
             $total = 0;
             $productIds = []; // For consistent ordering to avoid deadlocks
 
-            foreach ($cart->items as $cartItem) {
+            foreach ($cartItems as $cartItem) {
                 $product = $cartItem->product;
 
                 // Validation checks
@@ -146,7 +183,7 @@ class OrderController extends Controller
 
             // 3. ATOMIC STOCK DEDUCTION (process in sorted order)
             foreach ($productIds as $productId) {
-                $cartItem = $cart->items->firstWhere('product_id', $productId);
+                $cartItem = $cartItems->firstWhere('product_id', $productId);
                 $quantity = $cartItem->quantity;
 
                 // Lock row and attempt atomic deduction
@@ -230,8 +267,13 @@ class OrderController extends Controller
                 ->where('created_at', '>=', now()->subSeconds(5))
                 ->update(['reference_id' => (string) $order->id]);
 
-            // 7. Clear cart
-            $cart->items()->delete();
+            // 7. Clear only the checked out items from cart
+            if (!empty($validated['cart_item_ids'])) {
+                CartItem::whereIn('id', $validated['cart_item_ids'])->delete();
+            } else {
+                // If no specific items provided, clear entire cart
+                $cart->items()->delete();
+            }
 
             // COMMIT TRANSACTION
             DB::commit();

@@ -32,6 +32,7 @@ class Order extends Model
      */
     public function canBeCancelled(): bool
     {
+        // Can only cancel if pending or paid (not packed, shipped, or completed)
         return in_array($this->status, ['pending', 'paid']);
     }
 

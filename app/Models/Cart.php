@@ -40,11 +40,11 @@ class Cart extends Model
     }
 
     /**
-     * Get total item count in cart.
+     * Get total item count in cart (number of unique products).
      */
     public function getTotalItemsAttribute(): int
     {
-        return $this->items()->sum('quantity');
+        return $this->items()->count();
     }
 
     /**

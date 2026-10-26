@@ -81,6 +81,7 @@ function tabOf(o: Order): Exclude<TabKey, "all"> {
   if (o.status === "cancelled" || o.status === "failed") return "cancelled";
   if (o.status === "completed") return "to_review"; // delivered; button switches to "Edit review" once reviewed
   if (o.status === "shipped") return "to_receive";
+  if (o.status === "packed") return "to_ship"; // packed but not yet picked up by courier
   if (o.status === "paid") return "to_ship";
   // pending: online payments still need paying, COD goes straight to "To Ship"
   const online = o.payment_method ? o.payment_method !== "cod" : true;
@@ -90,6 +91,7 @@ function tabOf(o: Order): Exclude<TabKey, "all"> {
 const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   to_pay: { text: "Awaiting payment", cls: "bg-yellow-50 text-yellow-800 border-yellow-200" },
   to_ship: { text: "Preparing to ship", cls: "bg-blue-50 text-blue-800 border-blue-200" },
+  packed: { text: "Packed, waiting for pickup", cls: "bg-indigo-50 text-indigo-800 border-indigo-200" },
   to_receive: { text: "On the way", cls: "bg-purple-50 text-purple-800 border-purple-200" },
   to_review: { text: "Delivered", cls: "bg-green-50 text-green-800 border-green-200" },
   cancelled: { text: "Cancelled", cls: "bg-red-50 text-red-700 border-red-200" },
@@ -311,7 +313,8 @@ export default function MyPurchases() {
           ) : (
             visible.map((order) => {
               const key = tabOf(order);
-              const label = STATUS_LABEL[key];
+              // Use packed status label if order is packed, otherwise use tab label
+              const label = order.status === "packed" ? STATUS_LABEL["packed"] : STATUS_LABEL[key];
               const Icon = TABS.find((t) => t.key === key)!.icon;
               return (
                 <article
