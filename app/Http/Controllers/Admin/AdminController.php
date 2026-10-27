@@ -54,7 +54,64 @@ class AdminController extends Controller
      */
     public function dashboard(): Response
     {
-        return Inertia::render('admin/dashboard');
+        // Get stats
+        // Buyers don't require approval, so count all buyers
+        $totalBuyers = \App\Models\User::where('account_type', 'buyer')->count();
+        // Sellers and couriers require approval
+        $totalSellers = \App\Models\User::where('account_type', 'seller')->where('status', 'approved')->count();
+        $totalCouriers = \App\Models\User::where('account_type', 'logistics')->where('status', 'approved')->count();
+        $totalOrders = \App\Models\Order::count();
+        
+        // Revenue this month (sum of all completed orders this month)
+        $revenueMTD = \App\Models\Order::where('status', 'completed')
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->sum('total');
+        
+        // Pending registrations (sellers and logistics only, buyers auto-approved)
+        $pendingRegistrations = \App\Models\User::whereIn('account_type', ['seller', 'logistics'])
+            ->where('status', 'pending')
+            ->count();
+        $pendingToday = \App\Models\User::whereIn('account_type', ['seller', 'logistics'])
+            ->where('status', 'pending')
+            ->whereDate('created_at', today())
+            ->count();
+        
+        // Orders by status
+        $ordersInProgress = \App\Models\Order::whereIn('status', ['pending', 'paid', 'packed', 'shipped'])->count();
+        $activeDeliveries = \App\Models\Order::where('status', 'shipped')->count();
+        
+        // Products pending approval
+        $productsPending = \App\Models\Product::where('approval_status', 'pending')->count();
+        
+        // Commission this month (assume 5% commission rate)
+        $commissionRate = 0.05;
+        $commissionThisMonth = $revenueMTD * $commissionRate;
+        
+        return Inertia::render('admin/dashboard', [
+            'stats' => [
+                'totalBuyers' => $totalBuyers,
+                'totalSellers' => $totalSellers,
+                'totalCouriers' => $totalCouriers,
+                'totalOrders' => $totalOrders,
+                'revenueMTD' => (float) $revenueMTD,
+            ],
+            'attention' => [
+                'pendingRegistrations' => $pendingRegistrations,
+                'pendingToday' => $pendingToday,
+                'complianceFlags' => 0, // Placeholder
+                'openDisputes' => 0, // Placeholder
+                'commissionThisMonth' => (float) $commissionThisMonth,
+            ],
+            'operations' => [
+                'activeDeliveries' => $activeDeliveries,
+                'ordersInProgress' => $ordersInProgress,
+                'supportTickets' => 0, // Placeholder
+            ],
+            'products' => [
+                'pendingApproval' => $productsPending,
+            ],
+        ]);
     }
 
     /**
