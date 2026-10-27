@@ -5,38 +5,42 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ParcelResource;
 use App\Models\Area;
-use App\Models\Activity;
 use App\Models\Parcel;
 use App\Models\Rider;
+use App\Services\ParcelStatusService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class ParcelController extends Controller
 {
+    public function __construct(
+        protected ParcelStatusService $statusService
+    ) {}
+
     /** GET /api/parcels */
     public function index(Request $request): JsonResponse
     {
         $query = Parcel::with(['area', 'rider', 'droppedOffBy'])
             ->when($request->status, fn ($q, $s) => $q->where('status', $s))
             ->when($request->area_id, fn ($q, $a) => $q->where('area_id', $a))
-            ->when($request->q, fn ($q, $search) =>
-                $q->where(fn ($q) =>
-                    $q->where('tracking_no', 'like', "%{$search}%")
-                      ->orWhere('address', 'like', "%{$search}%")
-                      ->orWhere('seller_name', 'like', "%{$search}%")
-                )
+            ->when($request->q, fn ($q, $search) => $q->where(fn ($q) => $q->where('tracking_no', 'like', "%{$search}%")
+                ->orWhere('address', 'like', "%{$search}%")
+                ->orWhere('seller_name', 'like', "%{$search}%")
+            )
             )
             ->orderBy('received_at', 'asc');
 
         $parcels = $query->paginate($request->per_page ?? 20);
 
         return response()->json([
+            'ok' => true,
             'data' => ParcelResource::collection($parcels->items()),
             'meta' => [
-                'total'        => $parcels->total(),
-                'per_page'     => $parcels->perPage(),
+                'total' => $parcels->total(),
+                'per_page' => $parcels->perPage(),
                 'current_page' => $parcels->currentPage(),
-                'last_page'    => $parcels->lastPage(),
+                'last_page' => $parcels->lastPage(),
             ],
         ]);
     }
@@ -46,36 +50,44 @@ class ParcelController extends Controller
     {
         $parcel->load(['area', 'rider', 'droppedOffBy']);
 
-        return response()->json(['data' => new ParcelResource($parcel)]);
+        return response()->json([
+            'ok' => true,
+            'data' => new ParcelResource($parcel),
+        ]);
     }
 
     /** POST /api/parcels/{parcel}/scan — mark as arrived at hub */
     public function scan(Parcel $parcel): JsonResponse
     {
-        if ($parcel->status !== 'dropped_off') {
-            return response()->json(['message' => 'Parcel is not in dropped-off state.'], 422);
+        if ($parcel->isDelivered()) {
+            return response()->json(['ok' => false, 'message' => 'Delivered parcels cannot be modified.'], 422);
         }
 
-        $parcel->update([
-            'status'      => 'awaiting_sort',
-            'received_at' => now(),
-        ]);
+        if ($parcel->status !== 'dropped_off') {
+            return response()->json(['ok' => false, 'message' => 'Parcel is not in dropped-off state.'], 422);
+        }
 
-        Activity::create([
-            'parcel_id'   => $parcel->id,
-            'icon'        => 'accent',
-            'description' => "<b>{$parcel->tracking_no}</b> scanned, sent to sorting",
-        ]);
+        try {
+            $result = $this->statusService->transition($parcel, 'awaiting_sort', 'Scanned at inbound dock');
 
-        return response()->json([
-            'data'    => new ParcelResource($parcel->fresh(['area', 'rider'])),
-            'message' => 'Parcel scanned successfully.',
-        ]);
+            return response()->json([
+                'ok' => true,
+                'message' => 'Parcel scanned successfully.',
+                'undo_token' => $result['undo_token'],
+                'data' => new ParcelResource($result['parcel']),
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage(), 'errors' => $e->errors()], 422);
+        }
     }
 
     /** POST /api/parcels/{parcel}/determine-area */
     public function determineArea(Request $request, Parcel $parcel): JsonResponse
     {
+        if ($parcel->isDelivered()) {
+            return response()->json(['ok' => false, 'message' => 'Delivered parcels cannot be modified.'], 422);
+        }
+
         $data = $request->validate([
             'area_id' => 'required|exists:areas,id',
             'carrier' => 'nullable|string|in:jnt,lbc,lalamove',
@@ -85,95 +97,132 @@ class ParcelController extends Controller
 
         $parcel->update([
             'area_id' => $area->id,
-            'status'  => 'sorted',
             'carrier' => $data['carrier'] ?? $parcel->carrier,
-            'sorted_at' => now(),
         ]);
 
-        return response()->json([
-            'data'    => new ParcelResource($parcel->fresh(['area', 'rider'])),
-            'message' => "Parcel assigned to Brgy. {$area->name}.",
-        ]);
+        try {
+            $result = $this->statusService->transition($parcel, 'sorted', "Sorted to {$area->name}");
+
+            return response()->json([
+                'ok' => true,
+                'message' => "Parcel assigned to Brgy. {$area->name}.",
+                'undo_token' => $result['undo_token'],
+                'data' => new ParcelResource($result['parcel']),
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage(), 'errors' => $e->errors()], 422);
+        }
     }
 
     /** POST /api/parcels/{parcel}/assign-rider */
     public function assignRider(Request $request, Parcel $parcel): JsonResponse
     {
+        if ($parcel->isDelivered()) {
+            return response()->json(['ok' => false, 'message' => 'Delivered parcels cannot be reassigned.'], 422);
+        }
+
         $data = $request->validate([
             'rider_id' => 'required|exists:riders,id',
         ]);
 
         $rider = Rider::findOrFail($data['rider_id']);
 
+        if (! $rider->isActive()) {
+            return response()->json(['ok' => false, 'message' => 'Assigned rider is not active.'], 422);
+        }
+
         $parcel->update([
-            'rider_id'    => $rider->id,
-            'status'      => 'sorted',
-            'assigned_at' => now(),
+            'rider_id' => $rider->id,
         ]);
 
-        return response()->json([
-            'data'    => new ParcelResource($parcel->fresh(['area', 'rider'])),
-            'message' => "Rider {$rider->name} assigned to parcel.",
-        ]);
+        try {
+            $result = $this->statusService->transition($parcel, 'assigned', "Assigned to {$rider->name}");
+
+            return response()->json([
+                'ok' => true,
+                'message' => "Rider {$rider->name} assigned to parcel.",
+                'undo_token' => $result['undo_token'],
+                'data' => new ParcelResource($result['parcel']),
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage(), 'errors' => $e->errors()], 422);
+        }
     }
 
     /** POST /api/parcels/{parcel}/dispatch — sorted → assigned */
     public function dispatch(Parcel $parcel): JsonResponse
     {
-        if ($parcel->status !== 'sorted') {
-            return response()->json(['message' => 'Parcel must be sorted before dispatch.'], 422);
+        if ($parcel->isDelivered()) {
+            return response()->json(['ok' => false, 'message' => 'Delivered parcels cannot be dispatched.'], 422);
         }
 
-        $parcel->update([
-            'status'      => 'assigned',
-            'assigned_at' => now(),
-        ]);
+        if ($parcel->status !== 'sorted') {
+            return response()->json(['ok' => false, 'message' => 'Parcel must be sorted before dispatch.'], 422);
+        }
 
-        Activity::create([
-            'parcel_id'   => $parcel->id,
-            'rider_id'    => $parcel->rider_id,
-            'icon'        => 'green',
-            'description' => "<b>{$parcel->tracking_no}</b> dispatched to <b>{$parcel->rider?->name}</b>",
-        ]);
+        try {
+            $result = $this->statusService->transition($parcel, 'assigned', 'Dispatched to rider');
 
-        return response()->json([
-            'data'    => new ParcelResource($parcel->fresh(['area', 'rider'])),
-            'message' => 'Parcel dispatched.',
-        ]);
+            return response()->json([
+                'ok' => true,
+                'message' => 'Parcel dispatched.',
+                'undo_token' => $result['undo_token'],
+                'data' => new ParcelResource($result['parcel']),
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage(), 'errors' => $e->errors()], 422);
+        }
     }
 
     /** POST /api/parcels/{parcel}/advance — move delivery status forward */
     public function advance(Parcel $parcel): JsonResponse
     {
-        $next = match ($parcel->status) {
-            'assigned'        => ['status' => 'out_for_delivery'],
-            'out_for_delivery'=> ['status' => 'delivered', 'delivered_at' => now()],
-            default           => null,
-        };
-
-        if (! $next) {
-            return response()->json(['message' => 'Cannot advance from current status.'], 422);
+        if ($parcel->isDelivered()) {
+            return response()->json(['ok' => false, 'message' => 'Delivered parcels cannot change status.'], 422);
         }
 
-        $parcel->update($next);
+        $nextStatus = match ($parcel->status) {
+            'assigned' => 'out_for_delivery',
+            'out_for_delivery' => 'delivered',
+            default => null,
+        };
 
-        return response()->json([
-            'data'    => new ParcelResource($parcel->fresh(['area', 'rider'])),
-            'message' => "Status updated to {$parcel->status}.",
-        ]);
+        if (! $nextStatus) {
+            return response()->json(['ok' => false, 'message' => 'Cannot advance from current status.'], 422);
+        }
+
+        try {
+            $result = $this->statusService->transition($parcel, $nextStatus);
+
+            return response()->json([
+                'ok' => true,
+                'message' => "Status updated to {$parcel->fresh()->status}.",
+                'undo_token' => $result['undo_token'],
+                'data' => new ParcelResource($result['parcel']),
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage(), 'errors' => $e->errors()], 422);
+        }
     }
 
     /** POST /api/parcels/{parcel}/scan-undelivered */
     public function scanUndelivered(Parcel $parcel): JsonResponse
     {
-        $parcel->update([
-            'status'              => 'failed',
-            'scanned_undelivered' => true,
-        ]);
+        if ($parcel->isDelivered()) {
+            return response()->json(['ok' => false, 'message' => 'Delivered parcels cannot be marked failed.'], 422);
+        }
 
-        return response()->json([
-            'data'    => new ParcelResource($parcel->fresh(['area', 'rider'])),
-            'message' => 'Parcel marked as confirmed undelivered.',
-        ]);
+        try {
+            $result = $this->statusService->transition($parcel, 'failed', 'Confirmed undelivered');
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'Parcel marked as confirmed undelivered.',
+                'undo_token' => $result['undo_token'],
+                'data' => new ParcelResource($result['parcel']),
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage(), 'errors' => $e->errors()], 422);
+        }
     }
 }

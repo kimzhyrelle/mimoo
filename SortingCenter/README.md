@@ -1,12 +1,16 @@
 # Sorting Center — Laravel Backend (Stage 1–4)
 
 This package contains the backend files for the Sorting Center module of
-Catoo, built to match the sc-*.html mockups. Stage 3 restyled the shared
+Mimoo, built to match the sc-*.html mockups. Stage 3 restyled the shared
 layout and dashboard with Tailwind v4 using the shadcn-style design tokens
 (`resources/css/app.css`). **Stage 4 removes login entirely** — every page
 is now public, no session/auth required, so you can iterate on the UI
 without setting up a database at all if you use the `/preview/*` routes
 below, or against real data once you do migrate.
+
+For the current page-by-page operations guide, parcel lifecycle, API
+endpoints, and buyer/seller/admin integration boundaries, see
+[WORKFLOW.md](./WORKFLOW.md).
 
 Note: this sandbox can't reach `packagist.org` or the npm registry for
 Tailwind's own package, so these files were written directly rather than
@@ -171,12 +175,237 @@ or Livewire in a later pass if you want that back.
   Management, not here)
 - Seeder creates the default row automatically via `HubProfile::current()`
 
+## UI stabilization pass 1 - shared modals (2026-10-25)
+
+Goal: one shared modal system, no modals visible on page load, and modals
+only for actions that change data or status.
+
+### Bugs found
+- The custom `.confirm-modal-backdrop`, `.kyc-lightbox-backdrop`, and
+  `.bulk-bar` classes forced `display:flex`, overriding Tailwind's
+  `.hidden`. Every modal, the KYC lightbox, and the bulk action bar were
+  visible on page load.
+- The KYC lightbox backdrop was the cause of the "almost-black Disapprove
+  modal with a floating X" bug.
+- Modals had no shared Escape / backdrop / close-button handling, the body
+  scroll lock was not always released, and focus was not returned to the
+  button that opened the modal.
+- Confirm buttons were not consistently solid, and confirm state was not
+  synchronized for required checkboxes and selects.
+- Bulk assign and bulk archive posted to the wrong routes.
+- Sidebar Logout used `href="#"`.
+- Dashboard loaded Chart.js `4.4.4` from cdnjs, which returns 404. This
+  produced `ReferenceError: Chart is not defined` and a failed network
+  request on every page.
+
+### What changed
+- Added `resources/js/modals.js`: `openModal`, `closeModal`,
+  `closeAllModals`, `syncConfirmState`, and `updateConfirmButton`.
+  Handles single-open enforcement, Escape, backdrop click, close buttons,
+  scroll lock/release, focus restore, and submit loading state.
+- `resources/js/app.js` now imports the modal module.
+- Rewrote `components/confirm-modal.blade.php` as the single modal shell
+  (title, labels, confirm style, required checkbox, form action/method).
+- Rewrote `components/disapprove-modal.blade.php` to compose the shared
+  shell; confirm stays disabled until a reason is selected.
+- Removed the old per-page modal JavaScript from
+  `layouts/sorting.blade.php`; the global scan modal now uses the shared
+  module.
+- Removed the KYC lightbox. Thumbnails now open in a new tab.
+- Fixed bulk assign (`assignments.bulk`) and bulk archive
+  (`parcels.sort.bulk-archive`) routes.
+- Added solid `.btn-danger`, applied it to archive/disapprove confirms,
+  and kept primary confirms solid.
+- Account saves submit inline with a loading state. The confirm modal is
+  only used when the hub/entity name changes.
+- Logout is now a button that shows a toast instead of navigating to `#`.
+- Dashboard Chart.js is now `4.5.1`, and chart initialization is guarded
+  when the library is unavailable.
+
+### Modal policy
+- Keep modals for data/status changes: dispatch, push to loading docks,
+  archive, checklist, advance, disapprove.
+- Do not use modals for viewing details, sort/filter/search, Export,
+  Generate Report, or normal Account saves.
+
+### Verification
+- `npm run build` passed.
+- `php artisan optimize:clear` and `php artisan view:cache` passed.
+- Headless Chrome/CDP check on every page: zero visible modals on load,
+  correct titles, no whoops page, no console errors, no failed requests.
+  Dashboard: Chart.js loaded and both chart canvases rendered.
+- Same-origin iframe test harness: 26 checks passed, including
+  X/Escape/backdrop close, scroll lock/release, focus restore, single-open
+  enforcement, hidden bulk bar, solid danger buttons, and required-field
+  confirm gating.
+- `php artisan test --compact tests/Feature/AccountSettingsTest.php`:
+  7 passed, 24 assertions.
+- Assignment, Branch Checklist, Parcel Status, and Rider Verification
+  feature tests: 34 passed, 299 assertions.
+
+## UI stabilization pass 2 - Reports (2026-10-25)
+
+Goal: make every report type render its own data, keep filters consistent
+through navigation/export, and make exports actually download files.
+
+### Bugs found
+- The report page rendered the same four legacy parcel KPIs for every
+  report type, ignoring the type-specific KPIs returned by
+  `ReportService`.
+- The chart was always the parcel daily-volume line chart, even for
+  Delivery, Rider, Branch, and Overdue reports.
+- Delivery, branch, and rider reports ignored the barangay/carrier
+  filters when building area/rider rows.
+- "Export PDF" opened the browser print dialog instead of downloading the
+  server-generated PDF, even though the backend supports PDF export.
+- Quick date presets used UTC (`toISOString`), so "Today" could select the
+  previous day in Philippine time.
+- Switching report type dropped unsaved date/barangay filter changes.
+- Filter validation errors were flashed to the session but never shown.
+- The chart loading overlay was positioned against the page instead of
+  the chart card and was never triggered.
+
+### What changed
+- `ReportService` now applies barangay/carrier filters to delivery,
+  branch, and rider datasets through a shared filtered-areas query.
+- `ReportsController` now returns the structured report plus only the
+  filter/date data needed by the view; previous-period delta is computed
+  with the same filters.
+- `reports.blade.php` now renders the report's own four KPIs, a line chart
+  for Parcels and a bar chart for the other report types, and each
+  report's own table rows.
+- PDF/CSV export links use the active filters; Export PDF downloads the
+  generated PDF. Print remains a separate action.
+- Type switching and exports sync the current (possibly unsaved) filter
+  values before navigating.
+- Quick presets use local dates, validation errors show as an inline
+  alert, the export menu closes on Escape/outside click, and Generate
+  shows a loading state.
+- Added `data-kpi` hooks for report smoke tests.
+
+### Verification
+- `php artisan view:cache` passed.
+- `php artisan test --compact tests/Feature/ReportServiceTest.php`:
+  13 passed, 110 assertions.
+- Full suite: 91 passed, 839 assertions.
+- PDF endpoint: `200 application/pdf`; CSV endpoint:
+  `200 text/csv` with KPI and data sections.
+- Headless Chrome across all five report types: correct KPI sets, correct
+  chart type, no console/network errors, no visible modals.
+- Filtered checks: Delivery/Branch show only Palasan for barangay R03 +
+  J&T; Rider shows only A. Santos; chart labels match the filtered rows.
+- Interaction checks: initial Generate disabled, presets enable it and use
+  the local date, type/export links preserve current filters, export menu
+  opens and closes with Escape, Generate shows the loading overlay, and an
+  inverted date range shows the inline validation message.
+
+## UI stabilization pass 3 - responsive layout and contrast (2026-10-26)
+
+Goal: make the app usable from 390px phones through desktop, remove
+horizontal overflow, and fix remaining dark-theme contrast problems.
+
+### Bugs found
+- The 256px app sidebar stayed in the layout below `lg`, leaving too little
+  room for page content and causing horizontal overflow.
+- Topbar search, breadcrumbs, and the notification dropdown did not fit on
+  phones. The notification menu was wider than its trigger and could run
+  past the viewport.
+- Report filters and report tables overflowed narrow screens.
+- Chat showed the conversation list and thread side by side at all widths,
+  leaving both too narrow on phones. Several chat placeholders and dark
+  metadata labels were also broken.
+- The dark report KPI day count used a float day difference and could show
+  one fewer day. The previous-period delta used mismatched range bounds.
+- Solid danger buttons were red text on a red background in dark mode, and
+  active sidebar/notification badges were too low-contrast.
+- The Account landline hint rendered doubled parentheses.
+
+### What changed
+- Added `resources/js/sidebar.js`: below `lg`, the sidebar becomes an
+  off-canvas drawer with a backdrop and close button. Escape, backdrop, and
+  nav clicks close it; focus is moved into the drawer and restored on
+  close; `aria-expanded`, `inert`, `aria-hidden`, and body scroll lock stay
+  in sync. Desktop resets all drawer state.
+- `layouts/sorting.blade.php` now has a mobile menu button, compact
+  breadcrumbs, and a viewport-safe notification dropdown. Main page padding
+  moved to `.app-main` with responsive `--app-main-x` / `--app-main-y`
+  variables.
+- Reports filters use a `1 / 2 / 4` column grid and Generate goes
+  full-width when narrow. Report table headers wrap and tables scroll
+  inside a `min-w-[720px]` wrapper instead of widening the page.
+- Chat switches to a single pane below `sm`: the list by default, the
+  thread when a conversation is selected, with a back button. Heights use
+  `100dvh`; header, replies, and composer are responsive. Dark day labels,
+  metadata, links, and placeholders were corrected.
+- Dark contrast: `--primary` is `#3f68df` (white text 4.93:1),
+  `.dark .text-primary` is `#8fb0ff` (7.84:1 on dark cards),
+  `--destructive-foreground` is white, and `.dark .btn-danger` is
+  `#b91c1c` (6.47:1). Nav badges use red-600, with a white/primary active
+  badge.
+- `ReportService` counts operating days inclusively without float drift:
+  `max(1, startOfDay(from)->diffInDays(startOfDay(to)) + 1)`.
+  `ReportsController` computes `prevFrom` with `subDays($daysCount - 1)`
+  so both periods cover the same number of days.
+- Added a regression test for the inclusive day count and the daily-average
+  format.
+
+### Verification
+- `npm run build`, `php artisan view:cache`, and Pint passed.
+- Full suite: 92 passed, 841 assertions. ReportService + Metrics: 23
+  passed, 217 assertions.
+- Layout audit at 1440/768/390 across all main pages: no document-level
+  horizontal overflow; the only off-screen element is the intentionally
+  hidden mobile sidebar.
+- Sidebar interaction checks passed: open/close button, backdrop, Escape,
+  nav close, focus restore, `inert`, scroll lock, desktop reset, and no
+  console or network errors.
+- Rechecked stage 1 pages after the layout changes: 13/13 pages clean, no
+  visible modals on load, dashboard charts defined, zero errors/HTTP
+  failures. Rechecked all 12 report states: correct KPIs/charts/tables,
+  zero errors.
+- Chat at 390px and dark desktop: single pane, working back button,
+  viewport-contained composer, readable metadata, zero errors.
+- Mobile danger confirmation: 358x273 dialog, 44px-high red/white confirm
+  button, no overflow.
+
+## UI stabilization pass 4 - full end-to-end self-test (2026-10-26)
+
+Goal: exercise every main workflow and page against a clean, seeded
+`laravel_testing` database at desktop, tablet, and phone widths.
+
+### Bugs found
+- Delivery Assignment at phone widths squeezed the four stat cards into one
+  row, clipped the duty table, and let custom modals run nearly edge-to-edge.
+- Two Stage 4 browser assertions checked the wrong thing: the drawer locks
+  scrolling with `body.sidebar-locked` (not an inline `overflow` style), and
+  "Scan all arrived" correctly stays visible but disabled after it empties the
+  queue.
+
+### What changed
+- Delivery Assignment now uses `2 / 1` stat-card columns below 900px / 520px,
+  a `min-width: 620px` duty table inside a horizontal scroll wrapper, and
+  custom modals capped at `calc(100% - 2rem)`.
+- The browser checks now verify the real drawer class/computed overflow and
+  the post-scan state: disabled Scan All button, empty queue message, and
+  "6 parcels scanned." flash.
+
+### Verification
+- Route audit: 20 pages x 3 viewports (60 rows), zero console errors, zero
+  network/HTTP failures, zero document-level horizontal overflow.
+- Workflow E2E: 35/35 checks passed, covering dashboard/scan search,
+  notifications, incoming lookup + scan/scan-all, auto-clustering, assignment
+  modals + dispatch, delivery confirmation, rider toggles/KYC gating, branch
+  checklist submit, chat send, account save, mark-all-read, mobile drawer,
+  and dark-mode persistence.
+- Full suite: 92 passed, 841 assertions. Pint, `npm run build`, and
+  `php artisan view:cache` all passed.
+
 ## Roadmap
 
-- Delivery Assignment (as its own standalone page, if still needed
-  alongside Sort Parcels)
-- Reports
-- Chat / Messaging
+- Stage 4 self-test is complete; no open regressions from the 60-row
+  viewport audit or the 35-check workflow pass.
+- Next: production hardening (authentication, deployment, backups) and real
+  courier/notification integrations.
 
 Say which one you want built next and I'll do it the same way: migrations
 → model → controller → routes → Blade view, styled with the Tailwind

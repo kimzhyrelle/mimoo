@@ -2,56 +2,84 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AccountUpdateRequest;
 use App\Models\Area;
 use App\Models\HubProfile;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 
 class AccountController extends Controller
 {
     public function edit()
     {
         return view('sorting.account', [
-            'hub'   => HubProfile::current(),
+            'hub' => HubProfile::current(),
             'areas' => Area::orderBy('name')->get(),
         ]);
     }
 
-    public function update(Request $request)
+    public function update(AccountUpdateRequest $request): JsonResponse|RedirectResponse
     {
-        // Strip spaces from phone before validation
-        if ($request->has('contact_phone')) {
-            $request->merge([
-                'contact_phone' => preg_replace('/\s+/', '', $request->contact_phone),
+        $data = $request->validated();
+        $hub = HubProfile::current();
+
+        if ($data['entity_name'] !== $hub->name && ! $request->boolean('confirm')) {
+            $message = 'Changing the registered entity name requires confirmation.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => $message,
+                    'errors' => ['entity_name' => [$message]],
+                ], 409);
+            }
+
+            return back()
+                ->withInput()
+                ->withErrors(['entity_name' => $message])
+                ->setStatusCode(409);
+        }
+
+        $data['contact_phone'] = $this->formatPhone($data['contact_phone'] ?? null);
+        $data['name'] = $data['entity_name'];
+        $data['staff_name'] = trim($data['first_name'].' '.$data['last_name']);
+        $data['staff_initials'] = strtoupper(
+            substr($data['first_name'], 0, 1).substr($data['last_name'], 0, 1)
+        );
+
+        unset($data['entity_name'], $data['confirm']);
+
+        $hub->update($data);
+
+        $message = 'Account profile updated successfully.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'message' => $message,
+                'hub' => $hub->fresh(),
             ]);
         }
 
-        $data = $request->validate([
-            'first_name'    => 'required|string|min:2|max:50',
-            'last_name'     => 'required|string|min:2|max:50',
-            'middle_initial'=> 'nullable|string|max:5',
-            'staff_title'   => 'nullable|string|max:100',
-            'birthday'      => ['nullable', 'date', 'before_or_equal:' . now()->subYears(18)->toDateString()],
-            'contact_email' => 'nullable|email|max:255',
-            'contact_phone' => ['nullable', 'string', 'regex:/^09\d{9}$/'],
-            'address'       => 'nullable|string|max:255',
-            'name'          => 'nullable|string|max:255',
-            'coverage_note' => 'nullable|string|max:1000',
-        ]);
+        return back()->with('status', $message)->with('toast', $message);
+    }
 
-        // Format phone for storage: 09XX XXX XXXX
-        if (!empty($data['contact_phone'])) {
-            $n = preg_replace('/\D/', '', $data['contact_phone']);
-            $data['contact_phone'] = substr($n,0,4).' '.substr($n,4,3).' '.substr($n,7,4);
+    private function formatPhone(?string $phone): ?string
+    {
+        if (blank($phone)) {
+            return null;
         }
 
-        // Build staff_name and staff_initials from the name fields
-        $firstName = trim($data['first_name']);
-        $lastName  = trim($data['last_name']);
-        $data['staff_name']     = $firstName . ' ' . $lastName;
-        $data['staff_initials'] = strtoupper(substr($firstName, 0, 1) . substr($lastName, 0, 1));
+        $digits = preg_replace('/\D/', '', $phone);
 
-        HubProfile::current()->update($data);
+        if (str_starts_with($digits, '09') && strlen($digits) === 11) {
+            return substr($digits, 0, 4).' '.substr($digits, 4, 3).' '.substr($digits, 7, 4);
+        }
 
-        return back()->with('status', 'Profile updated successfully.');
+        if (strlen($digits) === 10) {
+            return '('.substr($digits, 0, 3).') '.substr($digits, 3, 3).'-'.substr($digits, 6, 4);
+        }
+
+        return $phone;
     }
 }

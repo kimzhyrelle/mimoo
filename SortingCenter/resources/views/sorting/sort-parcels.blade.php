@@ -1,342 +1,526 @@
 @extends('layouts.sorting')
 
-@section('title', 'Sort Parcels')
-@section('subtitle', "This hub covers Santa Cruz, Laguna only. Determine each parcel's barangay, then assign it to that barangay's rider.")
+@section('title', 'Sort & Assign')
 
-@push('styles')
-@include('partials.legacy-styles')
-<style>
-  .stat-card.accent{border-color:rgba(124,79,224,.5);background:var(--paper);}
-  .flow{display:flex;align-items:center;gap:0;background:var(--card,#fff);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;margin-bottom:22px;overflow-x:auto;}
-  .flow-step{display:flex;align-items:center;gap:8px;white-space:nowrap;padding:0 14px;position:relative;}
-  .flow-step .dot{width:22px;height:22px;border-radius:50%;background:var(--paper);border:1.5px solid var(--line);color:var(--text-600);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;flex:0 0 auto;}
-  .flow-step.done .dot{background:var(--ok-600);border-color:var(--ok-600);color:#fff;}
-  .flow-step .label{font-size:12px;color:var(--text-600);font-weight:600;}
-  .flow-step.done .label{color:var(--text-900);}
-  .flow-sep{width:26px;height:1px;background:var(--line);flex:0 0 auto;}
-  .flow-sep.done{background:var(--ok-600);}
-  .search{display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text-600);min-width:220px;}
-  .search input{border:none;background:transparent;outline:none;font-size:12.5px;width:100%;font-family:inherit;color:var(--text-900);}
-  .addr .city{font-weight:600;font-size:13px;color:var(--text-900);}
-  .addr .prov{font-size:11.5px;color:var(--text-600);}
-  .badge.pending{background:var(--pend-100);color:var(--pend-600);}
-  .area-chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:6px;color:#fff;background:var(--ink-700);}
-  .muted-dash{color:var(--text-400);font-size:13px;}
-  .carrier-select{font-family:inherit;font-size:11.5px;font-weight:600;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--paper);color:var(--text-900);cursor:pointer;}
-  .carrier-select.jnt{border-color:rgba(200,30,30,.35);color:#C81E1E;background:#FDEDED;}
-  .carrier-select.lbc{border-color:rgba(42,143,189,.35);color:#2A8FBD;background:#EAF5FB;}
-  .carrier-select.lalamove{border-color:rgba(124,79,224,.4);color:var(--accent-600);background:#F1EAFE;}
-  .rider{display:flex;align-items:center;gap:8px;}
-  .rider .ravatar{width:24px;height:24px;border-radius:50%;background:var(--ink-800);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;}
-  .rider .rname{font-size:12.5px;font-weight:600;color:var(--text-900);}
-  .btn{border:none;border-radius:7px;padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;}
-  .btn-primary{background:var(--ink-900);color:#fff;}
-  .btn-primary:hover{background:var(--ink-800);}
-  .btn-accent{background:var(--accent-500);color:var(--ink-900);}
-  .btn-accent:hover{background:var(--accent-600);}
-  .btn-ghost{background:transparent;color:var(--text-600);border:1px solid var(--line);}
-  .panel-foot{padding:12px 18px;font-size:12px;color:var(--text-600);border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
-  .legend{display:flex;gap:14px;flex-wrap:wrap;}
-  .legend span{display:inline-flex;align-items:center;gap:6px;}
-  .legend .sw{width:10px;height:10px;border-radius:3px;background:var(--ink-700);}
-  .err{background:var(--bad-100);color:var(--bad-600);border:1px solid rgba(192,67,47,.3);border-radius:8px;padding:9px 14px;font-size:12.5px;margin-bottom:16px;}
-</style>
-@endpush
+@php
+  $isPreview    = request()->routeIs('preview.*');
+  $clusters     = $clusters     ?? collect();
+  $clusterSort  = $clusterSort  ?? 'heaviest';
+  $riders       = $riders       ?? collect();
+  $stagedParcels = $stagedParcels ?? 0;
+  $queueVolume  = $queueVolume ?? (($awaitingSort ?? 0) + $clusters->sum('pending'));
+  $idleRiders   = $idleRiders ?? $riders->where('status', 'available')->count();
+  $busyRiders   = $busyRiders ?? $riders->where('status', 'busy')->count();
+  $assignedClusters = $clusters->filter(fn ($c) => $c->area->rider && $c->pending === 0)->count();
+  $carriers     = ['jnt' => 'J&T Express', 'lbc' => 'LBC', 'lalamove' => 'Lalamove'];
+  $viewMode     = request('view', 'table'); // 'table' or 'cards'
+  $showUnassigned = request()->boolean('unassigned');
+  $displayedClusters = $showUnassigned ? $clusters->filter(fn ($c) => !$c->area->rider) : $clusters;
+  $riderLoads = $clusters->mapWithKeys(fn ($c) => $c->area->rider ? [$c->area->rider->id => $c->count] : []);
+  $matchableAreas = $areas->sortByDesc(fn ($a) => strlen($a->name))->values();
+  $matchedAreas = $parcels->mapWithKeys(function ($p) use ($matchableAreas) {
+      if ($p->area) {
+          return [$p->id => $p->area];
+      }
+
+      $haystack = strtolower((string) $p->address);
+      $area = $matchableAreas->first(fn ($a) => str_contains($haystack, strtolower(str_replace('Brgy. ', '', $a->name))));
+
+      return [$p->id => $area];
+  });
+@endphp
 
 @section('content')
 
-  <div class="stats">
-    <div class="stat-card primary">
-      <div class="card-top"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg><div class="k">Awaiting sort</div></div>
-      <div class="val-row"><div class="v">{{ $awaitingSort }}</div></div>
-      <div class="sub">In queue right now</div>
+  <x-page-head eyebrow="Stage 03 • Hub Allocation">
+    @unless ($isPreview)
+      <form method="POST" action="{{ route('delivery.assignment.dispatch-list.generate') }}" id="dispatchListForm">@csrf</form>
+    @endunless
+    @if ($isPreview)
+      <button type="button" onclick="window.print()" class="btn-ink px-5"><x-icon name="printer" :size="15" />Generate Dispatch List</button>
+    @else
+      <button type="button" onclick="openConfirmModal('confirmDispatch')" class="btn-ink px-5"><x-icon name="printer" :size="15" />Generate Dispatch List</button>
+    @endif
+  </x-page-head>
+
+  {{-- Confirm: Generate Dispatch List --}}
+  @unless ($isPreview)
+    <x-confirm-modal id="confirmDispatch" title="Generate Dispatch List?" confirmLabel="Generate">
+      <ul class="confirm-summary-list">
+        <li>Saves a dispatch manifest for parcels assigned to active riders</li>
+        <li>Includes parcel IDs, barangays, rider assignments, and measured weights</li>
+      </ul>
+    </x-confirm-modal>
+  @endunless
+
+  @include('partials.flash')
+
+  {{-- ── KPIs ── --}}
+  <section class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+    <x-stat label="Queue Volume" :value="$queueVolume" icon="box">
+      <span class="flex items-center gap-1.5 text-[12px] text-muted-foreground"><span class="size-1.5 rounded-full bg-primary"></span>{{ $clusters->where('pending', '>', 0)->count() }} clusters pending</span>
+    </x-stat>
+    <x-stat label="Fleet Deployment" :value="($ridersOnShift ?? 0)" icon="bike">
+      <span class="flex items-center gap-1.5 text-[12px] text-muted-foreground"><span class="size-1.5 rounded-full bg-primary"></span>{{ $idleRiders }} Idle • {{ $busyRiders }} In-Route</span>
+    </x-stat>
+    <x-stat label="Today's Progress" :value="($assignedToday ?? 0)" icon="check-circle">
+      <span class="flex items-center gap-1.5 text-[12px] text-muted-foreground"><span class="size-1.5 rounded-full bg-muted-foreground"></span>runs assigned today</span>
+    </x-stat>
+  </section>
+
+  {{-- ── Destination clusters header + controls ── --}}
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <h2 class="h-display text-[19px]">Destination Clusters</h2>
+      <span class="text-[12px] text-muted-foreground">{{ $clusters->count() }} routes</span>
     </div>
-    <div class="stat-card">
-      <div class="card-top"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7c4fe0" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><div class="k">Barangay determined</div></div>
-      <div class="val-row"><div class="v">{{ $areaDetermined }}</div>@if($areaDetermined > 0)<span class="delta-pill up">▲ {{ $areaDetermined }}</span>@endif</div>
-      <div class="sub">Area assigned</div>
-    </div>
-    <div class="stat-card">
-      <div class="card-top"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><div class="k">Assigned to rider</div></div>
-      <div class="val-row"><div class="v">{{ $assignedToday }}</div>@if($assignedToday > 0)<span class="delta-pill up">▲ {{ $assignedToday }}</span>@endif</div>
-      <div class="sub">Ready to dispatch</div>
-    </div>
-    <div class="stat-card">
-      <div class="card-top"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#b8791a" stroke-width="2"><circle cx="8" cy="8" r="4"/><path d="M2 21v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v2"/><circle cx="17.5" cy="9.5" r="2.5"/></svg><div class="k">Riders on shift</div></div>
-      <div class="val-row"><div class="v">{{ $ridersOnShift }}</div></div>
-      <div class="sub">Available today</div>
+    <div class="flex flex-wrap items-center gap-2.5">
+      {{-- Unassigned only filter --}}
+      <a href="{{ request()->fullUrlWithQuery(['unassigned' => $showUnassigned ? null : '1']) }}"
+         class="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[12.5px] font-semibold transition
+                {{ $showUnassigned ? 'bg-primary text-white' : 'bg-secondary text-muted-foreground hover:bg-card' }}">
+        <x-icon name="alert" :size="13" />Unassigned only
+      </a>
+
+      {{-- Segmented sort control --}}
+      <div class="seg-control" role="group" aria-label="Sort clusters by">
+        <a href="{{ request()->fullUrlWithQuery(['cluster_sort' => 'heaviest']) }}"
+           class="{{ $clusterSort === 'heaviest' ? 'seg-active' : 'seg-inactive' }}">Heaviest First</a>
+        <a href="{{ request()->fullUrlWithQuery(['cluster_sort' => 'oldest']) }}"
+           class="{{ $clusterSort === 'oldest' ? 'seg-active' : 'seg-inactive' }}">Oldest First</a>
+      </div>
+
+      {{-- Card / Table toggle --}}
+      <div class="seg-control" role="group" aria-label="View mode">
+        <a href="{{ request()->fullUrlWithQuery(['view' => 'cards']) }}"
+           class="{{ $viewMode === 'cards' ? 'seg-active' : 'seg-inactive' }}" title="Card view">
+          <x-icon name="dashboard" :size="14" />
+        </a>
+        <a href="{{ request()->fullUrlWithQuery(['view' => 'table']) }}"
+           class="{{ $viewMode === 'table' ? 'seg-active' : 'seg-inactive' }}" title="Table view">
+          <x-icon name="checklist" :size="14" />
+        </a>
+      </div>
     </div>
   </div>
 
-  @if ($errors->any())
-    <div class="err">{{ $errors->first() }}</div>
-  @elseif (session('status'))
-    <div class="err" style="background:var(--paper);color:var(--accent-600);border-color:rgba(124,79,224,.4);">ⓘ {{ session('status') }}</div>
+  {{-- ── Clusters: TABLE view ── --}}
+  @if ($viewMode === 'table')
+    <section class="card mb-6 overflow-hidden">
+      @if ($displayedClusters->count() > 6)
+        <div class="flex justify-end px-4 pt-3">
+          <button type="button" class="btn-ghost px-3 py-1.5 text-[12px]"
+                  data-table-expand aria-controls="clusterTableViewport" aria-expanded="false">
+            Show all rows
+          </button>
+        </div>
+      @endif
+      <div id="clusterTableViewport" class="table-scroll-region">
+        <table class="tbl min-w-[640px]" data-row-details="off">
+          <thead>
+            <tr>
+              <th>Barangay</th>
+              <th class="text-right">Parcels</th>
+              <th>Weight</th>
+              <th>Rider</th>
+            </tr>
+          </thead>
+          <tbody>
+            @forelse ($displayedClusters as $c)
+              @php
+                $area  = $c->area;
+                $rider = $area->rider;
+              @endphp
+              <tr class="h-11">
+                <td>
+                  <span class="flex items-center gap-2">
+                    <span class="size-2.5 rounded-full shrink-0" style="background:{{ $area->chart_color ?? '#1d4ed8' }}" aria-hidden="true"></span>
+                    <span class="font-bold">{{ $area->name }}</span>
+                  </span>
+                </td>
+                <td class="text-right tabular-nums">
+                  <span class="h-display block text-[16px]">{{ $c->pending }}</span>
+                  <span class="block text-[10.5px] text-muted-foreground">
+                    {{ $c->pending === 1 ? 'parcel' : 'parcels' }}
+                  </span>
+                </td>
+                <td>
+                  @if ($c->weight > 0)
+                    <span class="font-semibold">{{ number_format($c->weight, 1) }} kg</span>
+                  @else
+                    <span class="text-muted-foreground">—</span>
+                  @endif
+                </td>
+                <td>
+                  @if ($rider)
+                    <span class="inline-flex items-center gap-2">
+                      <span class="avatar size-7 text-[10px]">{{ $rider->initials }}</span>
+                      <span>
+                        <span class="block font-semibold leading-tight">{{ $rider->name }}</span>
+                        <span class="block text-[10.5px] text-muted-foreground">{{ $riderLoads[$rider->id] ?? 0 }} parcel{{ ($riderLoads[$rider->id] ?? 0) === 1 ? '' : 's' }}</span>
+                      </span>
+                    </span>
+                  @else
+                    <span class="text-muted-foreground">—</span>
+                  @endif
+                </td>
+              </tr>
+            @empty
+              <tr><td colspan="4" class="py-8 text-center text-muted-foreground">No destination clusters yet. Sort parcels into barangays below.</td></tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  {{-- ── Clusters: CARD view ── --}}
+  @else
+    <section class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+      @forelse ($displayedClusters as $c)
+        @php
+          $area  = $c->area;
+          $rider = $area->rider;
+          $riderActive = $rider?->isActive() ?? false;
+        @endphp
+        <article class="card p-5">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-semibold text-muted-foreground"><span class="text-foreground">{{ $hubProfile->name ?? 'Hub' }}</span> › Sta. Cruz</span>
+          </div>
+          <div class="mt-2 flex items-center justify-between gap-2">
+            <h3 class="h-display truncate text-[20px]">{{ $area->name }}</h3>
+            <span class="shrink-0 text-[12px] text-muted-foreground">{{ $c->count }} parcels</span>
+          </div>
+
+          <div class="tile mt-4 flex items-center justify-between rounded-2xl">
+            <div>
+              <div class="label">Gross Weight</div>
+              @if ($c->weight > 0)
+                <div class="h-display text-[20px]">{{ number_format($c->weight, 1) }} kg</div>
+              @else
+                <div class="text-[13px] text-muted-foreground">—
+                  <a href="{{ $isPreview ? '#' : route('reports.index') }}" class="ml-1 text-[11px] font-bold text-primary hover:underline">Weigh</a>
+                </div>
+              @endif
+            </div>
+            <div class="flex items-center gap-2.5">
+              <div class="text-right"><div class="label">Manifest QR</div><div class="font-mono text-[11px] font-bold">SC-{{ $area->code }}</div></div>
+              <span class="rounded-lg bg-card p-1.5"><x-qr :seed="'SC-'.$area->code" :size="26" class="text-ink" /></span>
+            </div>
+          </div>
+
+          <div class="label mt-4 mb-1.5">Assigned Courier</div>
+          <div class="relative">
+            @if ($isPreview)
+              <div class="field flex items-center justify-between">{{ $rider ? $rider->name : 'Select Courier…' }}<x-icon name="chevron-down" :size="15" /></div>
+            @else
+              <select class="field cursor-pointer appearance-none pr-9 {{ $rider ? 'bg-accent text-accent-foreground' : '' }}"
+                      data-area="{{ $area->id }}" data-current="{{ $rider->id ?? '' }}"
+                      onchange="assignCourier(this)">
+                <option value="">Select Courier…</option>
+                @foreach ($riders as $r)
+                  @php
+                    $disabled = $r->status === 'offline';
+                    $label = $r->initials.' – '.$r->name.' – '.($riderLoads[$r->id] ?? 0).' parcels';
+                  @endphp
+                  <option value="{{ $r->id }}"
+                          {{ $rider && $rider->id === $r->id ? 'selected' : '' }}
+                          {{ $disabled ? 'disabled' : '' }}>
+                    {{ $label }}{{ $r->area_id && $r->area_id !== $area->id ? ' (on '.($r->area->name ?? 'route').')' : '' }}{{ $disabled ? ' — Off shift' : '' }}
+                  </option>
+                @endforeach
+              </select>
+              <x-icon name="chevron-down" :size="15" class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            @endif
+          </div>
+
+          @if ($rider && $riderActive && $c->pending > 0 && !$isPreview)
+            <form method="POST" action="{{ route('delivery.assignment.dispatch-area', $area) }}" class="mt-3">@csrf
+              <button class="btn-ink w-full py-2.5"><x-icon name="send" :size="14" />Dispatch {{ $c->pending }} to {{ $rider->name }}</button>
+            </form>
+          @endif
+        </article>
+      @empty
+        <div class="card col-span-full p-10 text-center text-[13.5px] text-muted-foreground">
+          No destination clusters yet. Sort parcels into barangays below.
+        </div>
+      @endforelse
+    </section>
   @endif
 
-  <div class="panel">
-    <div class="panel-head">
-      <div><h2>Parcel queue</h2><div class="sub">Newly arrived parcels at Santa Cruz Sorting Hub, oldest first</div></div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <form method="GET" style="display:contents;">
-          <input type="hidden" name="q" value="{{ $q }}">
-          @include('partials.barangay-dropdown')
-        </form>
-        <form method="GET" class="search">
-          <input type="hidden" name="area_id" value="{{ $area_id }}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-          <input type="text" name="q" value="{{ $q }}" placeholder="Search parcel ID or address…" onchange="this.form.submit()">
-        </form>
+  {{-- ── Staging bay bar ── --}}
+  <section class="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-ink p-5 text-ink-foreground">
+    <div class="flex items-center gap-4">
+      <span class="flex size-11 items-center justify-center rounded-xl bg-white/10"><x-icon name="checklist" :size="20" /></span>
+      <div>
+        <div class="h-display text-[17px]">Staging Bay #4 Status</div>
+        <div class="text-[12px] text-white/65">{{ $assignedClusters }} of {{ $clusters->count() }} clusters assigned • {{ $stagedParcels }} parcels staged</div>
+        <div class="mt-1 text-[11px] text-white/55">{{ $weighedCount ?? 0 }} staged parcels have a recorded weight</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2.5">
+      <a href="{{ route('delivery.assignment.weigh-ins') }}" class="btn bg-white/10 text-white hover:bg-white/20">Review Weigh-In Logs</a>
+      @unless ($isPreview)
+        <form method="POST" action="{{ route('delivery.assignment.dispatch-all') }}" id="dispatchAllForm" class="hidden">@csrf</form>
+        <button type="button" onclick="document.getElementById('dispatchAllForm').action='{{ route('delivery.assignment.dispatch-all') }}'; openConfirmModal('confirmLoadingDocks')"
+                class="btn bg-primary text-white hover:opacity-90"><x-icon name="send" :size="14" />Push to Loading Docks</button>
+      @endunless
+    </div>
+  </section>
+
+  {{-- Confirm: Push to Loading Docks --}}
+  <x-confirm-modal id="confirmLoadingDocks" title="Push to Loading Docks?" confirmLabel="Push" confirmClass="btn-primary">
+    <ul class="confirm-summary-list">
+      <li><strong>{{ $dispatchableParcels ?? 0 }}</strong> staged parcels assigned to active riders will be dispatched</li>
+      <li>{{ $assignedClusters }} of {{ $clusters->count() }} clusters are assigned</li>
+      <li>Unassigned and inactive-rider clusters will remain in staging</li>
+    </ul>
+  </x-confirm-modal>
+
+  {{-- Confirm: Bulk Archive --}}
+  <x-confirm-modal id="confirmBulkArchive" title="Archive selected parcels?" confirmLabel="Archive" confirmClass="btn-danger">
+    <ul class="confirm-summary-list" id="confirmBulkArchiveSummary">
+      <li>Selected parcels will be archived</li>
+    </ul>
+  </x-confirm-modal>
+
+  {{-- ── Per-parcel queue with toolbar + bulk select ── --}}
+  <section class="card overflow-hidden" id="parcelQueueCard">
+    <div class="flex flex-wrap items-center justify-between gap-3 p-5">
+      <div>
+        <h2 class="h-display text-[17px]">Parcel queue</h2>
+        <p class="text-[12px] text-muted-foreground">Newly arrived parcels — determine barangay, then assign rider</p>
       </div>
     </div>
 
-    <div style="overflow-y:auto;max-height:420px;">
-    <table style="width:100%;table-layout:fixed;">
-      <thead style="position:sticky;top:0;background:var(--card,#fff);z-index:1;">
-        <tr style="text-align:center;">
-          <th style="width:15%;text-align:center;">Parcel</th>
-          <th style="width:22%;text-align:center;">Delivery address</th>
-          <th style="width:14%;text-align:center;">Barangay</th>
-          <th style="width:18%;text-align:center;">Assigned rider</th>
-          <th style="width:15%;text-align:center;">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse ($parcels as $p)
-          <tr style="text-align:center;">
-            <td class="pid" style="text-align:center;">{{ $p->tracking_no }}</td>
-            <td class="addr" style="text-align:center;"><div class="city">{{ $p->address }}</div><div class="prov">Santa Cruz, Laguna</div></td>
-            <td style="text-align:center;">
-              @if ($p->area)
-                <span class="area-chip">{{ $p->area->name }}</span>
-              @else
-                <span class="muted-dash">— pending —</span>
-              @endif
-            </td>
-            <td style="text-align:center;">
-              @if ($p->rider)
-                <div class="rider" style="justify-content:center;"><div class="ravatar">{{ $p->rider->initials }}</div><div class="rname">{{ $p->rider->name }}</div></div>
-              @else
-                <span class="muted-dash">Not assigned</span>
-              @endif
-            </td>
-            <td style="text-align:center;">
-              <button
-                onclick="openSortModal(
-                  {{ $p->id }},
-                  '{{ $p->tracking_no }}',
-                  '{{ addslashes($p->address) }}',
-                  '{{ $p->area->name ?? '' }}',
-                  '{{ $p->rider->name ?? '' }}',
-                  '{{ $p->carrier }}',
-                  '{{ $p->status }}'
-                )"
-                style="border:1px solid var(--line);border-radius:6px;padding:4px 10px;background:var(--paper);font-size:12px;font-weight:600;color:var(--ink-700);cursor:pointer;font-family:inherit;">
-                Details
-              </button>
-            </td>
-          </tr>
-        @empty
-          <tr><td colspan="5" style="text-align:center;color:var(--text-400);padding:24px;">Nothing waiting to be sorted right now.</td></tr>
-        @endforelse
-      </tbody>
-    </table>
+    {{-- Toolbar --}}
+    <div class="px-5 pb-1">
+      <x-list-toolbar
+        placeholder="Search parcel ID or address…"
+        :areas="$allAreas ?? collect()"
+        :riders="$riders"
+        :statuses="['awaiting_sort' => 'Awaiting Sort', 'sorted' => 'Sorted', 'assigned' => 'Assigned']"
+        :sorts="['oldest' => 'Oldest first', 'newest' => 'Newest first', 'heaviest' => 'Heaviest first']"
+        show-dates
+      />
     </div>
 
-    <div class="panel-foot">
-      <div class="legend">
-        @foreach ($areas as $area)
-          <span><span class="sw" style="background:{{ $area->chart_color }}"></span>{{ $area->name }}{{ $area->rider ? ' — '.$area->rider->name : '' }}</span>
-        @endforeach
+    {{-- Bulk action bar (shown when rows are checked) --}}
+    <div id="bulkBar" class="mx-5 mb-4 hidden bulk-bar" role="region" aria-live="polite" aria-label="Bulk actions">
+      <span id="bulkCount" class="text-[13px] font-semibold">0 parcels selected</span>
+      <div class="relative ml-auto">
+        <select id="bulkRiderSelect" class="field min-w-52 cursor-pointer appearance-none bg-white/10 py-2 text-[13px] text-white placeholder:text-white/60 pr-8 border-white/20">
+          <option value="">Assign to rider…</option>
+          @foreach ($riders as $r)
+            @php $disabled = $r->status === 'offline'; @endphp
+            <option value="{{ $r->id }}" {{ $disabled ? 'disabled' : '' }}>
+              {{ $r->initials }} - {{ $r->name }} - {{ $riderLoads[$r->id] ?? 0 }} parcel{{ ($riderLoads[$r->id] ?? 0) === 1 ? '' : 's' }}{{ $disabled ? ' (Unavailable)' : '' }}
+            </option>
+          @endforeach
+        </select>
+        <x-icon name="chevron-down" :size="13" class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-white/70" />
       </div>
-      <div>{{ $parcels->count() }} parcels in queue</div>
+      @unless ($isPreview)
+        <button onclick="bulkAssign()" class="btn bg-white text-ink font-bold hover:opacity-90">
+          <x-icon name="send" :size="14" />Assign Selected
+        </button>
+        <button onclick="bulkArchive()" class="btn bg-white/10 text-white hover:bg-white/20">
+          <x-icon name="box" :size="14" />Archive Selected
+        </button>
+      @endunless
+      <button onclick="clearSelection()" class="btn-ghost text-white/70 hover:text-white hover:bg-white/10">
+        Cancel
+      </button>
     </div>
-  </div>
 
-  {{-- ── Sort parcel modal ── --}}
-  <div id="sortModalBackdrop"
-       onclick="if(event.target===this)closeSortModal()"
-       style="display:none;position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
-
-    <div style="background:var(--card,#fff);border-radius:16px;width:100%;max-width:460px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:sortSlideUp .18s ease-out;">
-
-      {{-- Header --}}
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);">
-        <div>
-          <div id="smParcelNo" style="font-size:15px;font-weight:800;font-family:'Poppins',sans-serif;"></div>
-          <div style="font-size:11.5px;color:var(--text-600);margin-top:2px;">Parcel sorting details</div>
-        </div>
-        <button onclick="closeSortModal()" style="background:none;border:none;cursor:pointer;color:var(--text-600);font-size:18px;line-height:1;padding:4px;">✕</button>
-      </div>
-
-      {{-- Body --}}
-      <div style="padding:18px 20px;">
-
-        {{-- Info tiles --}}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-          <div style="background:var(--paper);border-radius:8px;padding:10px 12px;grid-column:span 2;">
-            <div style="font-size:10.5px;color:var(--text-600);font-weight:600;margin-bottom:3px;">DELIVERY ADDRESS</div>
-            <div id="smAddress" style="font-size:13px;font-weight:600;"></div>
-          </div>
-          <div style="background:var(--paper);border-radius:8px;padding:10px 12px;">
-            <div style="font-size:10.5px;color:var(--text-600);font-weight:600;margin-bottom:3px;">BARANGAY</div>
-            <div id="smAreaName" style="font-size:13px;font-weight:600;"></div>
-          </div>
-          <div style="background:var(--paper);border-radius:8px;padding:10px 12px;">
-            <div style="font-size:10.5px;color:var(--text-600);font-weight:600;margin-bottom:3px;">RIDER</div>
-            <div id="smRiderName" style="font-size:13px;font-weight:600;"></div>
-          </div>
-        </div>
-
-        {{-- Carrier selector --}}
-        <div style="margin-bottom:16px;">
-          <div style="font-size:11px;font-weight:700;color:var(--text-600);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;">Carrier</div>
-          <div style="display:flex;gap:8px;">
-            @foreach(['jnt' => 'J&T Express', 'lbc' => 'LBC', 'lalamove' => 'Lalamove'] as $val => $lbl)
-              <button id="carrier-{{ $val }}"
-                onclick="selectCarrier('{{ $val }}')"
-                style="flex:1;border-radius:8px;padding:8px 4px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;border:1.5px solid var(--line);background:var(--paper);transition:all .15s;">
-                {{ $lbl }}
-              </button>
-            @endforeach
-          </div>
-        </div>
-
-        {{-- Action button --}}
-        <div id="smActionWrap" style="margin-bottom:8px;"></div>
-
-        <button onclick="closeSortModal()"
-          style="width:100%;border:1px solid var(--line);border-radius:8px;padding:11px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:var(--paper);color:var(--text-900);">
-          Close
+    @if ($parcels->count() > 6)
+      <div class="flex justify-end px-5 pb-2">
+        <button type="button" class="btn-ghost px-3 py-1.5 text-[12px]"
+                data-table-expand aria-controls="parcelQueueTableViewport" aria-expanded="false">
+          Show all rows
         </button>
       </div>
+    @endif
+    <div id="parcelQueueTableViewport" class="table-scroll-region">
+      <table class="tbl min-w-[820px]" data-row-details="off">
+        <thead>
+          <tr>
+            <th class="w-10">
+              <input type="checkbox" class="row-checkbox" id="selectAll" onchange="toggleSelectAll(this)"
+                     aria-label="Select all parcels" {{ $isPreview ? 'disabled' : '' }}>
+            </th>
+            <th>Parcel</th>
+            <th>Delivery address</th>
+            <th>Barangay</th>
+            <th>Carrier</th>
+            <th>Assigned rider</th>
+            <th class="text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @forelse ($parcels as $p)
+            @php
+              $matchedArea = $matchedAreas[$p->id] ?? null;
+              $rowArea = $p->area ?? $matchedArea;
+            @endphp
+            <tr data-parcel="{{ $p->id }}" class="h-11 transition-colors hover:bg-secondary/60">
+              <td>
+                <input type="checkbox" class="row-checkbox parcel-checkbox" value="{{ $p->id }}"
+                       onchange="updateBulkBar()" aria-label="Select parcel {{ $p->tracking_no }}"
+                       {{ $isPreview ? 'disabled' : '' }}>
+              </td>
+              <td class="font-bold">{{ $p->tracking_no }}</td>
+              <td class="text-muted-foreground">
+                <span class="cell-truncate" title="{{ $p->address }}">{{ $p->address }}</span>
+              </td>
+              <td>
+                @if ($rowArea)
+                  <span class="font-semibold">{{ $rowArea->name }}</span>
+                  @unless ($p->area)
+                    <span class="block text-[10.5px] text-muted-foreground">detected</span>
+                  @endunless
+                @else
+                  <span class="text-muted-foreground">—</span>
+                @endif
+              </td>
+              <td class="text-muted-foreground">{{ $carriers[$p->carrier] ?? '-' }}</td>
+              <td>
+                @if ($p->rider)
+                  <span class="inline-flex items-center gap-2">
+                    <span class="avatar size-7 text-[10px]">{{ $p->rider->initials }}</span>{{ $p->rider->name }}
+                  </span>
+                @else
+                  <span class="text-muted-foreground">—</span>
+                @endif
+              </td>
+              <td class="text-right">
+                <x-row-view-button :modal="'view-parcel-'.$p->id" :label="'View parcel '.$p->tracking_no" />
+              </td>
+            </tr>
+          @empty
+            <tr><td colspan="7" class="py-8 text-center text-muted-foreground">Nothing waiting to be sorted right now.</td></tr>
+          @endforelse
+        </tbody>
+      </table>
     </div>
-  </div>
+
+    @foreach ($parcels as $p)
+      @include('partials.sort-parcel-modal', [
+        'p' => $p,
+        'matchedArea' => $matchedAreas[$p->id] ?? null,
+        'carriers' => $carriers,
+        'isPreview' => $isPreview,
+      ])
+    @endforeach
+
+    <div class="flex flex-wrap justify-between gap-2 border-t border-border bg-secondary/60 px-5 py-3 text-[12px] text-muted-foreground">
+      <span>{{ $parcels->count() }} waiting</span>
+      <span>{{ $areas->count() }} routes</span>
+    </div>
+  </section>
 
 @endsection
 
 @push('scripts')
-<style>
-@keyframes sortSlideUp {
-  from { opacity:0; transform:translateY(12px); }
-  to   { opacity:1; transform:translateY(0); }
-}
-</style>
 <script>
-let smCurrentId    = null;
-let smCurrentCarrier = 'jnt';
-let smCurrentStatus  = null;
+  document.querySelectorAll('[data-table-expand]').forEach(button => {
+    button.addEventListener('click', () => {
+      const viewport = document.getElementById(button.getAttribute('aria-controls'));
+      if (!viewport) { return; }
 
-const carrierColors = {
-  jnt:      { bg:'#fdeded', color:'#c81e1e', border:'#f5b8b8' },
-  lbc:      { bg:'#eaf4fb', color:'#2a6fbd', border:'#a8d4ef' },
-  lalamove: { bg:'#f1eafe', color:'#7c4fe0', border:'#c9b0f5' },
-};
-const isDark = () => document.documentElement.classList.contains('dark');
-const carrierColorsDark = {
-  jnt:      { bg:'oklch(0.25 0.06 25)',  color:'#fca5a5', border:'rgba(252,165,165,.3)' },
-  lbc:      { bg:'oklch(0.22 0.05 230)', color:'#93c5fd', border:'rgba(147,197,253,.3)' },
-  lalamove: { bg:'oklch(0.24 0.08 291)', color:'#c4b5fd', border:'rgba(196,181,253,.3)' },
-};
-
-function openSortModal(id, trackNo, addr, area, rider, carrier, status) {
-  smCurrentId      = id;
-  smCurrentStatus  = status;
-  smCurrentCarrier = carrier || 'jnt';
-
-  document.getElementById('smParcelNo').textContent   = trackNo;
-  document.getElementById('smAddress').textContent    = addr;
-  document.getElementById('smAreaName').textContent   = area  || '— pending —';
-  document.getElementById('smRiderName').textContent  = rider || 'Not assigned';
-
-  selectCarrier(smCurrentCarrier);
-  renderAction(status);
-
-  const backdrop = document.getElementById('sortModalBackdrop');
-  backdrop.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-}
-
-function selectCarrier(val) {
-  smCurrentCarrier = val;
-  ['jnt','lbc','lalamove'].forEach(c => {
-    const btn = document.getElementById('carrier-' + c);
-    if (c === val) {
-      const cc = isDark() ? carrierColorsDark[c] : carrierColors[c];
-      btn.style.background   = cc.bg;
-      btn.style.color        = cc.color;
-      btn.style.borderColor  = cc.border;
-    } else {
-      btn.style.background  = isDark() ? 'var(--paper)' : '#fff';
-      btn.style.color       = 'var(--text-900)';
-      btn.style.borderColor = 'var(--line)';
-    }
+      const expanded = button.getAttribute('aria-expanded') !== 'true';
+      button.setAttribute('aria-expanded', expanded.toString());
+      viewport.classList.toggle('is-expanded', expanded);
+      button.textContent = expanded ? 'Show fewer rows' : 'Show all rows';
+    });
   });
-}
 
-function renderAction(status) {
-  const wrap = document.getElementById('smActionWrap');
-  wrap.innerHTML = '';
+  // ── Courier assignment (one per barangay) ──
+  function saveClusterRider(form) {
+    const riderId = form.querySelector('[name="rider_id"]')?.value;
+    if (!riderId) {
+      showToast('Select a rider before saving.', { type: 'error' });
+      return false;
+    }
 
-  const mkBtn = (label, bg, color, fn) => {
-    const b = document.createElement('button');
-    b.textContent = label;
-    b.style.cssText = `width:100%;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;background:${bg};color:${color};`;
-    b.onclick = fn;
-    wrap.appendChild(b);
-  };
-
-  if (status === 'awaiting_sort') {
-    mkBtn('Determine barangay area →', '#4B2E7E', '#fff', () => {
-      saveCarrierThenSubmit('determine-area');
-    });
-  } else if (status === 'sorted') {
-    mkBtn('Identify & assign rider →', '#7c4fe0', '#fff', () => {
-      saveCarrierThenSubmit('assign-rider');
-    });
-  } else {
-    const note = document.createElement('div');
-    note.textContent = 'This parcel is already assigned. No further action needed.';
-    note.style.cssText = 'font-size:12.5px;color:var(--text-600);text-align:center;padding:8px 0;';
-    wrap.appendChild(note);
+    form.action = '{{ url('/riders') }}/' + riderId + '/barangay';
+    return true;
   }
-}
 
-function saveCarrierThenSubmit(action) {
-  // Save carrier first if changed, then submit the main action
-  const carrierForm = document.createElement('form');
-  carrierForm.method = 'POST';
-  carrierForm.action = '/parcels/sort/' + smCurrentId + '/carrier';
-  carrierForm.style.display = 'none';
+  function assignCourier(select) {
+    const areaId = select.dataset.area, current = select.dataset.current, next = select.value;
+    const riderId = next || current;
+    if (!riderId) { return; }
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url('/riders') }}/' + riderId + '/barangay';
+    form.innerHTML = '<input type="hidden" name="_token" value="' + document.querySelector('meta[name=csrf-token]').content + '">'
+                   + '<input type="hidden" name="area_id" value="' + (next ? areaId : '') + '">';
+    document.body.appendChild(form);
+    form.submit();
+  }
 
-  const csrf1 = document.createElement('input');
-  csrf1.type = 'hidden'; csrf1.name = '_token';
-  csrf1.value = document.querySelector('meta[name=csrf-token]').content;
+  // ── Confirm modal wiring: Push to Loading Docks ──
+  document.getElementById('confirmLoadingDocks-confirm')?.addEventListener('click', function() {
+    closeConfirmModal('confirmLoadingDocks');
+    document.getElementById('dispatchAllForm')?.submit();
+  });
 
-  const carrierInput = document.createElement('input');
-  carrierInput.type = 'hidden'; carrierInput.name = 'carrier';
-  carrierInput.value = smCurrentCarrier;
+  // ── Confirm modal wiring: Generate and save dispatch list ──
+  document.getElementById('confirmDispatch-confirm')?.addEventListener('click', function() {
+    closeConfirmModal('confirmDispatch');
+    document.getElementById('dispatchListForm')?.submit();
+  });
 
-  // After carrier save we need to also trigger the action — use a redirect via hidden next_action field
-  // Simpler: just submit the action directly (carrier already set or will update on next visit)
-  const actionForm = document.createElement('form');
-  actionForm.method = 'POST';
-  actionForm.action = '/parcels/sort/' + smCurrentId + '/' + action;
+  // ── Bulk row selection ──
+  function updateBulkBar() {
+    const checked = [...document.querySelectorAll('.parcel-checkbox:checked')];
+    const bar = document.getElementById('bulkBar');
+    bar.classList.toggle('hidden', checked.length === 0);
+    document.getElementById('bulkCount').textContent = checked.length + ' parcel' + (checked.length !== 1 ? 's' : '') + ' selected';
+  }
 
-  const csrf2 = document.createElement('input');
-  csrf2.type = 'hidden'; csrf2.name = '_token';
-  csrf2.value = document.querySelector('meta[name=csrf-token]').content;
+  function toggleSelectAll(master) {
+    document.querySelectorAll('.parcel-checkbox').forEach(cb => { cb.checked = master.checked; });
+    updateBulkBar();
+  }
 
-  actionForm.appendChild(csrf2);
-  document.body.appendChild(actionForm);
-  actionForm.submit();
-}
+  function clearSelection() {
+    document.querySelectorAll('.parcel-checkbox, #selectAll').forEach(cb => { cb.checked = false; });
+    updateBulkBar();
+  }
 
-function closeSortModal() {
-  document.getElementById('sortModalBackdrop').style.display = 'none';
-  document.body.style.overflow = '';
-}
+  function bulkArchive() {
+    const ids = [...document.querySelectorAll('.parcel-checkbox:checked')].map(cb => cb.value);
+    if (!ids.length) { showToast('Select parcels to archive first.', { type: 'info' }); return; }
+    document.getElementById('confirmBulkArchiveSummary').innerHTML =
+      '<li><strong>' + ids.length + '</strong> parcel' + (ids.length !== 1 ? 's' : '') + ' will be archived</li>' +
+      '<li>Archived parcels can be restored later</li>';
+    document.getElementById('confirmBulkArchive-confirm').onclick = function() {
+      closeConfirmModal('confirmBulkArchive');
+        const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '{{ $isPreview ? "#" : route("parcels.sort.bulk-archive") }}';
+      form.innerHTML = '<input type="hidden" name="_token" value="' + document.querySelector('meta[name=csrf-token]').content + '">'
+                     + ids.map(id => '<input type="hidden" name="parcel_ids[]" value="' + id + '">').join('');
+      document.body.appendChild(form);
+      form.submit();
+    };
+    openConfirmModal('confirmBulkArchive');
+  }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSortModal(); });
+  function bulkAssign() {
+    const riderId = document.getElementById('bulkRiderSelect').value;
+    if (!riderId) { showToast('Please select a rider first.', { type: 'error' }); return; }
+    const ids = [...document.querySelectorAll('.parcel-checkbox:checked')].map(cb => cb.value);
+    if (!ids.length) { return; }
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ $isPreview ? "#" : route("assignments.bulk") }}';
+    form.innerHTML = '<input type="hidden" name="_token" value="' + document.querySelector('meta[name=csrf-token]').content + '">'
+                   + '<input type="hidden" name="rider_id" value="' + riderId + '">'
+                   + ids.map(id => '<input type="hidden" name="parcel_ids[]" value="' + id + '">').join('');
+    document.body.appendChild(form);
+    form.submit();
+  }
 </script>
 @endpush

@@ -8,9 +8,15 @@
 /* ── Stat cards ── */
 .stat-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 18px;
+}
+@media (max-width: 900px) {
+  .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+  .stat-row { grid-template-columns: minmax(0, 1fr); }
 }
 .stat-card {
   background: var(--color-card);
@@ -41,7 +47,7 @@
 .panel-head .sub { font-size: 12px; color: var(--color-muted-foreground); margin-top: 2px; }
 
 /* ── Table ── */
-.da-table { width: 100%; border-collapse: collapse; }
+.da-table { width: 100%; min-width: 620px; border-collapse: collapse; }
 .da-table thead th {
   padding: 10px 16px;
   font-size: 10px;
@@ -223,27 +229,22 @@
       <h2>Dispatch board</h2>
       <div class="sub">One row per barangay route — click "View" to inspect parcels, then dispatch to the rider</div>
     </div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn-refresh" onclick="window.location.reload()">Refresh</button>
-      <form method="POST" action="{{ route('delivery.assignment.dispatch-all') }}" style="display:inline;">
-        @csrf
-        <button type="submit" class="btn-dispatch-all"
-          onclick="return confirm('Dispatch ALL sorted parcels to their assigned riders?')">
-          Dispatch all
-        </button>
-      </form>
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button" class="btn-refresh" onclick="window.location.reload()">Refresh</button>
+      <button type="button" class="btn-dispatch-all" data-modal-open="confirmDispatchAll">Dispatch all</button>
     </div>
   </div>
 
-  <div style="overflow-y:auto;max-height:560px;">
-    <table class="da-table">
-      <thead style="position:sticky;top:0;z-index:1;">
+  <div class="table-scroll-region">
+    <table class="tbl min-w-[760px]" data-row-details="off">
+      <thead>
         <tr>
-          <th style="width:18%;">Barangay</th>
-          <th style="width:18%;">Assigned rider</th>
-          <th style="width:8%;text-align:center;">Parcels</th>
-          <th style="width:22%;">Load</th>
-          <th style="width:14%;text-align:right;padding-right:18px;">Actions</th>
+          <th>Barangay</th>
+          <th>Assigned rider</th>
+          <th class="text-center">Parcels</th>
+          <th>Load</th>
+          <th>Status</th>
+          <th class="text-right">Action</th>
         </tr>
       </thead>
       <tbody>
@@ -254,8 +255,27 @@
             $rider   = $area->rider;
             $color   = $area->chart_color ?? '#2A1B4D';
             $pct     = $count > 0 ? min(100, round(($count / 12) * 100)) : 0;
+            $isReady = $rider && $rider->isActive() && $count > 0;
+            $statusLabel = match (true) {
+                ! $rider => 'No rider',
+                ! $rider->isActive() => 'Rider inactive',
+                $count === 0 => 'Empty',
+                default => 'Ready to dispatch',
+            };
+            $statusTone = match (true) {
+                ! $rider => 'amber',
+                ! $rider->isActive() => 'red',
+                $count === 0 => 'slate',
+                default => 'green',
+            };
+            $statusIcon = match (true) {
+                ! $rider => 'user',
+                ! $rider->isActive() => 'alert',
+                $count === 0 => 'box',
+                default => 'check-circle',
+            };
           @endphp
-          <tr>
+          <tr class="h-11">
             {{-- Barangay --}}
             <td>
               <div style="display:flex;align-items:center;gap:8px;">
@@ -301,47 +321,14 @@
               @endif
             </td>
 
-            {{-- Actions --}}
-            <td style="text-align:right;padding-right:18px;">
-              <div style="display:inline-flex;gap:6px;align-items:center;">
-                @if ($count > 0)
-                  <button class="btn-view"
-                    onclick="openViewModal(
-                      '{{ addslashes($area->name) }}',
-                      '{{ $rider?->name ?? '' }}',
-                      '{{ $rider?->initials ?? '' }}',
-                      '{{ $color }}',
-                      {{ $count }},
-                      {{ json_encode($parcels->map(fn($p) => ['no' => $p->tracking_no, 'addr' => $p->address, 'carrier' => $p->carrier ?? ''])->values()) }}
-                    )">
-                    View
-                  </button>
-                @endif
-                @if ($rider && $count > 0)
-                  <button class="btn-dispatch"
-                    onclick="openDispatchModal(
-                      {{ $area->id }},
-                      '{{ addslashes($area->name) }}',
-                      '{{ addslashes($rider->name) }}',
-                      '{{ $rider->initials }}',
-                      '{{ $color }}',
-                      {{ $count }},
-                      {{ json_encode($parcels->map(fn($p) => ['no' => $p->tracking_no, 'addr' => $p->address, 'carrier' => $p->carrier ?? ''])->values()) }},
-                      '{{ route('delivery.assignment.dispatch-area', $area) }}'
-                    )">
-                    Dispatch →
-                  </button>
-                @else
-                  <button class="btn-dispatch" disabled>
-                    {{ $rider ? 'Empty' : 'No rider' }}
-                  </button>
-                @endif
-              </div>
+            <td><x-status-badge :tone="$statusTone" :icon="$statusIcon">{{ $statusLabel }}</x-status-badge></td>
+            <td class="text-right">
+              <x-row-view-button :modal="'view-area-'.$area->id" :label="'View route '.$area->name" />
             </td>
           </tr>
         @empty
           <tr>
-            <td colspan="5" style="text-align:center;color:var(--color-muted-foreground);padding:36px;font-size:13px;">
+            <td colspan="6" style="text-align:center;color:var(--color-muted-foreground);padding:36px;font-size:13px;">
               No barangays set up yet. Add areas in Rider Management first.
             </td>
           </tr>
@@ -356,159 +343,17 @@
   </div>
 </div>
 
-{{-- ── View parcels modal ── --}}
-<div id="viewModalBackdrop"
-     onclick="if(event.target===this)closeViewModal()"
-     style="display:none;position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
-  <div style="background:var(--color-card);border-radius:16px;width:100%;max-width:460px;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.22);animation:dmSlideUp .18s ease-out;">
-    {{-- Header --}}
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--color-border);flex-shrink:0;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span id="vmDot" style="width:11px;height:11px;border-radius:50%;flex-shrink:0;"></span>
-        <div>
-          <div id="vmTitle" style="font-size:14px;font-weight:800;"></div>
-          <div style="font-size:11.5px;color:var(--color-muted-foreground);">Parcels in queue</div>
-        </div>
-      </div>
-      <button onclick="closeViewModal()" style="background:none;border:none;cursor:pointer;color:var(--color-muted-foreground);font-size:18px;line-height:1;padding:4px;">✕</button>
-    </div>
-    {{-- Rider strip --}}
-    <div id="vmRiderStrip" style="display:flex;align-items:center;gap:10px;padding:11px 20px;border-bottom:1px solid var(--color-border);background:var(--color-muted);flex-shrink:0;">
-      <div id="vmRiderAv" style="width:28px;height:28px;border-radius:50%;background:var(--color-primary);color:var(--color-primary-foreground);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
-      <div id="vmRiderName" style="font-size:12.5px;font-weight:700;"></div>
-      <div style="margin-left:auto;font-size:11px;color:var(--color-muted-foreground);" id="vmCount"></div>
-    </div>
-    {{-- List --}}
-    <div style="overflow-y:auto;flex:1;padding:10px 12px;scrollbar-width:thin;scrollbar-color:var(--color-border) transparent;">
-      <div id="vmList" style="display:flex;flex-direction:column;gap:7px;"></div>
-    </div>
-    {{-- Footer --}}
-    <div style="padding:12px 20px;border-top:1px solid var(--color-border);flex-shrink:0;">
-      <button onclick="closeViewModal()"
-        style="width:100%;border:1px solid var(--color-border);border-radius:8px;padding:10px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:var(--color-background);color:var(--color-foreground);">
-        Close
-      </button>
-    </div>
-  </div>
-</div>
+@foreach ($areas as $area)
+  @include('partials.delivery-assignment-modal', ['area' => $area, 'parcels' => $area->parcels])
+@endforeach
 
-{{-- ── Dispatch confirm modal ── --}}
-<div id="dispatchModalBackdrop"
-     onclick="if(event.target===this)closeDispatchModal()"
-     style="display:none;position:fixed;inset:0;z-index:51;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
-  <div style="background:var(--color-card);border-radius:16px;width:100%;max-width:460px;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.22);animation:dmSlideUp .18s ease-out;">
-    {{-- Header --}}
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--color-border);flex-shrink:0;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span id="dmBrgyDot" style="width:11px;height:11px;border-radius:50%;flex-shrink:0;"></span>
-        <div>
-          <div id="dmTitle" style="font-size:14px;font-weight:800;"></div>
-          <div style="font-size:11.5px;color:var(--color-muted-foreground);">Confirm dispatch</div>
-        </div>
-      </div>
-      <button onclick="closeDispatchModal()" style="background:none;border:none;cursor:pointer;color:var(--color-muted-foreground);font-size:18px;line-height:1;padding:4px;">✕</button>
-    </div>
-    {{-- Rider strip --}}
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--color-border);background:var(--color-muted);flex-shrink:0;">
-      <div id="dmRiderAv" style="width:34px;height:34px;border-radius:50%;background:var(--color-primary);color:var(--color-primary-foreground);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
-      <div>
-        <div style="font-size:10px;font-weight:700;color:var(--color-muted-foreground);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;">Rider</div>
-        <div id="dmRiderName" style="font-size:13px;font-weight:700;color:var(--color-foreground);"></div>
-      </div>
-      <div style="margin-left:auto;text-align:right;">
-        <div style="font-size:10px;font-weight:700;color:var(--color-muted-foreground);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px;">Parcels</div>
-        <div id="dmCount" style="font-size:22px;font-weight:800;color:var(--color-primary);line-height:1;"></div>
-      </div>
-    </div>
-    {{-- Parcel list --}}
-    <div style="overflow-y:auto;flex:1;padding:10px 12px;scrollbar-width:thin;scrollbar-color:var(--color-border) transparent;">
-      <div id="dmParcelList" style="display:flex;flex-direction:column;gap:7px;"></div>
-    </div>
-    {{-- Footer --}}
-    <div style="padding:14px 20px;border-top:1px solid var(--color-border);display:flex;gap:10px;flex-shrink:0;">
-      <button onclick="closeDispatchModal()"
-        style="flex:1;border:1px solid var(--color-border);border-radius:8px;padding:11px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:var(--color-background);color:var(--color-foreground);">
-        Cancel
-      </button>
-      <form id="dmForm" method="POST" style="flex:2;">
-        @csrf
-        <button type="submit" id="dmSubmitBtn"
-          style="width:100%;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;background:var(--color-primary);color:var(--color-primary-foreground);">
-          Confirm dispatch →
-        </button>
-      </form>
-    </div>
-  </div>
-</div>
+<x-confirm-modal id="confirmDispatchAll" title="Dispatch all sorted parcels?" confirmLabel="Dispatch all"
+                 formAction="{{ route('delivery.assignment.dispatch-all') }}">
+  <ul class="confirm-summary-list">
+    <li>{{ $readyToDispatch }} sorted parcels will be assigned to their area riders.</li>
+    <li>Areas without an active assigned rider stay in staging.</li>
+  </ul>
+</x-confirm-modal>
+
 
 @endsection
-
-@push('scripts')
-<style>
-@keyframes dmSlideUp {
-  from { opacity:0; transform:translateY(14px); }
-  to   { opacity:1; transform:translateY(0); }
-}
-</style>
-<script>
-const carrierLabels = { jnt:'J&T', lbc:'LBC', lalamove:'Lalamove' };
-const carrierClass  = { jnt:'jnt', lbc:'lbc', lalamove:'lalamove', '':'default' };
-
-function buildParcelList(containerId, parcels) {
-  const list = document.getElementById(containerId);
-  list.innerHTML = '';
-  parcels.forEach(p => {
-    const c   = carrierClass[p.carrier] || 'default';
-    const lbl = carrierLabels[p.carrier] || (p.carrier ? p.carrier.toUpperCase() : '—');
-    const el  = document.createElement('div');
-    el.style.cssText = 'background:var(--color-background);border:1px solid var(--color-border);border-radius:9px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;';
-    el.innerHTML = `
-      <div style="min-width:0;">
-        <div style="font-size:12px;font-weight:700;color:var(--color-foreground);margin-bottom:2px;">${p.no}</div>
-        <div style="font-size:11px;color:var(--color-muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:270px;">${p.addr}</div>
-      </div>
-      <span class="carrier-pill ${c}" style="flex-shrink:0;">${lbl}</span>
-    `;
-    list.appendChild(el);
-  });
-}
-
-// ── View modal (read-only) ──
-function openViewModal(areaName, riderName, riderInitials, color, count, parcels) {
-  document.getElementById('vmDot').style.background   = color;
-  document.getElementById('vmTitle').textContent      = 'Brgy. ' + areaName;
-  document.getElementById('vmRiderAv').textContent    = riderInitials || '?';
-  document.getElementById('vmRiderName').textContent  = riderName || 'No rider assigned';
-  document.getElementById('vmCount').textContent      = count + ' parcel' + (count !== 1 ? 's' : '');
-  buildParcelList('vmList', parcels);
-  document.getElementById('viewModalBackdrop').style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-}
-function closeViewModal() {
-  document.getElementById('viewModalBackdrop').style.display = 'none';
-  document.body.style.overflow = '';
-}
-
-// ── Dispatch confirm modal ──
-function openDispatchModal(areaId, areaName, riderName, riderInitials, color, count, parcels, actionUrl) {
-  document.getElementById('dmBrgyDot').style.background  = color;
-  document.getElementById('dmTitle').textContent         = 'Brgy. ' + areaName;
-  document.getElementById('dmRiderAv').textContent       = riderInitials;
-  document.getElementById('dmRiderName').textContent     = riderName;
-  document.getElementById('dmCount').textContent         = count;
-  document.getElementById('dmForm').action               = actionUrl;
-  document.getElementById('dmSubmitBtn').textContent     = `Dispatch ${count} parcel${count !== 1 ? 's' : ''} to ${riderName} →`;
-  buildParcelList('dmParcelList', parcels);
-  document.getElementById('dispatchModalBackdrop').style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-}
-function closeDispatchModal() {
-  document.getElementById('dispatchModalBackdrop').style.display = 'none';
-  document.body.style.overflow = '';
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeDispatchModal(); closeViewModal(); }
-});
-</script>
-@endpush

@@ -2,99 +2,125 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Activity;
+use App\Http\Requests\ListFilterRequest;
+use App\Models\Area;
 use App\Models\Parcel;
-use Illuminate\Http\Request;
+use App\Models\Rider;
+use App\Services\MetricsService;
+use App\Services\ParcelStatusService;
+use Illuminate\Validation\ValidationException;
 
 class DeliveryMonitoringController extends Controller
 {
-    public function index(Request $request)
+    public function index(ListFilterRequest $request, MetricsService $metrics)
     {
-        $filter = $request->query('filter', 'all');
-        $q      = $request->query('q');
-        $areaId = $request->query('area_id');
+        $filters = $request->validated();
+        $filter = $filters['filter'] ?? 'all';
+        $q = $filters['q'] ?? null;
+        $areaId = $filters['area_id'] ?? null;
 
-        $parcels = Parcel::with(['area', 'rider'])
-            ->whereIn('status', ['assigned', 'out_for_delivery', 'delivered', 'failed'])
-            ->when($filter !== 'all', fn ($query) => $query->where('status', match ($filter) {
-                'assigned'  => 'assigned',
-                'out'       => 'out_for_delivery',
+        $query = ($filter === 'archived')
+            ? Parcel::onlyTrashed()->with(['area', 'rider'])
+            : Parcel::with(['area', 'rider'])->whereIn('status', ['assigned', 'out_for_delivery', 'delivered', 'failed']);
+
+        $parcels = $query
+            ->when($filter === 'failed', fn ($qBuilder) => $qBuilder->overdue())
+            ->when($filter !== 'all' && $filter !== 'archived' && $filter !== 'failed', fn ($qBuilder) => $qBuilder->where('status', match ($filter) {
+                'assigned' => 'assigned',
+                'out' => 'out_for_delivery',
                 'delivered' => 'delivered',
-                'failed'    => 'failed',
-                default     => $filter,
+                default => $filter,
             }))
-            ->when($q, fn ($query) => $query
-                ->where(fn ($w) => $w
-                    ->where('tracking_no', 'like', "%{$q}%")
-                    ->orWhereHas('rider', fn ($r) => $r->where('name', 'like', "%{$q}%"))))
-            ->when($areaId, fn ($query) => $query->where('area_id', $areaId))
+            ->listFilters($filters, 'assigned_at')
             ->orderByDesc('assigned_at')
             ->get();
 
-        $rail = [
-            'sorted'          => Parcel::where('status', 'sorted')->count(),
-            'assigned'        => Parcel::where('status', 'assigned')->count(),
-            'out'             => Parcel::where('status', 'out_for_delivery')->count(),
-            'delivered'       => Parcel::where('status', 'delivered')->count(),
-            'pending_confirm' => Parcel::where('status', 'delivered')->whereNull('buyer_confirmed_at')->count(),
-            'failed'          => Parcel::where('status', 'failed')->count(),
-        ];
+        $rail = $metrics->deliveryRailCounts();
+
+        $selected = $request->query('parcel')
+            ? (($filter === 'archived' ? Parcel::withTrashed() : Parcel::query())->with(['area', 'rider'])->find($request->query('parcel')))
+            : null;
+        $selected ??= $parcels->first();
+        $events = $selected ? $selected->custodyEvents() : collect();
+
+        $counts = $metrics->deliveryMonitoringCounts();
+        $counts['archived'] = Parcel::onlyTrashed()->count();
+        $activeFleet = $metrics->ridersOnDutyValue();
 
         return view('sorting.delivery-monitoring', [
+            'selected' => $selected,
+            'events' => $events,
+            'counts' => $counts,
+            'activeFleet' => $activeFleet,
             'parcels' => $parcels,
-            'rail'    => $rail,
-            'filter'  => $filter,
-            'q'       => $q,
+            'rail' => $rail,
+            'filter' => $filter,
+            'q' => $q,
             'area_id' => $areaId,
-            'allAreas'=> \App\Models\Area::orderBy('name')->get(),
+            'allAreas' => Area::orderBy('name')->get(),
+            'riders' => Rider::orderBy('name')->get(),
         ]);
     }
 
     // assigned -> out_for_delivery -> delivered
-    public function advance(Parcel $parcel)
+    public function advance(Parcel $parcel, ParcelStatusService $statusService)
     {
-        if ($parcel->status === 'assigned') {
-            $parcel->update(['status' => 'out_for_delivery', 'eta_note' => '18 min']);
-
-            Activity::create([
-                'parcel_id'   => $parcel->id,
-                'rider_id'    => $parcel->rider_id,
-                'icon'        => 'accent',
-                'description' => "<b>{$parcel->tracking_no}</b> is now out for delivery"
-                    . ($parcel->rider ? " with {$parcel->rider->name}" : ''),
-            ]);
-
-        } elseif ($parcel->status === 'out_for_delivery') {
-            $parcel->update(['status' => 'delivered', 'delivered_at' => now(), 'eta_note' => null]);
-
-            Activity::create([
-                'parcel_id'   => $parcel->id,
-                'rider_id'    => $parcel->rider_id,
-                'icon'        => 'green',
-                'description' => "<b>{$parcel->tracking_no}</b> delivered successfully"
-                    . ($parcel->rider ? " by {$parcel->rider->name}" : ''),
-            ]);
+        if ($parcel->isDelivered()) {
+            return back()->withErrors('Delivered parcels are locked.');
         }
 
-        return back();
+        $nextStatus = match ($parcel->status) {
+            'assigned' => 'out_for_delivery',
+            'out_for_delivery' => 'delivered',
+            default => null,
+        };
+
+        if (! $nextStatus) {
+            return back()->withErrors("Cannot advance parcel from status {$parcel->status}.");
+        }
+
+        try {
+            $result = $statusService->transition($parcel, $nextStatus);
+
+            $redirect = back()
+                ->with('status', $result['message'])
+                ->with('toast', $result['message']);
+
+            if (! empty($result['undo_token'])) {
+                $redirect
+                    ->with('toast_undo', 'Undo')
+                    ->with('toast_undo_url', route('shipments.undo', ['token' => $result['undo_token']]));
+            }
+
+            return $redirect;
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
     }
 
     // The rider scans the parcel at end of day to confirm it wasn't delivered.
-    public function scanUndelivered(Parcel $parcel)
+    public function scanUndelivered(Parcel $parcel, ParcelStatusService $statusService)
     {
-        $parcel->update([
-            'scanned_undelivered' => true,
-            'eta_note'            => 'Reschedule / return to hub',
-        ]);
+        if ($parcel->isDelivered()) {
+            return back()->withErrors('Delivered parcels are locked.');
+        }
 
-        Activity::create([
-            'parcel_id'   => $parcel->id,
-            'rider_id'    => $parcel->rider_id,
-            'icon'        => 'red',
-            'description' => "<b>{$parcel->tracking_no}</b> confirmed undelivered — needs reschedule"
-                . ($parcel->rider ? " (scanned by {$parcel->rider->name})" : ''),
-        ]);
+        try {
+            $result = $statusService->transition($parcel, 'failed', 'Reschedule / return to hub');
 
-        return back();
+            $redirect = back()
+                ->with('status', $result['message'])
+                ->with('toast', $result['message']);
+
+            if (! empty($result['undo_token'])) {
+                $redirect
+                    ->with('toast_undo', 'Undo')
+                    ->with('toast_undo_url', route('shipments.undo', ['token' => $result['undo_token']]));
+            }
+
+            return $redirect;
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
     }
 }

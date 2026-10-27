@@ -24,26 +24,27 @@ class HubProfile extends Model
     public static function current(): self
     {
         return static::firstOrCreate(['id' => 1], [
-            'name'           => 'Laguna Hub',
-            'contact_email'  => 'hub@santacruzhub.ph',
-            'contact_phone'  => '(049) 000-0000',
-            'address'        => 'Santa Cruz, Laguna',
-            'coverage_note'  => 'Covers Santa Cruz, Laguna, sorted barangay by barangay.',
-            'staff_name'     => 'Sorting Staff',
+            'name' => config('sorting.hub_name', 'Laguna Hub (Santa Cruz)'),
+            'contact_email' => 'hub@santacruzhub.ph',
+            'contact_phone' => '(049) 000-0000',
+            'address' => 'Santa Cruz, Laguna',
+            'coverage_note' => 'Covers Santa Cruz, Laguna, sorted barangay by barangay.',
+            'staff_name' => 'Sorting Staff',
             'staff_initials' => 'SC',
-            'staff_title'    => 'Sorting Staff',
+            'staff_title' => 'Sorting Staff',
         ]);
     }
 
     /** Derive 2-letter initials from a full name if staff_initials is blank */
     public function getDisplayInitialsAttribute(): string
     {
-        if (!empty($this->staff_initials)) {
+        if (! empty($this->staff_initials)) {
             return strtoupper(substr($this->staff_initials, 0, 2));
         }
         $words = explode(' ', trim($this->staff_name));
+
         return strtoupper(
-            substr($words[0], 0, 1) . (isset($words[1]) ? substr($words[1], 0, 1) : '')
+            substr($words[0], 0, 1).(isset($words[1]) ? substr($words[1], 0, 1) : '')
         );
     }
 }

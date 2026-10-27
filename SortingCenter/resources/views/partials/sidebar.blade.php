@@ -1,109 +1,69 @@
-<aside class="flex w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-5 text-sidebar-foreground">
+@php
+  $isPreview = request()->routeIs('preview.*');
 
-    {{-- Logo --}}
-    <div class="mb-5 px-3 pb-4 border-b border-sidebar-border">
-      <div class="text-[13px] font-bold tracking-[.18em] text-white uppercase" style="font-family:'Syncopate',sans-serif">Sorting Center</div>
-    </div>
+  // label, icon, route, preview route (null = no preview), extra routes that keep the item highlighted
+  $nav = [
+    ['Dashboard',             'dashboard', 'dashboard',           'preview.dashboard',           []],
+    ['Incoming Parcels',      'inbox',     'parcels.incoming',    'preview.parcels.incoming',    []],
+    ['Sort & Assign',         'split',     'parcels.sort',        'preview.parcels.sort',        ['delivery.assignment']],
+    ['Delivery Monitoring',   'route',     'delivery.monitoring', 'preview.delivery.monitoring', []],
+    ['Riders',                'bike',      'riders.index',        'preview.riders.index',        []],
+    ['Branches & Checklists', 'checklist', 'branches.index',      null,                          []],
+    ['Zones & Rates',         'sliders',   'zones.index',         null,                          []],
+    ['COD & Remittance',      'chart',     'cod.index',           null,                          []],
+    ['Reports',               'chart',     'reports.index',       null,                          []],
+    ['Support',               'headset',   'support.index',       null,                          ['support.create']],
+    ['Messages',              'message',   'chat.index',          null,                          []],
+    ['Account',               'account',   'account.index',       'preview.account.index',       []],
+  ];
+@endphp
+<div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+<aside id="appSidebar" aria-label="Sidebar" class="app-sidebar flex h-screen w-64 shrink-0 flex-col bg-sidebar px-4 py-5 text-sidebar-foreground">
 
-    <nav class="flex flex-1 flex-col gap-0.5 overflow-y-auto">
+  {{-- Brand --}}
+  <div class="mb-7 flex items-center justify-between gap-2">
+    <a href="{{ $isPreview ? route('preview.dashboard') : route('dashboard') }}" class="flex items-center gap-3 px-2">
+      <span class="flex size-10 items-center justify-center rounded-xl bg-primary text-white shadow-lg shadow-black/20">
+        <x-icon name="truck" :size="20" />
+      </span>
+      <span class="leading-tight">
+        <span class="block font-display text-[17px] font-bold tracking-tight text-white">Mimoo</span>
+        <span class="block text-[10px] font-semibold uppercase tracking-[.16em] text-white/60">Sorting Center</span>
+      </span>
+    </a>
+    <button type="button" id="sidebarClose" aria-label="Close navigation"
+            class="flex size-9 shrink-0 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white lg:hidden">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  {{-- Navigation --}}
+  <nav class="flex flex-1 flex-col gap-1 overflow-y-auto" aria-label="Main navigation">
+    @foreach ($nav as [$label, $icon, $route, $previewRoute, $also])
       @php
-        $navItem  = 'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors';
-        $active   = 'bg-primary text-white';
-        $inactive = 'text-white/65 hover:text-white hover:bg-white/10';
-        $isPreview = request()->routeIs('preview.*');
-        $section  = 'mt-4 mb-1 px-3 text-[10px] font-bold tracking-[.12em] uppercase text-white/35';
+        $active  = request()->routeIs($route) || ($previewRoute && request()->routeIs($previewRoute)) || request()->routeIs($also);
+        $href    = ($isPreview && $previewRoute) ? route($previewRoute) : route($route);
       @endphp
-
-      <div class="{{ $section }}">Overview</div>
-
-      <a href="{{ $isPreview ? route('preview.dashboard') : route('dashboard') }}"
-         class="{{ $navItem }} {{ request()->routeIs('dashboard') || request()->routeIs('preview.dashboard') ? $active : $inactive }}">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 opacity-80"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
-        Dashboard
+      <a href="{{ $href }}"
+         @if ($active) aria-current="page" @endif
+         class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] font-medium transition-colors
+                {{ $active ? 'sidebar-active bg-primary text-white shadow-sm' : 'text-white/75 hover:bg-white/10 hover:text-white' }}">
+        <x-icon :name="$icon" :size="17" class="shrink-0 opacity-90" />
+        <span class="min-w-0 flex-1 truncate">{{ $label }}</span>
       </a>
+    @endforeach
 
-      <div class="{{ $section }}">Parcels</div>
-
-      <a href="{{ $isPreview ? route('preview.parcels.incoming') : route('parcels.incoming') }}"
-         class="{{ $navItem }} {{ request()->routeIs('parcels.incoming') || request()->routeIs('preview.parcels.incoming') ? $active : $inactive }}">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 opacity-80"><path d="M21 8v8a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8"/><path d="M3.27 6.96 12 12l8.73-5.04"/><path d="M12 22V12"/></svg>
-        Incoming Parcels
+    @if ($isPreview)
+      <a href="{{ route('preview.index') }}" class="mt-3 flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13px] font-medium text-white/60 hover:bg-white/10 hover:text-white">
+        <x-icon name="arrow-right" :size="15" class="rotate-180" /> Back to preview
       </a>
+    @endif
+  </nav>
 
-      <a href="{{ $isPreview ? route('preview.parcels.sort') : route('parcels.sort') }}"
-         class="{{ $navItem }} {{ request()->routeIs('parcels.sort') || request()->routeIs('preview.parcels.sort') ? $active : $inactive }}">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 opacity-80"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
-        Sort Parcels
-      </a>
-
-      <a href="{{ route('delivery.assignment') }}"
-         class="{{ $navItem }} {{ request()->routeIs('delivery.assignment') ? $active : $inactive }}">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 opacity-80"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
-        Delivery Assignment
-      </a>
-
-      <a href="{{ $isPreview ? route('preview.delivery.monitoring') : route('delivery.monitoring') }}"
-         class="{{ $navItem }} {{ request()->routeIs('delivery.monitoring') || request()->routeIs('preview.delivery.monitoring') ? $active : $inactive }}">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 opacity-80"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0 0 21 18.618V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-        Delivery Monitoring
-      </a>
-
-      <div class="{{ $section }}">Team</div>
-
-      <a href="{{ $isPreview ? route('preview.riders.index') : route('riders.index') }}"
-         class="{{ $navItem }} {{ request()->routeIs('riders.index') || request()->routeIs('preview.riders.index') ? $active : $inactive }}">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 opacity-80"><circle cx="8" cy="8" r="4"/><path d="M2 21v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v2"/><circle cx="17.5" cy="9.5" r="2.5"/><path d="M22 21v-1.5a4 4 0 0 0-3-3.87"/></svg>
-        Rider Management
-      </a>
-
-      <a href="{{ route('reports.index') }}"
-         class="{{ $navItem }} {{ request()->routeIs('reports.index') ? $active : $inactive }}">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 opacity-80"><path d="M4 21V8a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/></svg>
-        Reports
-      </a>
-
-      <a href="{{ route('chat.index') }}"
-         class="{{ $navItem }} {{ request()->routeIs('chat.index') ? $active : $inactive }}">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 opacity-80"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        Chat / Messaging
-      </a>
-
-      @if ($isPreview)
-        <a href="{{ route('preview.index') }}" class="{{ $navItem }} {{ $inactive }}">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 opacity-80"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
-          Back to preview
-        </a>
-      @endif
-
-      <div class="{{ $section }}">Support</div>
-
-      <a href="{{ route('help.index') }}"
-         class="{{ $navItem }} {{ request()->routeIs('help.index') ? $active : $inactive }}">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 opacity-80"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-        Help Centre
-      </a>
-
-      <a href="{{ $isPreview ? route('preview.account.index') : route('account.index') }}"
-         class="{{ $navItem }} {{ request()->routeIs('account.index') || request()->routeIs('preview.account.index') ? $active : $inactive }}">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 opacity-80"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        Settings
-      </a>
-    </nav>
-
-    {{-- User info --}}
-    <div class="mt-4 flex items-center gap-2.5 border-t border-sidebar-border px-2 pt-4">
-      <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white">
-        {{ strtoupper(substr($hubProfile->staff_initials ?? $hubProfile->display_initials ?? 'SC', 0, 2)) }}
-      </div>
-      <div class="leading-tight min-w-0">
-        <div class="text-[12.5px] font-semibold text-white truncate">{{ $hubProfile->staff_name ?? 'Sorting Staff' }}</div>
-        <div class="text-[11px] text-white/50">{{ $hubProfile->staff_title ?? 'Sorting Staff' }}</div>
-      </div>
-      <a href="{{ $isPreview ? route('preview.account.index') : route('account.index') }}"
-         class="ml-auto shrink-0 text-white/40 hover:text-white/80 transition-colors"
-         title="Settings">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </a>
-    </div>
-
+  {{-- Logout (visual only — sign-in is turned off in this build) --}}
+  <button type="button" title="Sign-in is turned off in this build"
+          onclick="if (window.showToast) window.showToast('Sign-in is turned off in this build.', { type: 'info' })"
+          class="mt-4 flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-[13.5px] font-medium text-white/75 transition-colors hover:bg-white/10 hover:text-white">
+    <x-icon name="logout" :size="17" class="opacity-90" /> Logout
+  </button>
 </aside>

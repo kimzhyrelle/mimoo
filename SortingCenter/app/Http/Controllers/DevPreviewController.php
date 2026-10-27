@@ -41,10 +41,11 @@ class DevPreviewController extends Controller
             ['name' => 'P. Reyes', 'initials' => 'R4', 'status' => 'offline', 'vehicle_type' => 'Motorcycle', 'plate_no' => 'NEF 8820'],
         ];
 
-        $areas = collect($areaDefs)->map(fn ($a, $i) => (new Area())->forceFill($a + $schedule[$i])->forceFill(['id' => $i + 1]));
+        $areas = collect($areaDefs)->map(fn ($a, $i) => (new Area)->forceFill($a + $schedule[$i])->forceFill(['id' => $i + 1]));
         $riders = collect($riderDefs)->map(function ($r, $i) use ($areas) {
-            $rider = (new Rider())->forceFill($r + ['id' => $i + 1, 'area_id' => $i + 1])->setRelation('area', $areas[$i]);
+            $rider = (new Rider)->forceFill($r + ['id' => $i + 1, 'area_id' => $i + 1])->setRelation('area', $areas[$i]);
             $areas[$i]->setRelation('rider', $rider);
+
             return $rider;
         });
 
@@ -70,7 +71,7 @@ class DevPreviewController extends Controller
             ['icon' => 'accent', 'description' => 'Seller drop-off received, <b>3 parcels</b> awaiting scan', 'mins' => 12],
             ['icon' => 'red', 'description' => '<b>#0997</b> delivery failed — no answer', 'mins' => 22],
         ];
-        $recentActivity = collect($activityDefs)->map(fn ($a) => (new Activity())->forceFill([
+        $recentActivity = collect($activityDefs)->map(fn ($a) => (new Activity)->forceFill([
             'icon' => $a['icon'], 'description' => $a['description'], 'created_at' => now()->subMinutes($a['mins']),
         ]));
 
@@ -80,7 +81,7 @@ class DevPreviewController extends Controller
             ['no' => '#1001', 'area' => 1, 'status' => 'sorted', 'mins' => 20],
             ['no' => '#1002', 'area' => 0, 'status' => 'sorted', 'mins' => 15],
         ];
-        $needsAttention = collect($needsDefs)->map(fn ($p, $i) => (new Parcel())->forceFill([
+        $needsAttention = collect($needsDefs)->map(fn ($p, $i) => (new Parcel)->forceFill([
             'id' => $i + 1, 'tracking_no' => $p['no'], 'status' => $p['status'], 'received_at' => now()->subMinutes($p['mins']),
         ])->setRelation('area', $areas[$p['area']]));
 
@@ -92,6 +93,11 @@ class DevPreviewController extends Controller
             'assigned' => [10, 15, 13, 17, 14, 6, 2],
             'areas' => $areas, 'riders' => $riders,
             'recentActivity' => $recentActivity, 'needsAttention' => $needsAttention,
+            'deliveredToday' => 14, 'onTimePct' => 98.2, 'ridersActive' => 3, 'priorityCount' => 2, 'slaPct' => 99.1,
+            'hourly' => collect([2, 4, 7, 11, 16, 21, 24, 22, 18, 15, 12, 9, 6, 4, 3, 2, 1])
+                ->map(fn ($c, $i) => ['hour' => 6 + $i, 'count' => $c])->all(),
+            'statusBreakdown' => ['Delivered' => 14, 'Out for Delivery' => 5, 'In Transit' => 4, 'To Sort' => 7],
+            'recentShipments' => $needsAttention,
         ]);
     }
 
@@ -104,13 +110,14 @@ class DevPreviewController extends Controller
             ['no' => '#1012', 'seller' => 'CraftedByLen', 'via' => 1, 'mins' => 6],
             ['no' => '#1013', 'seller' => 'Bahay Kubo Snacks', 'via' => 2, 'mins' => 3],
         ];
-        $parcels = collect($defs)->map(fn ($p, $i) => (new Parcel())->forceFill([
+        $parcels = collect($defs)->map(fn ($p, $i) => (new Parcel)->forceFill([
             'id' => $i + 1, 'tracking_no' => $p['no'], 'seller_name' => $p['seller'], 'received_at' => now()->subMinutes($p['mins']),
         ])->setRelation('droppedOffBy', $riders[$p['via']]));
 
         return view('sorting.incoming-parcels', [
             'parcels' => $parcels, 'awaitingScan' => $parcels->count(), 'scannedToday' => 5,
             'ridersDroppingOff' => 3, 'areas' => $areas, 'q' => null,
+            'selected' => $parcels->first(), 'recentScanned' => $parcels, 'shiftRate' => 428,
         ]);
     }
 
@@ -126,15 +133,25 @@ class DevPreviewController extends Controller
             ['no' => '#1004', 'addr' => 'Brgy. Poblacion I', 'area' => 0, 'rider' => 0, 'status' => 'assigned'],
         ];
         $parcels = collect($defs)->map(function ($p, $i) use ($areas, $riders) {
-            $parcel = (new Parcel())->forceFill(['id' => $i + 1, 'tracking_no' => $p['no'], 'address' => $p['addr'], 'status' => $p['status'], 'carrier' => 'jnt']);
-            if (isset($p['area'])) $parcel->setRelation('area', $areas[$p['area']]);
-            if (isset($p['rider'])) $parcel->setRelation('rider', $riders[$p['rider']]);
+            $parcel = (new Parcel)->forceFill(['id' => $i + 1, 'tracking_no' => $p['no'], 'address' => $p['addr'], 'status' => $p['status'], 'carrier' => 'jnt']);
+            if (isset($p['area'])) {
+                $parcel->setRelation('area', $areas[$p['area']]);
+            }
+            if (isset($p['rider'])) {
+                $parcel->setRelation('rider', $riders[$p['rider']]);
+            }
+
             return $parcel;
         });
 
         return view('sorting.sort-parcels', [
             'parcels' => $parcels, 'areas' => $areas,
             'awaitingSort' => 2, 'areaDetermined' => 2, 'assignedToday' => 1, 'ridersOnShift' => 3, 'q' => null,
+            'riders' => $riders, 'stagedParcels' => 12,
+            'clusters' => $areas->map(fn ($a, $i) => (object) [
+                'area' => $a, 'count' => 38 - $i * 7, 'pending' => $i % 2 === 0 ? 5 : 0, 'assigned' => 3,
+                'weight' => 42.5 - $i * 6.1, 'oldest' => now()->subMinutes(30 * ($i + 1)),
+            ])->values(),
         ]);
     }
 
@@ -148,7 +165,7 @@ class DevPreviewController extends Controller
             ['no' => '#1009', 'addr' => 'Brgy. Palasan', 'area' => 2, 'rider' => 2, 'status' => 'delivered'],
             ['no' => '#0997', 'addr' => 'Brgy. Gatid', 'area' => 3, 'rider' => 3, 'status' => 'failed'],
         ];
-        $parcels = collect($defs)->map(fn ($p, $i) => (new Parcel())->forceFill([
+        $parcels = collect($defs)->map(fn ($p, $i) => (new Parcel)->forceFill([
             'id' => $i + 1, 'tracking_no' => $p['no'], 'address' => $p['addr'], 'status' => $p['status'],
             'eta_note' => $p['eta'] ?? null, 'scanned_undelivered' => false,
         ])->setRelation('area', $areas[$p['area']])->setRelation('rider', $riders[$p['rider']]));
@@ -169,7 +186,7 @@ class DevPreviewController extends Controller
             ['name' => 'K. Torres', 'vehicle_type' => 'Motorcycle', 'plate_no' => 'NKL 7742', 'or_cr_verified' => true, 'license_status' => 'pending', 'days' => 1],
             ['name' => 'R. Manalo', 'vehicle_type' => 'Tricycle', 'plate_no' => 'TRY 0511', 'or_cr_verified' => false, 'license_status' => 'pending', 'days' => 0],
         ];
-        $pending = collect($appDefs)->map(fn ($a, $i) => (new RiderApplication())->forceFill([
+        $pending = collect($appDefs)->map(fn ($a, $i) => (new RiderApplication)->forceFill([
             'id' => $i + 1, 'name' => $a['name'], 'vehicle_type' => $a['vehicle_type'], 'plate_no' => $a['plate_no'],
             'or_cr_verified' => $a['or_cr_verified'], 'license_status' => $a['license_status'],
             'applied_on' => now()->subDays($a['days']),
@@ -185,7 +202,7 @@ class DevPreviewController extends Controller
     {
         [$areas] = $this->fakeWorld();
 
-        $hub = (new HubProfile())->forceFill([
+        $hub = (new HubProfile)->forceFill([
             'id' => 1, 'name' => 'Laguna Hub', 'contact_email' => 'hub@santacruzhub.ph',
             'contact_phone' => '(049) 000-0000', 'address' => 'Santa Cruz, Laguna',
             'coverage_note' => 'Covers Santa Cruz, Laguna, sorted barangay by barangay.',

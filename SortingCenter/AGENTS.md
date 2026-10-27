@@ -1,121 +1,102 @@
-<laravel-boost-guidelines>
-=== foundation rules ===
+# AGENTS.md
 
-# Laravel Boost Guidelines
+This file is the single source of truth for any AI agent (GitHub Copilot, etc.) working in this repository. Read it fully before doing anything. If a prompt conflicts with this file, follow this file and say so in your reply.
 
-## Foundational Context
+## 0. Prime directive
 
-This application is a Laravel application running on PHP 8.5. Always use the APIs that match the installed major version of each package — do not assume a version.
+**Do not break what already works.** This project has passed four UI stabilization passes and a full end-to-end self-test. Your job is to make the smallest change that satisfies the request, nothing more.
 
-Before relying on a package's API, confirm its installed version:
-- PHP packages: run `composer show --direct` to list direct dependencies with versions, or `composer show <vendor/package>` for a single package.
-- JS packages: check `package.json` for the installed versions.
+- Do only what the prompt asks. No "while I'm here" cleanups, refactors, renames, or reformatting of untouched code.
+- If a request is ambiguous or would touch many files, stop and ask instead of guessing.
+- Never delete or rewrite working code just because you would have written it differently.
+- Never rewrite a whole file when a targeted edit will do.
 
-## Conventions
+## 1. Project snapshot (what is already built)
 
-- You must follow all existing code conventions used in this application. When creating or editing a file, check sibling files for the correct structure, approach, and naming.
-- Use descriptive names for variables and methods. For example, `isRegisteredForDiscounts`, not `discount()`.
-- Check for existing components to reuse before writing a new one.
+Laravel application (Sorting Center module) with Blade views styled with Tailwind v4 and shadcn-style design tokens. Confirm real versions with `composer show --direct` and `package.json` before using any package API; do not assume.
 
-## Verification Scripts
+Completed and verified:
 
-- Do not create verification scripts or tinker when tests cover that functionality and prove they work. Unit and feature tests are more important.
+- **Stage 1: Dashboard.** Real queries, Chart.js charts (version 4.5.1, initialization is guarded if the library is unavailable).
+- **Stage 2: Incoming Parcels, Sort Parcels, Delivery Monitoring, Rider Management.** Drop-off queue and scanning, area detection from address, one rider per barangay, status rail, rider application approve/disapprove, on/off shift.
+- **Stage 3: Tailwind v4 design tokens** in `resources/css/app.css`. Shared layout (sidebar, topbar) and dashboard use token classes (`bg-card`, `bg-primary`, `text-muted-foreground`, etc.).
+- **Stage 4: Login removed.** Pages are public by design. `users.role` and `EnsureSortingRole` are unused leftovers kept on purpose.
+- **Stage 5: Account page** backed by a single-row `hub_profiles` table (`HubProfile::current()`).
+- **Stabilization pass 1:** one shared modal system (`resources/js/modals.js`).
+- **Stabilization pass 2:** Reports render type-specific KPIs, charts, and tables; PDF/CSV export respects active filters.
+- **Stabilization pass 3:** responsive layout (off-canvas sidebar via `resources/js/sidebar.js`, single-pane chat on phones) and dark-mode contrast fixes.
+- **Stabilization pass 4:** full end-to-end self-test passed (20 pages x 3 viewports, 35 workflow checks, full test suite 92 passed).
 
-## Application Structure & Architecture
+Next planned work (only when explicitly requested): production hardening (authentication, deployment, backups) and real courier/notification integrations.
 
-- Stick to existing directory structure; don't create new base folders without approval.
-- Do not change the application's dependencies without approval.
+## 2. Protected areas (do not modify unless the prompt explicitly names them)
 
-## Frontend Bundling
+These were debugged and verified. Changing them is the most likely way to cause regressions.
 
-- If a frontend change doesn't show in the UI or you get a "Unable to locate file in Vite manifest" error, run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.
+| Area | Why it is protected |
+| --- | --- |
+| `resources/js/modals.js` and `components/confirm-modal.blade.php`, `components/disapprove-modal.blade.php` | The only modal system. Handles Escape, backdrop, scroll lock, focus restore, single-open, confirm gating. |
+| `resources/js/sidebar.js` and the sidebar/topbar in `layouts/sorting.blade.php` | Mobile drawer behavior (`inert`, `aria-*`, `body.sidebar-locked`). |
+| `resources/css/app.css` design tokens (`:root`, `.dark`) | Contrast values were tuned (for example `--primary` `#3f68df`, `.dark .btn-danger` `#b91c1c`). |
+| `ReportService` and `ReportsController` | Inclusive day-count and previous-period logic, filter handling, KPI sets. |
+| Existing migrations | Never edit a migration that has already been run. Add a new migration instead. |
+| Route names | Views rely on them (for example `assignments.bulk`, `parcels.sort.bulk-archive`). Do not rename. |
+| Existing tests in `tests/` | Do not delete, weaken, skip, or rewrite assertions to make a failure go away. Fix the code instead. |
 
-## Documentation Files
+## 3. Hard rules (never do these)
 
-- You must only create documentation files if explicitly requested by the user.
+- Do not add, remove, or upgrade dependencies (`composer.json`, `package.json`, lock files) without approval.
+- Do not create new top-level folders. Use the existing structure.
+- Do not create documentation files (`*.md`, docs, notes) unless the prompt explicitly asks. Do not edit this file or `README.md` unless asked.
+- Do not re-introduce login, auth middleware, or a `guest`/`auth` route group unless asked.
+- Do not re-introduce a KYC lightbox, per-page modal JavaScript, or any second modal system.
+- Do not use `href="#"` for actions. Use real routes or buttons.
+- Do not load libraries from a CDN without verifying the exact URL and version exist. Prefer the installed npm package.
+- Do not use inline `style` or hardcoded hex colors when a design token or Tailwind token class exists.
+- Do not commit secrets, `.env` values, or database dumps.
+- Do not run destructive commands (`migrate:fresh`, `db:wipe`, dropping tables, `git reset --hard`, force push) against any real database or branch.
+- Do not create throwaway verification scripts or tinker sessions when a test can prove the behavior.
 
-=== boost rules ===
+## 4. Conventions to follow
 
-# Laravel Boost
+**Before editing:** read sibling files and match their structure, naming, and approach. Check for an existing component or partial before writing a new one.
 
-## Project Rules
+**PHP**
+- Always use curly braces for control structures.
+- Use constructor property promotion; no empty zero-parameter `__construct()`.
+- Explicit return types and parameter type hints on every method.
+- Enum keys in TitleCase.
+- Prefer PHPDoc blocks (with array shapes) over inline comments.
+- Descriptive names (`isRegisteredForDiscounts`, not `discount()`).
 
-- This project contains committed, area-grouped rules in `.ai/rules` when that directory exists, including path-scoped framework guidelines under `.ai/rules/boost`. Before you enter plan mode or create/edit any file, you MUST first: open @.ai/rules/index.md (it maps file globs to rule files), read every rule file whose globs cover the path(s) in scope, and run `grep -rin 'keyword' .ai/rules` to catch what a path match alone misses. Do not write code until you have read and are following every matching rule. If `.ai/rules` does not exist, continue without it.
+**Laravel**
+- Create files with `php artisan make:...` and pass `--no-interaction`.
+- New models get a factory and seeder.
+- Use named routes and `route()` for links.
+- For APIs, follow existing convention (Eloquent API Resources if existing routes use them).
+- Run Artisan commands directly (`php artisan route:list`, etc.) to inspect before assuming.
 
-## Artisan
+**Frontend**
+- Tailwind v4 utility classes with the existing token classes. Support both light and dark mode.
+- Every page must stay usable from 390px phones to desktop with no document-level horizontal overflow. Wide tables scroll inside their own wrapper.
+- Modals only for actions that change data or status (dispatch, archive, checklist, advance, disapprove). Never for viewing details, sort/filter/search, Export, Generate Report, or normal Account saves.
+- Modals must be hidden on page load. Never force `display:flex` on an element that also uses `.hidden`.
+- Destructive confirm buttons use the solid `.btn-danger` style.
+- If a frontend change does not show up, run `npm run build` (or ask the user to run `npm run dev` / `composer run dev`).
 
-- Run Artisan commands directly via the command line (e.g., `php artisan route:list`). Use `php artisan list` to discover available commands and `php artisan [command] --help` to check parameters.
-- Inspect routes with `php artisan route:list`. Filter with: `--method=GET`, `--name=users`, `--path=api`, `--except-vendor`, `--only-vendor`.
-- Read configuration values using dot notation: `php artisan config:show app.name`, `php artisan config:show database.default`. Or read config files directly from the `config/` directory.
+## 5. Required workflow for every task
 
-## Tinker
+1. Restate the task in one or two sentences and list the files you plan to touch.
+2. Check `.ai/rules` if that directory exists (open `.ai/rules/index.md` and follow every rule whose glob matches the files in scope).
+3. Make the smallest possible change.
+4. If you changed PHP, run `vendor/bin/pint --dirty --format agent`.
+5. Run the narrowest relevant tests: `php artisan test --compact <file or --filter=name>`. Add or update a feature test for new behavior (`php artisan make:test --phpunit Name`, factories for model setup).
+6. If you changed Blade or JS, run `npm run build` and `php artisan view:cache`.
+7. Before finishing, run the full suite once: `php artisan test --compact`. It must stay green (currently 92 passed, 841 assertions). If anything fails that was passing before, fix it or revert your change. Do not leave the repo red.
+8. In your final reply, list: files changed, what changed, tests run and results, and anything you were unsure about.
 
-- Execute PHP in app context for debugging and testing code. Do not create models without user approval, prefer tests with factories instead. Prefer existing Artisan commands over custom tinker code.
-- Always use single quotes to prevent shell expansion: `php artisan tinker --execute 'Your::code();'`
-  - Double quotes for PHP strings inside: `php artisan tinker --execute 'User::where("active", true)->count();'`
+## 6. If something goes wrong
 
-=== php rules ===
-
-# PHP
-
-- Always use curly braces for control structures, even for single-line bodies.
-- Use PHP 8 constructor property promotion: `public function __construct(public GitHub $github) { }`. Do not leave empty zero-parameter `__construct()` methods unless the constructor is private.
-- Use explicit return type declarations and type hints for all method parameters: `function isAccessible(User $user, ?string $path = null): bool`
-- Use TitleCase for Enum keys: `FavoritePerson`, `BestLake`, `Monthly`.
-- Prefer PHPDoc blocks over inline comments. Only add inline comments for exceptionally complex logic.
-- Use array shape type definitions in PHPDoc blocks.
-
-=== deployments rules ===
-
-# Deployment
-
-- Laravel can be deployed using [Laravel Cloud](https://cloud.laravel.com/), which is the fastest way to deploy and scale production Laravel applications.
-
-=== laravel/core rules ===
-
-# Do Things the Laravel Way
-
-- Use `php artisan make:` commands to create new files (i.e. migrations, controllers, models, etc.). You can list available Artisan commands using `php artisan list` and check their parameters with `php artisan [command] --help`.
-- If you're creating a generic PHP class, use `php artisan make:class`.
-- Pass `--no-interaction` to all Artisan commands to ensure they work without user input. You should also pass the correct `--options` to ensure correct behavior.
-
-### Model Creation
-
-- When creating new models, create useful factories and seeders for them too. Ask the user if they need any other things, using `php artisan make:model --help` to check the available options.
-
-## APIs & Eloquent Resources
-
-- For APIs, default to using Eloquent API Resources and API versioning unless existing API routes do not, then you should follow existing application convention.
-
-## URL Generation
-
-- When generating links to other pages, prefer named routes and the `route()` function.
-
-## Testing
-
-- When creating models for tests, use the factories for the models. Check if the factory has custom states that can be used before manually setting up the model.
-- Faker: Use methods such as `$this->faker->word()` or `fake()->randomDigit()`. Follow existing conventions whether to use `$this->faker` or `fake()`.
-- When creating tests, make use of `php artisan make:test [options] {name}` to create a feature test, and pass `--unit` to create a unit test. Most tests should be feature tests.
-
-=== pint/core rules ===
-
-# Laravel Pint Code Formatter
-
-- If you have modified any PHP files, you must run `vendor/bin/pint --dirty --format agent` before finalizing changes to ensure your code matches the project's expected style.
-- Do not run `vendor/bin/pint --test --format agent`, simply run `vendor/bin/pint --format agent` to fix any formatting issues.
-
-=== phpunit/core rules ===
-
-# PHPUnit
-
-- This project uses PHPUnit. Create tests with `php artisan make:test --phpunit {name}`.
-- Do not include the test suite directory in `{name}`. Use `SomeFeatureTest`, not `Feature/SomeFeatureTest`.
-- Read the `testing-best-practices` skill for guidance on coverage, naming, structure, dependency isolation, and review.
-
-## Running Tests
-
-- Run the narrowest set of tests that covers the change. Pass a file path or `--filter=testName` to `php artisan test --compact`.
-- Rerun a test after each change to it.
-- Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
-
-</laravel-boost-guidelines>
+- If your change breaks a test, a page, or a build, revert that change and report it. Do not stack more edits on top of a broken state.
+- If a fix requires touching a protected area, dependencies, or migrations, stop and ask first.
+- Never claim something was tested if it was not run. Say plainly what was and was not verified.

@@ -21,9 +21,11 @@ return new class extends Migration
         // Add the "dropped_off" stage before "awaiting_sort" (the first station in
         // Incoming Parcels, before a parcel is scanned). Raw ALTER since Laravel's
         // schema builder can't append an enum value in place.
-        DB::statement("ALTER TABLE parcels MODIFY status ENUM(
-            'dropped_off','awaiting_sort','sorted','assigned','out_for_delivery','delivered','failed'
-        ) NOT NULL DEFAULT 'dropped_off'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE parcels MODIFY status ENUM(
+                'dropped_off','awaiting_sort','sorted','assigned','out_for_delivery','delivered','failed'
+            ) NOT NULL DEFAULT 'dropped_off'");
+        }
     }
 
     public function down(): void
@@ -33,8 +35,10 @@ return new class extends Migration
             $table->dropColumn(['seller_name', 'carrier', 'scanned_undelivered', 'eta_note', 'buyer_confirmed_at']);
         });
 
-        DB::statement("ALTER TABLE parcels MODIFY status ENUM(
-            'awaiting_sort','sorted','assigned','out_for_delivery','delivered','failed'
-        ) NOT NULL DEFAULT 'awaiting_sort'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE parcels MODIFY status ENUM(
+                'awaiting_sort','sorted','assigned','out_for_delivery','delivered','failed'
+            ) NOT NULL DEFAULT 'awaiting_sort'");
+        }
     }
 };

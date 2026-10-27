@@ -6,52 +6,55 @@ use App\Models\Activity;
 use App\Models\Area;
 use App\Models\Parcel;
 use App\Models\Rider;
+use App\Services\MetricsService;
+use App\Services\ParcelStatusService;
 use Illuminate\Support\Carbon;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(MetricsService $metrics, ParcelStatusService $statusService)
     {
         $today = Carbon::today();
 
-        $receivedToday = Parcel::whereDate('received_at', $today)->count();
-        $receivedYesterday = Parcel::whereDate('received_at', $today->copy()->subDay())->count();
+        $receivedToday = $metrics->parcelsTotalTodayValue();
+        $receivedYesterday = $metrics->parcelsReceivedYesterday();
 
-        $awaitingSort = Parcel::where('status', 'awaiting_sort')->count();
-        $assignedToRiders = Parcel::whereIn('status', ['assigned', 'out_for_delivery'])->count();
-        $deliveryFailed = Parcel::where('status', 'failed')->count();
+        $awaitingSort = $metrics->parcelsAwaitingSortValue();
+        $assignedToRiders = $metrics->parcelsAssignedToRidersValue();
+        $deliveryFailed = $metrics->overdueCountValue();
 
-        // Parcel volume this week: received vs. assigned, grouped Mon..Sun
-        $weekStart = $today->copy()->startOfWeek();
-        $labels = [];
-        $received = [];
-        $assigned = [];
-        for ($i = 0; $i < 7; $i++) {
-            $day = $weekStart->copy()->addDays($i);
-            $labels[] = $day->format('D');
-            $received[] = Parcel::whereDate('received_at', $day)->count();
-            $assigned[] = Parcel::whereDate('assigned_at', $day)->count();
-        }
+        $deliveredToday = $metrics->parcelsDeliveredTodayValue();
+        $onTimePct = $metrics->onTimePercentage();
 
+        $ridersActive = $metrics->ridersOnDutyValue();
+        $priorityCount = $metrics->priorityCount();
+        $slaPct = $metrics->slaPercentage();
+
+        $hourly = $metrics->hourlyProcessed($today);
+        $hourly_processed = $hourly;
+
+        $statusBreakdown = $metrics->statusBreakdown();
+        $status_breakdown = $metrics->statusBreakdownList();
+
+        $recentShipments = Parcel::with('area')->orderByDesc('received_at')->limit(50)->get();
+        $recentActivity = Activity::latest()->limit(4)->get();
+
+        // Feed formatted for Kiro: [{icon, text, url, at}]
+        $activity = $statusService->getActivityFeed(10);
+
+        // Kept for the Rider status widgets / legacy partials
         $areas = Area::withCount([
             'parcels as parcel_count' => fn ($q) => $q->whereDate('received_at', $today),
         ])->orderByDesc('parcel_count')->get();
-
         $riders = Rider::with('area')->orderBy('name')->get();
-
-        $recentActivity = Activity::latest()->limit(4)->get();
-
-        $needsAttention = Parcel::with('area')
-            ->whereIn('status', ['awaiting_sort', 'sorted'])
-            ->orderBy('received_at')
-            ->limit(4)
-            ->get();
 
         return view('sorting.dashboard', compact(
             'receivedToday', 'receivedYesterday', 'awaitingSort',
             'assignedToRiders', 'deliveryFailed',
-            'labels', 'received', 'assigned',
-            'areas', 'riders', 'recentActivity', 'needsAttention'
+            'deliveredToday', 'onTimePct', 'ridersActive', 'priorityCount', 'slaPct',
+            'hourly', 'hourly_processed', 'statusBreakdown', 'status_breakdown',
+            'recentShipments', 'recentActivity', 'activity',
+            'areas', 'riders'
         ));
     }
 }

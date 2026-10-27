@@ -1,316 +1,222 @@
 @extends('layouts.sorting')
 
 @section('title', 'Delivery Monitoring')
-@section('subtitle', "Track every assigned parcel from the sorting hub to the buyer's door.")
 
-@push('styles')
-@include('partials.legacy-styles')
-<style>
-  .pill.live{color:var(--ok-600);border-color:rgba(47,143,91,.35);background:var(--ok-100);}
-  .pill.live .liveDot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok-600);margin-right:5px;}
-  .rail{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px;}
-  .rail-card{background:var(--card,#fff);border:1px solid var(--line);border-radius:12px;padding:14px 16px;position:relative;}
-  .rail-card .card-top{display:flex;align-items:center;gap:5px;margin-bottom:6px;}
-  .rail-card .card-top svg{opacity:.6;flex-shrink:0;}
-  .rail-card .card-lbl{font-size:11px;font-weight:600;color:var(--text-600);line-height:1;text-transform:uppercase;letter-spacing:.06em;}
-  .rail-card .n{font-size:24px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;color:var(--text-900);}
-  .rail-card .bar{height:3px;border-radius:2px;margin-top:10px;}
-  .rail-card.assigned .bar{background:oklch(0.55 0.12 230);}
-  .rail-card.out .bar{background:var(--pend-600);}
-  .rail-card.delivered .bar{background:var(--ok-600);}
-  .rail-card.failed .bar{background:var(--bad-600);}
-  .rail-card.sorted .bar{background:rgba(255,255,255,.4);}
-  .rail-card.pending .bar{background:var(--text-400);}
-  .rail-card.sorted{background:var(--primary,#4B2E7E);border-color:var(--primary,#4B2E7E);}
-  .rail-card.sorted .n{color:#fff;}
-  .rail-card.sorted .card-lbl{color:rgba(255,255,255,.7);}
-  .rail-card.sorted .card-top svg{stroke:#fff !important;opacity:.8;}
-  .head-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-  .filter-tabs{display:flex;gap:6px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:3px;flex-wrap:wrap;}
-  .ftab{font-size:11.5px;font-weight:600;color:var(--text-600);padding:6px 11px;border-radius:6px;cursor:pointer;text-decoration:none;}
-  .ftab.active{background:var(--card,#fff);color:var(--text-900);box-shadow:0 1px 2px rgba(0,0,0,.06);}
-  .search{display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text-600);min-width:200px;}
-  .search input{border:none;background:transparent;outline:none;font-size:12.5px;width:100%;font-family:inherit;color:var(--text-900);}
-  .addr .city{font-weight:600;font-size:13px;color:var(--text-900);}
-  .addr .prov{font-size:11.5px;color:var(--text-600);}
-  .area-chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px;color:#fff;background:var(--ink-700);}
-  .rider{display:flex;align-items:center;gap:8px;}
-  .rider .ravatar{width:24px;height:24px;border-radius:50%;background:var(--ink-800);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;}
-  .rider .rname{font-size:12.5px;font-weight:600;color:var(--text-900);}
-  .badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;white-space:nowrap;}
-  .badge.blue{background:#E6F0FB;color:#2A6FBD;}
-  .badge.gold{background:var(--pend-100);color:var(--pend-600);}
-  .badge.ok{background:var(--ok-100);color:var(--ok-600);}
-  .badge.bad{background:var(--bad-100);color:var(--bad-600);}
-  .progress{display:flex;align-items:center;gap:3px;}
-  .progress .seg{width:16px;height:4px;border-radius:2px;background:var(--line);}
-  .progress .seg.on{background:var(--ok-600);}
-  .progress .seg.on.gold{background:var(--pend-600);}
-  .progress .seg.on.bad{background:var(--bad-600);}
-  .eta{font-size:12px;color:var(--text-600);}
-  .link-btn{font-size:12px;font-weight:600;color:var(--ink-700);cursor:pointer;background:none;border:none;font-family:inherit;}
-  .note{background:var(--paper);color:var(--accent-600);border:1px solid rgba(124,79,224,.4);border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
-  @media (max-width: 1100px){ .rail{grid-template-columns:repeat(3,1fr);} }
-</style>
-@endpush
+@php
+  $isPreview = request()->routeIs('preview.*');
+  $selected = $selected ?? $parcels->first();
+  $counts = $counts ?? [
+    'all' => $parcels->count(),
+    'assigned' => $parcels->where('status', 'assigned')->count(),
+    'out' => $parcels->where('status', 'out_for_delivery')->count(),
+    'delivered' => $parcels->where('status', 'delivered')->count(),
+    'failed' => $parcels->where('status', 'failed')->count(),
+  ];
+  $activeFleet = $activeFleet ?? $parcels->pluck('rider_id')->filter()->unique()->count();
+  $completion = $counts['all'] > 0 ? round($counts['delivered'] / $counts['all'] * 100, 1) : 0;
+  // Archive count fallback — TODO(antigravity): wire archived parcel count
+  $counts['archived'] = $counts['archived'] ?? 0;
+  $carrierLabels = ['jnt' => 'J&T Express', 'lbc' => 'LBC', 'lalamove' => 'Lalamove'];
+  $filters = [
+    'all'       => ['All', null],
+    'assigned'  => ['At Hub', null],
+    'out'       => ['Out for Delivery', null],
+    'delivered' => ['Delivered', null],
+    'failed'    => ['Overdue', 'alert'],
+    'archived'  => ['Archived', null],
+  ];
+
+  // Custody timeline for the selected parcel, newest first
+  $events = collect();
+  if ($selected) {
+    if ($selected->delivered_at) { $events->push(['t' => $selected->delivered_at, 'title' => 'Delivered', 'body' => 'Handed over to the consignee'.($selected->rider ? ' by '.$selected->rider->name : '')]); }
+    if ($selected->assigned_at) {
+      $out = in_array($selected->status, ['out_for_delivery', 'delivered'], true);
+      $events->push(['t' => $selected->assigned_at, 'title' => $out ? 'Dispatched' : 'Assigned', 'body' => ($out ? 'Out for delivery with ' : 'Assigned to ').($selected->rider->name ?? 'a rider')]);
+    }
+    if ($selected->sorted_at) { $events->push(['t' => $selected->sorted_at, 'title' => 'Sorted', 'body' => 'Allocated to '.\App\Models\Parcel::binFor($selected->area).($selected->area ? ' ('.$selected->area->name.')' : '')]); }
+    if ($selected->received_at) { $events->push(['t' => $selected->received_at, 'title' => 'Inbound Scan', 'body' => 'Received at the hub dock']); }
+    $events = $events->sortByDesc(fn ($e) => $e['t']->timestamp)->values();
+  }
+@endphp
 
 @section('content')
 
-  <div class="rail">
-    <div class="rail-card sorted">
-      <div class="card-top"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg><div class="card-lbl">Sorted</div></div>
-      <div class="n">{{ $rail['sorted'] }}</div><div class="bar"></div>
+  <x-page-head eyebrow="Live Dispatch Feed" title="Delivery Monitoring" sub="Track active courier deliveries and station movement across the hub's service area.">
+    <x-slot:meta>{{ $hubProfile->name ?? 'Hub' }} • All lanes</x-slot:meta>
+    <div class="card flex items-center divide-x divide-border">
+      <div class="px-5 py-3"><div class="label">Active Fleet</div><div class="h-display text-[17px]">{{ $activeFleet }} Riders</div></div>
+      <div class="px-5 py-3"><div class="label">Completion</div><div class="h-display text-[17px] text-primary">{{ $completion }}%</div></div>
+      <div class="px-5 py-3"><div class="label">Tracked Parcels</div><div class="h-display text-[17px]">{{ $counts['all'] }}</div></div>
     </div>
-    <div class="rail-card assigned">
-      <div class="card-top"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2A6FBD" stroke-width="2"><circle cx="8" cy="8" r="4"/><path d="M2 21v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v2"/></svg><div class="card-lbl">Assigned to rider</div></div>
-      <div class="n">{{ $rail['assigned'] }}</div><div class="bar"></div>
-    </div>
-    <div class="rail-card out">
-      <div class="card-top"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b8791a" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0 0 21 18.618V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg><div class="card-lbl">Out for delivery</div></div>
-      <div class="n">{{ $rail['out'] }}</div><div class="bar"></div>
-    </div>
+  </x-page-head>
+
+  @include('partials.flash')
+
+  {{-- ── Filter pills ── --}}
+  <div class="mb-4 flex flex-wrap items-center gap-2.5">
+    @foreach ($filters as $key => [$label, $icon])
+      @php $on = ($filter ?? 'all') === $key; @endphp
+      <a href="{{ $isPreview ? '#' : route('delivery.monitoring', array_filter(['filter' => $key, 'q' => $q ?? null, 'area_id' => $area_id ?? null, 'rider' => request('rider'), 'sort' => request('sort'), 'from' => request('from'), 'to' => request('to')])) }}"
+         class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold transition
+                {{ $on ? 'bg-primary text-white shadow-sm' : ($key === 'failed' ? 'bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300' : 'bg-card text-foreground hover:bg-secondary') }}">
+        @if ($icon)<x-icon :name="$icon" :size="14" />@endif
+        {{ $label }}
+        <span class="rounded-full px-2 py-0.5 text-[11px] {{ $on ? 'bg-white/20' : 'bg-secondary text-muted-foreground' }}">{{ $counts[$key] }}</span>
+      </a>
+    @endforeach
   </div>
 
-  {{-- Outcome summary cards --}}
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">
-    <div class="rail-card delivered">
-      <div class="card-top"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2f8f5b" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><div class="card-lbl">Delivered</div></div>
-      <div class="n">{{ $rail['delivered'] }}</div><div class="bar"></div>
-    </div>
-    <div class="rail-card pending">
-      <div class="card-top"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9a93ac" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div class="card-lbl">Pending confirm</div></div>
-      <div class="n">{{ $rail['pending_confirm'] }}</div><div class="bar"></div>
-    </div>
-    <div class="rail-card failed">
-      <div class="card-top"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c0432f" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><div class="card-lbl">Delivery failed</div></div>
-      <div class="n">{{ $rail['failed'] }}</div><div class="bar"></div>
-    </div>
+  {{-- ── List toolbar ── --}}
+  <div class="delivery-monitoring-toolbar">
+    <x-list-toolbar
+      placeholder="Search parcel ID, buyer, address or rider…"
+      :areas="$allAreas ?? collect()"
+      :riders="$riders ?? collect()"
+      :sorts="['assigned_newest' => 'Newest assigned', 'assigned_oldest' => 'Oldest assigned']"
+      :extra="['filter' => $filter ?? 'all']"
+      show-dates
+    />
   </div>
 
-  <div class="panel">
-    <div class="panel-head">
-      <div><h2>Parcels in transit</h2><div class="sub">Status follows: Assigned → Out for delivery → Delivered → Completed</div></div>
-      <div class="head-actions">
-        <div class="filter-tabs">
-          @foreach (['all'=>'All','assigned'=>'Assigned','out'=>'Out for delivery','delivered'=>'Delivered','failed'=>'Failed'] as $key => $label)
-            <a href="{{ route('delivery.monitoring', array_filter(['filter'=>$key, 'q'=>$q, 'area_id'=>$area_id])) }}" class="ftab {{ $filter === $key ? 'active' : '' }}">{{ $label }}</a>
-          @endforeach
-        </div>
-        <form method="GET" style="display:contents;">
-          <input type="hidden" name="filter" value="{{ $filter }}">
-          <input type="hidden" name="q" value="{{ $q }}">
-          @include('partials.barangay-dropdown')
-        </form>
-        <form method="GET" class="search">
-          <input type="hidden" name="filter" value="{{ $filter }}">
-          <input type="hidden" name="area_id" value="{{ $area_id }}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-          <input type="text" name="q" value="{{ $q }}" placeholder="Search parcel or rider…" onchange="this.form.submit()">
-        </form>
+  <div class="delivery-monitoring-grid grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.9fr)_minmax(18rem,1fr)]">
+  <section class="delivery-monitoring-roster card overflow-hidden">
+    <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+      <div class="flex items-center gap-2.5">
+        <h2 class="h-display text-[16px]">Live Consignment Roster</h2>
+        <span class="pill-blue">Real-Time Refresh</span>
       </div>
+      <span class="flex items-center gap-1.5 text-[11.5px] text-muted-foreground"><x-icon name="refresh" :size="12" />Synced {{ now()->format('h:i A') }}</span>
     </div>
+    <div id="deliveryRosterViewport" class="table-scroll-region">
+        <table class="tbl min-w-[700px]" data-row-details="off">
+          <thead><tr><th class="w-36">Parcel ID</th><th class="w-52">Destination</th><th>Rider</th><th class="text-right w-24">Action</th></tr></thead>
+          <tbody>
+            @forelse ($parcels as $p)
+              @php
+                $isSel    = $selected && $selected->id === $p->id;
+                $isArchived = $p->trashed();
+                $isOver   = ! $isArchived && $p->status === 'failed';
+              @endphp
+              <tr class="h-11 {{ $isSel ? 'bg-accent/60' : '' }} transition-colors hover:bg-secondary/60">
+                <td>
+                  <span class="flex items-center gap-2">
+                    <span class="h-9 w-1 rounded-full {{ $isSel ? 'bg-primary' : 'bg-transparent' }}" aria-hidden="true"></span>
+                    <span>
+                      <span class="block font-bold">{{ $p->tracking_no }}</span>
+                      <span class="block text-[11px] text-muted-foreground">{{ $carrierLabels[$p->carrier] ?? 'Standard' }}</span>
+                    </span>
+                  </span>
+                </td>
+                <td>
+                  <span class="flex items-start gap-1.5">
+                    <x-icon name="pin" :size="13" class="mt-0.5 shrink-0 text-muted-foreground" />
+                    <span>
+                      <span class="block font-semibold leading-tight">{{ $p->area->name ?? '—' }}</span>
+                      <span class="cell-truncate text-[11.5px] text-muted-foreground" title="{{ $p->address }}">{{ $p->address }}</span>
+                    </span>
+                  </span>
+                </td>
+                <td>
+                  @if ($p->rider)
+                    <span class="inline-flex flex-wrap items-center gap-2">
+                      <span class="avatar size-7 text-[10px]" aria-hidden="true">{{ $p->rider->initials }}</span>
+                      <span>
+                        <span class="block font-semibold leading-tight text-[13px]">{{ $p->rider->name }}</span>
+                        <span class="block text-[11px] text-muted-foreground">{{ $p->eta_note ?: 'On route' }}</span>
+                      </span>
+                    </span>
+                  @else
+                    <span class="text-muted-foreground">—
 
-    <div style="overflow-y:auto;max-height:440px;">
-    <table style="width:100%;table-layout:fixed;">
-      <thead style="position:sticky;top:0;background:var(--card,#fff);z-index:1;">
-        <tr style="text-align:center;">
-          <th style="width:14%;text-align:center;">Parcel</th>
-          <th style="width:18%;text-align:center;">Destination</th>
-          <th style="width:12%;text-align:center;">Barangay</th>
-          <th style="width:14%;text-align:center;">Rider</th>
-          <th style="width:10%;text-align:center;">Progress</th>
-          <th style="width:14%;text-align:center;">ETA</th>
-          <th style="width:18%;text-align:center;">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse ($parcels as $p)
-          @php
-            $idx = match($p->status){ 'assigned'=>0, 'out_for_delivery'=>1, 'delivered'=>2, 'failed'=>1, default=>0 };
-            $segClass = $p->status==='failed' ? 'bad' : ($p->status==='out_for_delivery' ? 'gold' : '');
-          @endphp
-          <tr style="text-align:center;">
-            <td class="pid" style="text-align:center;">{{ $p->tracking_no }}</td>
-            <td class="addr" style="text-align:center;"><div class="city">{{ $p->address }}</div><div class="prov">Santa Cruz, Laguna</div></td>
-            <td style="text-align:center;"><span class="area-chip">{{ $p->area->name ?? '—' }}</span></td>
-            <td style="text-align:center;"><div class="rider" style="justify-content:center;"><div class="ravatar">{{ $p->rider->initials ?? '—' }}</div><div class="rname">{{ $p->rider->name ?? 'Unassigned' }}</div></div></td>
-            <td style="text-align:center;">
-              <div class="progress" style="justify-content:center;">
-                @for ($i = 0; $i < 3; $i++)
-                  <span class="seg {{ $i <= $idx ? 'on '.$segClass : '' }}"></span>
-                @endfor
+                    </span>
+                  @endif
+                </td>
+                <td class="text-right">
+                  <x-row-view-button :modal="'view-parcel-'.$p->id" :label="'View parcel '.$p->tracking_no" />
+                </td>
+              </tr>
+            @empty
+              <tr><td colspan="4" class="py-10 text-center text-muted-foreground">No parcels match this view.</td></tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex items-center justify-between border-t border-border bg-secondary/50 px-5 py-3 text-[12px] text-muted-foreground">
+        <span>Showing {{ $parcels->count() }} of {{ $counts['all'] }} tracked parcels</span>
+        <span class="no-print">Pending buyer confirmation: {{ $rail['pending_confirm'] ?? 0 }}</span>
+      </div>
+  </section>
+
+  {{-- ═════════ Selected consignment ═════════ --}}
+  @foreach ($parcels as $p)
+    @include('partials.delivery-monitoring-modal', ['p' => $p, 'isPreview' => $isPreview, 'carrierLabels' => $carrierLabels])
+  @endforeach
+
+  <aside class="delivery-monitoring-side-panel space-y-4">
+      @if ($selected)
+        <section class="card p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="label">Selected Consignment</div>
+              <h2 class="h-display text-[22px] leading-tight">Parcel {{ $selected->tracking_no }}</h2>
+              <div class="mt-1 flex items-center gap-1.5 text-[12px] font-semibold text-primary"><x-icon name="pin" :size="13" />{{ $selected->area->name ?? $selected->address }}</div>
+            </div>
+            <x-qr :seed="$selected->tracking_no" :size="64" class="text-ink" />
+          </div>
+
+          <div class="mt-5 flex items-center justify-between">
+            <div class="label">Custody Timeline</div>
+            <span class="text-[11px] font-bold text-primary">{{ $events->count() }} / 4 Scan Points</span>
+          </div>
+          <ol class="mt-3 space-y-4 border-l-2 border-border pl-4">
+            @forelse ($events as $e)
+              <li class="relative">
+                <span class="absolute -left-[23px] top-1 size-3 rounded-full border-2 {{ $loop->first ? 'border-primary bg-card ring-4 ring-accent' : 'border-border bg-muted-foreground/40' }}"></span>
+                <div class="flex items-baseline justify-between gap-2">
+                  <span class="h-display {{ $loop->first ? 'text-[16px]' : 'text-[14px]' }}">{{ $e['title'] }}</span>
+                  <span class="text-[11px] font-bold {{ $loop->first ? 'text-primary' : 'text-muted-foreground' }}">{{ $e['t']->format('h:i A') }}</span>
+                </div>
+                <div class="text-[12px] text-muted-foreground">{{ $e['body'] }}</div>
+                @if ($loop->first && $selected->eta_note)
+                  <div class="mt-2 rounded-xl bg-secondary px-3 py-2 text-[12px]">Estimated Drop: <b>{{ $selected->eta_note }}</b></div>
+                @endif
+              </li>
+            @empty
+              <li class="text-[12.5px] text-muted-foreground">No scan points recorded yet.</li>
+            @endforelse
+          </ol>
+
+          <div class="tile mt-5 rounded-2xl">
+            <div class="label mb-2">Consignee Contact</div>
+            <div class="flex items-center gap-3">
+              <span class="avatar size-10 bg-card">{{ \Illuminate\Support\Str::of($selected->buyer_name ?: ($selected->seller_name ?: '?'))->explode(' ')->map(fn ($w) => mb_substr($w, 0, 1))->take(2)->implode('') }}</span>
+              <div class="min-w-0 flex-1">
+                <div class="h-display truncate text-[15px]">{{ $selected->buyer_name ?: ($selected->seller_name ?: '—') }}</div>
+                <div class="font-mono text-[12px] text-muted-foreground">{{ $selected->buyer_phone ?: 'No contact on file' }}</div>
               </div>
-            </td>
-            <td class="eta" style="text-align:center;">{{ $p->eta_note ?? '—' }}</td>
-            <td style="text-align:center;">
-              <button
-                onclick="openParcelModal(
-                  '{{ $p->tracking_no }}',
-                  '{{ addslashes($p->address) }}',
-                  '{{ $p->area->name ?? '—' }}',
-                  '{{ $p->rider->name ?? 'Unassigned' }}',
-                  '{{ $p->rider->initials ?? '—' }}',
-                  '{{ $p->status }}',
-                  '{{ (int) $p->scanned_undelivered }}',
-                  '{{ $p->eta_note ?? '—' }}',
-                  {{ $p->id }}
-                )"
-                class="link-btn" style="border:1px solid var(--line);border-radius:6px;padding:4px 10px;background:var(--paper);">
-                Details
-              </button>
-            </td>
-          </tr>
-        @empty
-          <tr><td colspan="7" style="text-align:center;color:var(--text-400);padding:24px;">No parcels match this filter.</td></tr>
-        @endforelse
-      </tbody>
-    </table>
-    </div>
-  </div>
+              @if ($selected->buyer_phone)
+                <a href="tel:{{ preg_replace('/\s+/', '', $selected->buyer_phone) }}" class="flex size-9 items-center justify-center rounded-full bg-card text-primary shadow-sm"><x-icon name="phone" :size="15" /></a>
+              @endif
+            </div>
+          </div>
 
-  {{-- ── Parcel detail modal ── --}}
-  <div id="parcelModalBackdrop"
-       onclick="if(event.target===this)closeParcelModal()"
-       style="display:none;position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
+          <button type="button" onclick="window.print()" class="btn-ink mt-5 w-full py-3"><x-icon name="qr" :size="15" />Download QR Proof</button>
+        </section>
+      @else
+        <section class="card p-8 text-center text-[13px] text-muted-foreground">Select a consignment to see its custody timeline.</section>
+      @endif
 
-    <div style="background:var(--card,#fff);border-radius:16px;width:100%;max-width:460px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:slideUp .18s ease-out;">
-
-      {{-- Header --}}
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);">
-        <div>
-          <div id="mTrackNo" style="font-size:15px;font-weight:800;font-family:'Poppins',sans-serif;"></div>
-          <div style="font-size:11.5px;color:var(--text-600);margin-top:2px;">Parcel details &amp; status update</div>
-        </div>
-        <button onclick="closeParcelModal()" style="background:none;border:none;cursor:pointer;color:var(--text-600);font-size:18px;line-height:1;padding:4px;">✕</button>
+    <section class="flex items-center gap-3 rounded-2xl bg-accent/60 p-5 self-start">
+      <span class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-card text-primary"><x-icon name="headset" :size="20" /></span>
+      <div class="min-w-0 flex-1">
+        <div class="h-display text-[15px] leading-tight">Dispatch Desk Hotline</div>
+        <div class="text-[11.5px] text-muted-foreground">Hub Channel 04</div>
       </div>
-
-      {{-- Body --}}
-      <div style="padding:18px 20px;">
-
-        {{-- Info rows --}}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-          <div style="background:var(--paper);border-radius:8px;padding:10px 12px;">
-            <div style="font-size:10.5px;color:var(--text-600);font-weight:600;margin-bottom:3px;">DESTINATION</div>
-            <div id="mAddr" style="font-size:13px;font-weight:600;"></div>
-          </div>
-          <div style="background:var(--paper);border-radius:8px;padding:10px 12px;">
-            <div style="font-size:10.5px;color:var(--text-600);font-weight:600;margin-bottom:3px;">BARANGAY</div>
-            <div id="mArea" style="font-size:13px;font-weight:600;"></div>
-          </div>
-          <div style="background:var(--paper);border-radius:8px;padding:10px 12px;">
-            <div style="font-size:10.5px;color:var(--text-600);font-weight:600;margin-bottom:3px;">RIDER</div>
-            <div id="mRider" style="font-size:13px;font-weight:600;"></div>
-          </div>
-          <div style="background:var(--paper);border-radius:8px;padding:10px 12px;">
-            <div style="font-size:10.5px;color:var(--text-600);font-weight:600;margin-bottom:3px;">ETA</div>
-            <div id="mEta" style="font-size:13px;font-weight:600;"></div>
-          </div>
-        </div>
-
-        {{-- Current status --}}
-        <div style="margin-bottom:16px;padding:10px 12px;border-radius:8px;border:1px solid var(--line);">
-          <div style="font-size:10.5px;color:var(--text-600);font-weight:600;margin-bottom:4px;">CURRENT STATUS</div>
-          <div id="mStatusLabel" style="font-size:13px;font-weight:700;"></div>
-        </div>
-
-        {{-- Action buttons --}}
-        <div id="mActions"></div>
-
-      </div>
-    </div>
+      <a href="{{ $isPreview ? '#' : route('chat.index') }}" class="rounded-lg bg-card px-3 py-1.5 text-[12px] font-bold text-primary shadow-sm">Connect</a>
+    </section>
+  </aside>
   </div>
 
 @endsection
-
-@push('scripts')
-<style>
-@keyframes slideUp {
-  from { opacity:0; transform:translateY(12px); }
-  to   { opacity:1; transform:translateY(0); }
-}
-</style>
-<script>
-let currentParcelId = null;
-
-function openParcelModal(trackNo, addr, area, riderName, riderInit, status, scanned, eta, parcelId) {
-  currentParcelId = parcelId;
-
-  document.getElementById('mTrackNo').textContent = trackNo;
-  document.getElementById('mAddr').textContent = addr;
-  document.getElementById('mArea').textContent = area;
-  document.getElementById('mRider').textContent = riderName + ' (' + riderInit + ')';
-  document.getElementById('mEta').textContent = eta;
-
-  const dark = () => document.documentElement.classList.contains('dark');
-  const statusMap = {
-    'assigned':        { label: 'Assigned to rider',          color: () => dark() ? '#93c5fd' : '#2A6FBD' },
-    'out_for_delivery':{ label: 'Out for delivery',           color: () => dark() ? '#fbbf24' : '#b8791a' },
-    'delivered':       { label: 'Delivered',                  color: () => dark() ? '#34d399' : '#2f8f5b' },
-    'failed':          { label: scanned == 1 ? 'Confirmed undelivered' : 'Not delivered — needs scan', color: () => dark() ? '#f87171' : '#c0432f' },
-  };
-  const s = statusMap[status] || { label: status, color: () => 'var(--text-600)' };
-  document.getElementById('mStatusLabel').style.color = s.color();
-  document.getElementById('mStatusLabel').textContent = s.label;
-
-  // Action buttons
-  const actions = document.getElementById('mActions');
-  actions.innerHTML = '';
-
-  const btn = (label, color, bg, onclick) => {
-    const b = document.createElement('button');
-    b.textContent = label;
-    b.style.cssText = `width:100%;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;background:${bg};color:${color};margin-bottom:8px;`;
-    b.onclick = onclick;
-    return b;
-  };
-
-  if (status === 'assigned') {
-    actions.appendChild(btn('Mark out for delivery →', '#fff', dark() ? 'oklch(0.45 0.12 230)' : '#2A6FBD', () => submitAction('advance', parcelId)));
-  } else if (status === 'out_for_delivery') {
-    actions.appendChild(btn('Mark delivered →', '#fff', dark() ? 'oklch(0.40 0.10 150)' : '#2f8f5b', () => submitAction('advance', parcelId)));
-  } else if (status === 'delivered') {
-    const note = document.createElement('div');
-    note.textContent = 'Awaiting buyer confirmation. No further action needed.';
-    note.style.cssText = 'font-size:12.5px;color:var(--text-600);text-align:center;padding:8px 0;';
-    actions.appendChild(note);
-  } else if (status === 'failed' && scanned == 0) {
-    actions.appendChild(btn('Confirm as undelivered (scan) →', '#fff', dark() ? 'oklch(0.35 0.12 25)' : '#c0432f', () => submitAction('scan-undelivered', parcelId)));
-  } else {
-    const note = document.createElement('div');
-    note.textContent = 'Reschedule pending. No further action from this screen.';
-    note.style.cssText = 'font-size:12.5px;color:var(--text-600);text-align:center;padding:8px 0;';
-    actions.appendChild(note);
-  }
-  // Close button
-  actions.appendChild(btn('Close', 'var(--text-900)', 'var(--paper)', closeParcelModal));
-
-  const backdrop = document.getElementById('parcelModalBackdrop');
-  backdrop.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-}
-
-function closeParcelModal() {
-  document.getElementById('parcelModalBackdrop').style.display = 'none';
-  document.body.style.overflow = '';
-}
-
-function submitAction(type, parcelId) {
-  const routes = {
-    'advance':          '/delivery/monitoring/' + parcelId + '/advance',
-    'scan-undelivered': '/delivery/monitoring/' + parcelId + '/scan-undelivered',
-  };
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = routes[type];
-  const csrf = document.createElement('input');
-  csrf.type = 'hidden';
-  csrf.name = '_token';
-  csrf.value = document.querySelector('meta[name=csrf-token]').content;
-  form.appendChild(csrf);
-  document.body.appendChild(form);
-  form.submit();
-}
-
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeParcelModal(); });
-</script>
-@endpush

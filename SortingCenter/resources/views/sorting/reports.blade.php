@@ -1,354 +1,507 @@
-@extends('layouts.sorting')
+﻿@extends('layouts.sorting')
 
 @section('title', 'Reports')
-@section('subtitle', 'Sorting and delivery performance for Santa Cruz, Laguna.')
 
-@push('styles')
-<style>
-  /* ── Filters bar ── */
-  .filters-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-bottom:18px; border-bottom:1px solid var(--color-border); margin-bottom:20px; }
-  .filter-group { display:flex; flex-direction:column; gap:4px; }
-  .filter-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--color-muted-foreground); }
-  .filter-select, .filter-date {
-    border:1px solid var(--color-border);
-    border-radius:8px;
-    padding:6px 10px;
-    font-size:12.5px;
-    font-family:inherit;
-    background:var(--color-background);
-    color:var(--color-foreground);
-    outline:none;
-    cursor:pointer;
-    height:34px;
-  }
-  .filter-select:focus, .filter-date:focus { border-color:var(--color-ring); }
-  .date-range { display:flex; align-items:center; gap:6px; }
-  .date-sep { font-size:12px; color:var(--color-muted-foreground); }
-  .export-actions { margin-left:auto; display:flex; gap:8px; }
-  .btn-export {
-    display:inline-flex; align-items:center; gap:6px;
-    border:1px solid var(--color-border); border-radius:8px;
-    padding:6px 14px; font-size:12.5px; font-weight:600;
-    font-family:inherit; cursor:pointer; transition:background .15s;
-    height:34px;
-  }
-  .btn-export.outline { background:var(--color-background); color:var(--color-foreground); }
-  .btn-export.outline:hover { background:var(--color-muted); }
-  .btn-export.solid { background:var(--color-primary); color:var(--color-primary-foreground); border-color:var(--color-primary); }
-  .btn-export.solid:hover { opacity:.9; }
-
-  /* ── Stat cards ── */
-  .stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
-  .stat-card {
-    background:var(--color-card);
-    border:1px solid var(--color-border);
-    border-radius:12px;
-    padding:18px 20px;
-  }
-  .stat-card .lbl { font-size:11px; font-weight:600; color:var(--color-muted-foreground); line-height:1; text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px; }
-  .stat-card .val { font-size:24px; font-weight:700; color:var(--color-foreground); line-height:1; font-variant-numeric:tabular-nums; }
-  .stat-card .val span { font-size:13px; font-weight:600; color:var(--color-muted-foreground); letter-spacing:0; margin-left:1px; }
-  .stat-card .delta { font-size:11px; font-weight:600; margin-top:8px; display:inline-block; }
-  .delta.up   { color: var(--ok-600, #16a34a); }
-  .delta.down { color: var(--bad-600, #dc2626); }
-  .delta.neutral { color:var(--color-muted-foreground); }
-
-  /* ── Charts row ── */
-  .charts-row { display:grid; grid-template-columns:1fr 380px; gap:14px; margin-bottom:20px; }
-  .chart-card {
-    background:var(--color-card);
-    border:1px solid var(--color-border);
-    border-radius:12px;
-    padding:18px;
-  }
-  .chart-card h3 { font-size:14px; font-weight:700; margin-bottom:3px; }
-  .chart-card .chart-sub { font-size:11px; color:var(--color-muted-foreground); margin-bottom:16px; }
-
-  /* Bar chart */
-  .bar-chart { display:flex; flex-direction:column; gap:9px; }
-  .bar-row { display:flex; align-items:center; gap:10px; }
-  .bar-name { font-size:12px; font-weight:600; width:120px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .bar-track { flex:1; height:9px; background:var(--color-muted); border-radius:5px; overflow:hidden; }
-  .bar-fill { height:100%; border-radius:5px; transition:width .4s ease; }
-  .bar-count { font-size:11.5px; font-weight:700; width:28px; text-align:right; color:var(--color-muted-foreground); }
-
-  /* Donut chart (CSS) */
-  .donut-wrap { display:flex; align-items:center; gap:20px; }
-  .donut-legend { display:flex; flex-direction:column; gap:8px; flex:1; }
-  .donut-legend-item { display:flex; align-items:center; gap:8px; font-size:12px; }
-  .donut-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-  .donut-legend-label { flex:1; color:var(--color-foreground); font-weight:600; }
-  .donut-legend-pct { color:var(--color-muted-foreground); font-weight:700; }
-
-  /* ── Rider table ── */
-  .report-panel {
-    background:var(--color-card);
-    border:1px solid var(--color-border);
-    border-radius:12px;
-    overflow:hidden;
-  }
-  .report-panel-head { padding:16px 20px; border-bottom:1px solid var(--color-border); }
-  .report-panel-head h3 { font-size:14px; font-weight:700; }
-  .report-panel-head .sub { font-size:11px; color:var(--color-muted-foreground); margin-top:2px; }
-  .report-table { width:100%; table-layout:fixed; border-collapse:collapse; }
-  .report-table th {
-    padding:10px 16px;
-    font-size:11px;
-    font-weight:700;
-    text-transform:uppercase;
-    letter-spacing:.4px;
-    color:var(--color-muted-foreground);
-    text-align:center;
-    border-bottom:1px solid var(--color-border);
-    background:var(--color-muted)/30;
-  }
-  .report-table td { padding:12px 16px; font-size:12.5px; text-align:center; border-bottom:1px solid var(--color-border)/50; }
-  .report-table tbody tr:last-child td { border-bottom:none; }
-  .report-table tbody tr:hover td { background: var(--color-muted); }
-  .rider-cell { display:flex; align-items:center; gap:9px; justify-content:center; }
-  .rider-av { width:28px; height:28px; border-radius:50%; background:var(--color-primary); color:var(--color-primary-foreground); font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-  .rider-name { font-size:12.5px; font-weight:700; }
-  .rider-tag { font-size:11px; color:var(--color-muted-foreground); }
-  .brgy-chip { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; color:var(--color-primary); }
-  .success-bar-wrap { display:flex; align-items:center; gap:8px; justify-content:center; }
-  .success-track { width:80px; height:6px; background:var(--color-muted); border-radius:3px; overflow:hidden; }
-  .success-fill { height:100%; border-radius:3px; background:var(--ok-600, #16a34a); }
-  .success-fill.warn { background:var(--pend-600, #f59e0b); }
-  .success-fill.bad  { background:var(--bad-600, #dc2626); }
-  .avg-time { font-weight:700; color:var(--color-foreground); }
-  .avg-time span { font-size:10.5px; font-weight:600; color:var(--color-muted-foreground); }
-  .empty-row td { text-align:center; color:var(--color-muted-foreground); padding:28px; }
-</style>
-@endpush
+@php
+  $types = [
+    'parcels'  => ['Parcels Processed',    'Active Report',          'box'],
+    'delivery' => ['Delivery Performance', 'Transit SLA & Drop',    'truck'],
+    'riders'   => ['Rider Performance',    'Daily Runs & Turnaround','bike'],
+    'branches' => ['Branch Throughput',    'Station Sorting Cap',   'network'],
+    'overdue'  => ['Overdue Parcels',      'Exception Tracking',    'checklist'],
+  ];
+  $keep = ['date_from' => $dateFrom, 'date_to' => $dateTo, 'barangay' => $barangay, 'carrier' => $carrier];
+  $chart = $report['chart'] ?? ['labels' => [], 'values' => []];
+  $chartMeta = [
+    'parcels'  => ['Daily Parcels Processed', 'Processed volume'],
+    'delivery' => ['Delivery Rate by Barangay', 'Delivery rate'],
+    'riders'   => ['Parcels Handled by Rider', 'Parcels handled'],
+    'branches' => ['Parcel Volume by Barangay', 'Parcels processed'],
+    'overdue'  => ['Overdue Parcels by Barangay', 'Overdue parcels'],
+  ][$type] ?? ['Report Trend', 'Value'];
+  $chartType = $type === 'parcels' ? 'line' : 'bar';
+  $chartSuffix = $type === 'delivery' ? '%' : '';
+  $tableTitle = [
+    'parcels'  => 'Sorting Center Breakdown',
+    'delivery' => 'Delivery Performance by Barangay',
+    'riders'   => 'Rider Performance',
+    'branches' => 'Branch Throughput',
+    'overdue'  => 'Overdue Parcels',
+  ][$type] ?? 'Report Breakdown';
+  $kpiIcons = [
+    'total_inbound'      => 'box',
+    'daily_avg'          => 'chart',
+    'peak_volume'        => 'trend-up',
+    'sorting_rate'       => 'check-circle',
+    'delivered_count'    => 'check-circle',
+    'delivery_rate'      => 'gauge',
+    'avg_delivery_time'  => 'clock',
+    'buyer_confirmed'    => 'badge-check',
+    'active_couriers'    => 'bike',
+    'fleet_deliveries'   => 'truck',
+    'avg_per_rider'      => 'user',
+    'fleet_success_pct'  => 'check-circle',
+    'hub_throughput'     => 'network',
+    'active_zones'       => 'pin',
+    'peak_cluster_share' => 'chart',
+    'avg_hub_time'       => 'clock',
+    'overdue_exceptions' => 'alert',
+    'sla_breach_rate'    => 'alert-circle',
+    'avg_sla_delay'      => 'clock',
+    'pending_reassign'   => 'refresh',
+  ];
+  $rows = $report['rows'] ?? [];
+  $rowCount = collect($rows)->count();
+@endphp
 
 @section('content')
 
-{{-- ── Filters bar ── --}}
-<form method="GET" action="{{ route('reports.index') }}">
-<div class="filters-bar">
+  <x-page-head title="Reports" sub="Generate and export logistics reports.">
+    <div class="relative" id="exportMenu">
+      <button type="button" id="exportToggle" aria-expanded="false" aria-controls="exportDropdown"
+              class="btn-ink px-5"><x-icon name="download" :size="15" />Export
+        <x-icon name="chevron-down" :size="13" class="ml-1 opacity-70" /></button>
+      <div id="exportDropdown" class="absolute right-0 top-full z-50 mt-1 hidden w-44 rounded-xl border border-border bg-card py-1 shadow-lg">
+        <a href="{{ route('reports.index', array_merge($keep, ['type' => $type, 'format' => 'pdf'])) }}" data-report-export
+           class="flex w-full items-center gap-2 px-4 py-2.5 text-[13px] font-semibold hover:bg-secondary">
+          <x-icon name="download" :size="14" class="text-primary" />Export PDF
+        </a>
+        <a href="{{ route('reports.index', array_merge($keep, ['type' => $type, 'format' => 'csv'])) }}" data-report-export
+           class="flex w-full items-center gap-2 px-4 py-2.5 text-[13px] font-semibold hover:bg-secondary">
+          <x-icon name="file" :size="14" class="text-primary" />Export CSV
+        </a>
+        <a href="{{ route('reports.index', array_merge($keep, ['type' => $type, 'format' => 'xlsx'])) }}" data-report-export
+           class="flex w-full items-center gap-2 px-4 py-2.5 text-[13px] font-semibold hover:bg-secondary">
+          <x-icon name="file" :size="14" class="text-primary" />Export Excel (XLSX)
+        </a>
+        <button type="button" data-print
+                class="flex w-full items-center gap-2 px-4 py-2.5 text-[13px] font-semibold hover:bg-secondary">
+          <x-icon name="printer" :size="14" class="text-primary" />Print
+        </button>
+      </div>
+    </div>
+  </x-page-head>
 
-  <div class="filter-group">
-    <div class="filter-label">Barangay</div>
-    <select name="barangay" class="filter-select" onchange="this.form.submit()">
-      <option value="all" {{ $barangay === 'all' ? 'selected' : '' }}>All barangays</option>
+  @if ($errors->any())
+    <div class="mb-5 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-[13px] font-semibold text-destructive" role="alert">
+      <x-icon name="alert" :size="15" class="mt-0.5" />
+      <span>{{ $errors->first() }}</span>
+    </div>
+  @endif
+
+  {{-- Report types --}}
+  <section class="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+    @foreach ($types as $key => [$title, $sub, $icon])
+      @php $on = $type === $key; @endphp
+      <a href="{{ route('reports.index', array_merge($keep, ['type' => $key])) }}" data-report-type="{{ $key }}"
+         class="relative rounded-2xl p-4 transition {{ $on ? 'bg-accent ring-1 ring-primary/20' : 'card hover:bg-secondary' }}">
+        <span class="flex size-9 items-center justify-center rounded-xl {{ $on ? 'bg-card text-ink shadow-sm' : 'bg-secondary text-muted-foreground' }}"><x-icon :name="$icon" :size="17" /></span>
+        <div class="h-display mt-3 text-[14.5px] leading-tight">{{ $title }}</div>
+        <div class="mt-0.5 text-[11.5px] {{ $on ? 'font-semibold text-primary' : 'text-muted-foreground' }}">{{ $on ? 'Active Report' : $sub }}</div>
+        @if ($on)<span class="absolute right-3.5 top-3.5 size-2 rounded-full bg-primary"></span>@endif
+      </a>
+    @endforeach
+  </section>
+
+  {{-- Filters --}}
+  <form method="GET" action="{{ route('reports.index') }}" class="card mb-5 p-5" id="reportFilters">
+    <div class="grid grid-cols-1 items-end gap-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1.2fr_auto]">
+      <input type="hidden" name="type" value="{{ $type }}">
+      <input type="hidden" name="carrier" value="{{ $carrier }}">
+      <label class="block"><span class="label">From Date</span>
+        <span class="relative mt-1.5 block"><x-icon name="calendar" :size="15" class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" /><input type="date" name="date_from" value="{{ $dateFrom }}" class="field pl-10" onchange="markDirty()"></span></label>
+      <label class="block"><span class="label">To Date</span>
+        <span class="relative mt-1.5 block"><x-icon name="calendar" :size="15" class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" /><input type="date" name="date_to" value="{{ $dateTo }}" class="field pl-10" onchange="markDirty()"></span></label>
+      <label class="block"><span class="label">Barangay</span>
+        <span class="relative mt-1.5 block">
+          <select name="barangay" class="field cursor-pointer appearance-none pr-9" onchange="markDirty()">
+            <option value="all">All Barangays</option>
+            @foreach ($areas as $a)<option value="{{ $a->id }}" {{ (string) $barangay === (string) $a->id ? 'selected' : '' }}>{{ $a->name }}</option>@endforeach
+          </select>
+          <x-icon name="chevron-down" :size="15" class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        </span></label>
+      <button id="generateBtn" class="btn-primary w-full px-6 py-3 sm:col-span-2 xl:col-span-1" disabled><x-icon name="refresh" :size="15" /><span id="generateLabel">Generate Report</span></button>
+    </div>
+    {{-- Date presets --}}
+    <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+      <span class="text-[11px] font-semibold text-muted-foreground">Quick:</span>
+      @foreach (['today' => 'Today', '7days' => 'Last 7 days', 'month' => 'This month'] as $preset => $label)
+        <button type="button" onclick="applyPreset('{{ $preset }}')"
+                class="rounded-lg px-3 py-1.5 text-[12px] font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground transition">
+          {{ $label }}
+        </button>
+      @endforeach
+    </div>
+  </form>
+
+  {{-- KPIs --}}
+  <section class="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    @foreach ($report['kpis'] ?? [] as $kpi)
       @php
-        $scBarangays = [
-          'Alipit','Bagumbayan','Bubukal','Calios','Duhat','Gatid',
-          'Jasaan','Labuin','Malinao','Oogong','Pagsawitan','Palasan',
-          'Patimbao','Poblacion I','Poblacion II','Poblacion III',
-          'Poblacion IV','Poblacion V','San Jose','San Juan',
-          'San Pablo Norte','San Pablo Sur','Santisima Cruz',
-          'Santo Angel Central','Santo Angel Norte','Santo Angel Sur',
-        ];
+        $icon = $kpiIcons[$kpi['key'] ?? ''] ?? 'chart';
+        $isDanger = ($kpi['tone'] ?? '') === 'destructive';
       @endphp
-      {{-- DB areas first (with real IDs for filtering) --}}
-      @foreach ($areas as $a)
-        <option value="{{ $a->id }}" {{ $barangay == $a->id ? 'selected' : '' }}>{{ $a->name }}</option>
-      @endforeach
-      {{-- Remaining official barangays not yet in DB (display only) --}}
-      @foreach ($scBarangays as $brgy)
-        @if ($areas->where('name', $brgy)->isEmpty())
-          <option value="{{ $brgy }}" {{ $barangay === $brgy ? 'selected' : '' }} style="color:#aaa;">{{ $brgy }}</option>
-        @endif
-      @endforeach
-    </select>
-  </div>
-
-  <div class="filter-group">
-    <div class="filter-label">Carrier</div>
-    <select name="carrier" class="filter-select" onchange="this.form.submit()">
-      <option value="all" {{ $carrier === 'all' ? 'selected' : '' }}>All carriers</option>
-      <option value="jnt"      {{ $carrier === 'jnt'      ? 'selected' : '' }}>J&amp;T Express</option>
-      <option value="lbc"      {{ $carrier === 'lbc'      ? 'selected' : '' }}>LBC</option>
-      <option value="lalamove" {{ $carrier === 'lalamove' ? 'selected' : '' }}>Lalamove</option>
-    </select>
-  </div>
-
-  <div class="filter-group">
-    <div class="filter-label">Date range</div>
-    <div class="date-range">
-      <input type="date" name="date_from" value="{{ $dateFrom }}" class="filter-date" onchange="this.form.submit()">
-      <span class="date-sep">to</span>
-      <input type="date" name="date_to"   value="{{ $dateTo }}"   class="filter-date" onchange="this.form.submit()">
-    </div>
-  </div>
-
-  <div class="export-actions">
-    <button type="button" class="btn-export outline">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Export PDF
-    </button>
-    <button type="button" class="btn-export solid">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Export CSV
-    </button>
-  </div>
-
-</div>
-</form>
-
-{{-- ── Stat cards ── --}}
-<div class="stat-grid">
-
-  <div class="stat-card">
-    <div class="lbl">Total parcels handled</div>
-    <div class="val">{{ number_format($totalHandled) }}</div>
-    @if ($totalDelta !== null)
-      <div class="delta {{ $totalDelta >= 0 ? 'up' : 'down' }}">
-        {{ $totalDelta >= 0 ? '↑' : '↓' }} {{ abs($totalDelta) }}% vs last week
-      </div>
-    @endif
-  </div>
-
-  <div class="stat-card">
-    <div class="lbl">On-time delivery rate</div>
-    <div class="val">{{ $onTimeRate }}<span>%</span></div>
-  </div>
-
-  <div class="stat-card">
-    <div class="lbl">Avg. sort-to-assign time</div>
-    <div class="val">{{ $avgSortH }}<span>h</span> {{ $avgSortM }}<span>m</span></div>
-  </div>
-
-  <div class="stat-card">
-    <div class="lbl">Failed deliveries</div>
-    <div class="val">{{ $failed }}</div>
-  </div>
-
-</div>
-
-{{-- ── Charts row ── --}}
-<div class="charts-row">
-
-  {{-- Volume by barangay --}}
-  <div class="chart-card">
-    <h3>Volume by barangay — this week</h3>
-    <div class="chart-sub">Sorted and dispatched parcels per route</div>
-    @php $maxVol = $volumeByArea->max('count') ?: 1; @endphp
-    @if ($volumeByArea->isEmpty())
-      <div style="color:var(--color-muted-foreground);font-size:13px;padding:20px 0;">No data for this period.</div>
-    @else
-    <div style="overflow-y:auto;max-height:280px;">
-      <div class="bar-chart">
-        @foreach ($volumeByArea as $row)
-          <div class="bar-row">
-            <div class="bar-name">{{ $row['name'] }}</div>
-            <div class="bar-track">
-              <div class="bar-fill" style="width:{{ round(($row['count'] / $maxVol) * 100) }}%;background:{{ $row['color'] }};"></div>
-            </div>
-            <div class="bar-count">{{ $row['count'] }}</div>
+      <div class="card p-5" data-kpi="{{ $kpi['key'] }}">
+        <div class="flex items-center justify-between">
+          <span class="label">{{ $kpi['label'] }}</span>
+          <span class="flex size-8 items-center justify-center rounded-lg {{ $isDanger ? 'bg-destructive/10 text-destructive' : 'bg-secondary text-primary' }}">
+            <x-icon :name="$icon" :size="16" />
+          </span>
+        </div>
+        <div class="h-display mt-2 text-[32px] leading-none {{ $isDanger ? 'text-destructive' : '' }}">
+          {{ $kpi['value'] }}
+          @if (!empty($kpi['unit']))<span class="text-[13px] font-medium text-muted-foreground">{{ $kpi['unit'] }}</span>@endif
+        </div>
+        <div class="mt-3 flex items-center gap-1.5 text-[12px] {{ $isDanger ? 'font-semibold text-destructive' : 'text-muted-foreground' }}">
+          <x-icon :name="$isDanger ? 'alert' : 'check-circle'" :size="13" />{{ $kpi['sub'] }}
+        </div>
+        @if ($type === 'parcels' && ($kpi['key'] ?? '') === 'total_inbound' && $totalDelta !== null)
+          <div class="mt-2">
+            <span class="text-[11px] text-muted-foreground">{{ $totalDelta >= 0 ? '+' : '' }}{{ $totalDelta }}% vs previous period</span>
           </div>
-        @endforeach
-      </div>
-    </div>
-    @endif
-  </div>
-
-  {{-- Carrier mix --}}
-  <div class="chart-card">
-    <h3>Carrier mix</h3>
-    <div class="chart-sub">Share of parcels by shipping partner</div>
-    @php
-      $carrierColors = ['jnt' => '#C81E1E', 'lbc' => '#2A6FBD', 'lalamove' => '#7c4fe0'];
-      $carrierLabels = ['jnt' => 'J&T Express', 'lbc' => 'LBC', 'lalamove' => 'Lalamove'];
-      $totalC = $carrierMix->sum() ?: 1;
-
-      // Build conic-gradient segments
-      $deg = 0;
-      $segments = [];
-      foreach ($carrierMix as $key => $cnt) {
-          $pct = round(($cnt / $totalC) * 360);
-          $color = $carrierColors[$key] ?? '#aaa';
-          $segments[] = "$color {$deg}deg " . ($deg + $pct) . "deg";
-          $deg += $pct;
-      }
-      $conicGrad = implode(', ', $segments) ?: '#e5e7eb 0deg 360deg';
-    @endphp
-    <div class="donut-wrap">
-      <div style="width:120px;height:120px;border-radius:50%;background:conic-gradient({{ $conicGrad }});flex-shrink:0;position:relative;">
-        <div style="position:absolute;inset:24px;border-radius:50%;background:var(--color-card);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--color-muted-foreground);">{{ $totalHandled }}</div>
-      </div>
-      <div class="donut-legend">
-        @if ($carrierMix->isEmpty())
-          <div style="color:var(--color-muted-foreground);font-size:12px;">No data</div>
-        @else
-          @foreach ($carrierMix as $key => $cnt)
-            <div class="donut-legend-item">
-              <div class="donut-dot" style="background:{{ $carrierColors[$key] ?? '#aaa' }};"></div>
-              <div class="donut-legend-label">{!! $carrierLabels[$key] ?? $key !!}</div>
-              <div class="donut-legend-pct">{{ round(($cnt / $totalC) * 100) }}%</div>
-            </div>
-          @endforeach
         @endif
       </div>
+    @endforeach
+  </section>
+
+  {{-- Report chart --}}
+  <section class="card relative mb-5 p-6" id="reportChartCard">
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 class="h-display text-[19px]">{{ $chartMeta[0] }}</h2>
+        <p class="text-[12px] text-muted-foreground">{{ $report['title'] }} &bull; {{ $report['range_label'] }}</p>
+      </div>
+      <div class="flex items-center gap-4 text-[11.5px] font-semibold">
+        <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-primary"></span>{{ $chartMeta[1] }}</span>
+      </div>
     </div>
-  </div>
+    <div class="relative h-56">
+      <canvas id="reportChart"></canvas>
+      @if (empty($chart['labels']))
+        <div class="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-card/70 text-[13px] font-semibold text-muted-foreground">
+          No data in this range.
+        </div>
+      @endif
+    </div>
+    <div id="reportLoading" class="absolute inset-0 hidden items-center justify-center rounded-2xl bg-card/80 backdrop-blur-sm">
+      <div class="flex items-center gap-2 text-[13px] font-semibold text-muted-foreground">
+        <svg class="size-5 animate-spin text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+        Generating report...
+      </div>
+    </div>
+  </section>
 
-</div>
+  {{-- Breakdown table --}}
+  <section class="card overflow-hidden">
+    <div class="flex flex-wrap items-center justify-between gap-3 p-5">
+      <h2 class="h-display flex items-center gap-2 text-[17px]"><x-icon name="checklist" :size="17" class="text-primary" />
+        {{ $tableTitle }}</h2>
+      <div class="flex flex-wrap items-center gap-2">
+        @if ($rowCount > 6)
+          <button type="button" class="btn-ghost px-3 py-1.5 text-[12px]"
+                  data-table-expand aria-controls="reportTableViewport" aria-expanded="false">
+            Show all rows
+          </button>
+        @endif
+        <span class="inline-flex max-w-full items-center gap-2 truncate rounded-lg bg-secondary px-3 py-1.5 font-mono text-[11px] font-bold"><x-icon name="qr" :size="13" class="shrink-0" />HUB-{{ strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $hubProfile->name ?? 'HUB'), 0, 2)) }}-{{ now()->year }}-QR</span>
+      </div>
+    </div>
 
-{{-- ── Rider performance table ── --}}
-<div class="report-panel">
-  <div class="report-panel-head">
-    <h3>Rider performance</h3>
-    <div class="sub">Per-rider delivery success rate in this period</div>
-  </div>
-  <div style="overflow-y:auto;max-height:420px;">
-  <table class="report-table">
-    <thead style="position:sticky;top:0;background:var(--color-card);z-index:1;">
-      <tr>
-        <th style="width:20%;text-align:left;padding-left:20px;">Rider</th>
-        <th style="width:18%;">Barangay</th>
-        <th style="width:14%;">Parcels delivered</th>
-        <th style="width:24%;">Delivery success</th>
-        <th style="width:14%;">Avg. delivery time</th>
-      </tr>
-    </thead>
-    <tbody>
-      @forelse ($riders as $row)
-        @php
-          $fillClass = $row['success_pct'] >= 85 ? '' : ($row['success_pct'] >= 60 ? 'warn' : 'bad');
-        @endphp
-        <tr>
-          <td style="text-align:left;padding-left:20px;">
-            <div class="rider-cell" style="justify-content:flex-start;">
-              <div class="rider-av">{{ $row['rider']->initials }}</div>
-              <div>
-                <div class="rider-name">{{ $row['rider']->name }}</div>
-                <div class="rider-tag">Rider #{{ str_pad($row['rider']->id, 2, '0', STR_PAD_LEFT) }}</div>
-              </div>
-            </div>
-          </td>
-          <td>
-            <span class="brgy-chip">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              Brgy. {{ $row['area'] }}
-            </span>
-          </td>
-          <td style="font-weight:700;">{{ $row['delivered'] }}</td>
-          <td>
-            <div class="success-bar-wrap">
-              <div class="success-track">
-                <div class="success-fill {{ $fillClass }}" style="width:{{ $row['success_pct'] }}%;"></div>
-              </div>
-              <span style="font-size:12px;font-weight:700;min-width:36px;text-align:left;">{{ $row['success_pct'] }}%</span>
-            </div>
-          </td>
-          <td>
-            @if ($row['avg_del_min'] > 0)
-              <span class="avg-time">{{ $row['avg_del_min'] }} <span>min</span></span>
-            @else
-              <span style="color:var(--color-muted-foreground);">—</span>
-            @endif
-          </td>
-        </tr>
-      @empty
-        <tr class="empty-row">
-          <td colspan="5">No rider data for this period.</td>
-        </tr>
-      @endforelse
-    </tbody>
-  </table>
-  </div>
-</div>
+    <div id="reportTableViewport" class="table-scroll-region">
+      @if ($type === 'parcels')
+        <table class="tbl min-w-[720px]">
+          <thead><tr><th>Date</th><th>Branch</th><th class="text-right">Parcels Processed</th><th class="text-right">Delivered</th><th class="text-right">Overdue</th></tr></thead>
+          <tbody>
+            @forelse ($rows as $d)
+              <tr>
+                <td class="font-bold">{{ $d['date']->format('M j, Y') }}</td>
+                <td><span class="inline-flex items-center gap-2"><span class="size-2 rounded-full bg-primary"></span>{{ $hubProfile->name ?? 'Hub' }}</span></td>
+                <td class="h-display text-right text-[15px]">{{ $d['processed'] }}</td>
+                <td class="text-right font-semibold text-primary">{{ $d['delivered'] }}</td>
+                <td class="text-right">{{ $d['overdue'] }}</td>
+              </tr>
+            @empty
+              <tr><td colspan="5" class="py-8 text-center text-muted-foreground">No data in this range.</td></tr>
+            @endforelse
+          </tbody>
+        </table>
+      @elseif ($type === 'delivery' || $type === 'branches')
+        <table class="tbl min-w-[720px]">
+          <thead><tr><th>Barangay</th><th class="text-right">Parcels</th><th class="text-right">Delivered</th><th class="text-right">Overdue</th><th class="w-56">{{ $type === 'delivery' ? 'Delivery rate' : 'Share of volume' }}</th></tr></thead>
+          <tbody>
+            @forelse ($rows as $r)
+              @php $w = (float) ($type === 'delivery' ? ($r['rate'] ?? 0) : ($r['share_pct'] ?? 0)); @endphp
+              <tr>
+                <td class="font-bold"><span class="inline-flex items-center gap-2"><span class="size-2 rounded-full" style="background: {{ $r['color'] }}"></span>{{ $r['name'] }}</span></td>
+                <td class="h-display text-right text-[15px]">{{ $r['count'] }}</td>
+                <td class="text-right font-semibold text-primary">{{ $r['delivered'] }}</td>
+                <td class="text-right">{{ $r['overdue'] }}</td>
+                <td><span class="flex items-center gap-2"><span class="h-2 flex-1 overflow-hidden rounded-full bg-accent"><span class="block h-full rounded-full bg-primary" style="width: {{ min(100, $w) }}%"></span></span><span class="w-12 text-right text-[12px] font-bold">{{ $w }}%</span></span></td>
+              </tr>
+            @empty
+              <tr><td colspan="5" class="py-8 text-center text-muted-foreground">No barangay data in this range.</td></tr>
+            @endforelse
+          </tbody>
+        </table>
+      @elseif ($type === 'riders')
+        <table class="tbl min-w-[720px]">
+          <thead><tr><th>Rider</th><th>Barangay</th><th class="text-right">Parcels</th><th class="text-right">Delivered</th><th class="text-right">Avg delivery</th><th class="w-48">Success</th></tr></thead>
+          <tbody>
+            @forelse ($rows as $r)
+              <tr>
+                <td><span class="inline-flex items-center gap-2.5"><span class="avatar">{{ $r['rider']->initials }}</span><span class="font-bold">{{ $r['rider']->name }}</span></span></td>
+                <td class="text-muted-foreground">{{ $r['area'] }}</td>
+                <td class="h-display text-right text-[15px]">{{ $r['total'] }}</td>
+                <td class="text-right font-semibold text-primary">{{ $r['delivered'] }}</td>
+                <td class="text-right text-muted-foreground">{{ $r['avg_del_min'] ? $r['avg_del_min'].' min' : '-' }}</td>
+                <td><span class="flex items-center gap-2"><span class="h-2 flex-1 overflow-hidden rounded-full bg-accent"><span class="block h-full rounded-full bg-primary" style="width: {{ min(100, (float) $r['success_pct']) }}%"></span></span><span class="w-12 text-right text-[12px] font-bold">{{ $r['success_pct'] }}%</span></span></td>
+              </tr>
+            @empty
+              <tr><td colspan="6" class="py-8 text-center text-muted-foreground">No rider data in this range.</td></tr>
+            @endforelse
+          </tbody>
+        </table>
+      @else
+        <table class="tbl min-w-[720px]">
+          <thead><tr><th>Parcel</th><th>Barangay</th><th>Rider</th><th>Received</th></tr></thead>
+          <tbody>
+            @forelse ($rows as $p)
+              <tr>
+                <td class="font-bold">{{ $p->tracking_no }}</td>
+                <td>{{ $p->area->name ?? '-' }}</td>
+                <td>{{ $p->rider->name ?? '-' }}</td>
+                <td class="text-muted-foreground">{{ $p->received_at?->format('M j, h:i A') }}</td>
+              </tr>
+            @empty
+              <tr><td colspan="4" class="py-8 text-center text-muted-foreground">No parcels in this range.</td></tr>
+            @endforelse
+          </tbody>
+        </table>
+      @endif
+    </div>
+    <div class="border-t border-border bg-secondary/50 px-5 py-3 text-[12px] text-muted-foreground">
+      @if ($type === 'parcels'){{ $rowCount }} days in range
+      @elseif ($type === 'riders'){{ $rowCount }} riders
+      @elseif ($type === 'overdue'){{ $rowCount }} overdue parcels
+      @else{{ $rowCount }} barangays @endif
+      &bull; {{ \Illuminate\Support\Carbon::parse($dateFrom)->format('M j') }} &ndash; {{ \Illuminate\Support\Carbon::parse($dateTo)->format('M j, Y') }}
+    </div>
+  </section>
 
 @endsection
+
+@push('scripts')
+<script>
+  document.querySelectorAll('[data-table-expand]').forEach(button => {
+    button.addEventListener('click', () => {
+      const viewport = document.getElementById(button.getAttribute('aria-controls'));
+      if (!viewport) { return; }
+
+      const expanded = button.getAttribute('aria-expanded') !== 'true';
+      button.setAttribute('aria-expanded', expanded.toString());
+      viewport.classList.toggle('is-expanded', expanded);
+      button.textContent = expanded ? 'Show fewer rows' : 'Show all rows';
+    });
+  });
+
+  function markDirty() {
+    const btn = document.getElementById('generateBtn');
+    if (btn) {
+      btn.disabled = false;
+    }
+    const label = document.getElementById('generateLabel');
+    if (label) {
+      label.textContent = 'Generate Report';
+    }
+  }
+
+  function applyPreset(preset) {
+    const today = new Date();
+    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    let from;
+    const to = fmt(today);
+
+    if (preset === 'today') {
+      from = to;
+    } else if (preset === '7days') {
+      const d = new Date(today);
+      d.setDate(d.getDate() - 6);
+      from = fmt(d);
+    } else if (preset === 'month') {
+      from = fmt(new Date(today.getFullYear(), today.getMonth(), 1));
+    }
+
+    document.querySelector('[name=date_from]').value = from;
+    document.querySelector('[name=date_to]').value = to;
+    markDirty();
+  }
+
+  function syncFilterParams(url, includeType = true) {
+    const form = document.getElementById('reportFilters');
+    if (!form) {
+      return url;
+    }
+
+    const next = new URL(url, window.location.origin);
+    const fields = ['date_from', 'date_to', 'barangay', 'carrier'];
+
+    if (includeType) {
+      fields.push('type');
+    }
+
+    fields.forEach((name) => {
+      const field = form.querySelector(`[name="${name}"]`);
+      if (field) {
+        next.searchParams.set(name, field.value);
+      }
+    });
+    next.searchParams.delete('preset');
+
+    return next.pathname + '?' + next.searchParams.toString();
+  }
+
+  const filterForm = document.getElementById('reportFilters');
+
+  filterForm?.addEventListener('submit', () => {
+    const btn = document.getElementById('generateBtn');
+    const label = document.getElementById('generateLabel');
+    const loading = document.getElementById('reportLoading');
+
+    if (btn) {
+      btn.disabled = true;
+    }
+    if (label) {
+      label.textContent = 'Generating...';
+    }
+    if (loading) {
+      loading.classList.remove('hidden');
+      loading.classList.add('flex');
+    }
+  });
+
+  document.querySelectorAll('[data-report-type]').forEach((link) => {
+    link.addEventListener('click', () => {
+      link.href = syncFilterParams(link.href, false);
+    });
+  });
+
+  document.querySelectorAll('[data-report-export]').forEach((link) => {
+    link.addEventListener('click', () => {
+      link.href = syncFilterParams(link.href);
+    });
+  });
+
+  const exportMenu = document.getElementById('exportMenu');
+  const exportToggle = document.getElementById('exportToggle');
+  const exportDropdown = document.getElementById('exportDropdown');
+
+  function setExportOpen(open) {
+    if (!exportDropdown || !exportToggle) {
+      return;
+    }
+    exportDropdown.classList.toggle('hidden', !open);
+    exportToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  exportToggle?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    setExportOpen(exportDropdown.classList.contains('hidden'));
+  });
+
+  document.addEventListener('click', (event) => {
+    if (exportMenu && !exportMenu.contains(event.target)) {
+      setExportOpen(false);
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      setExportOpen(false);
+    }
+  });
+
+  document.querySelector('[data-print]')?.addEventListener('click', () => {
+    setExportOpen(false);
+    window.print();
+  });
+
+  // Report chart
+  const reportChartData = @json($chart);
+  const reportChartType = @json($chartType);
+  const reportChartLabel = @json($chartMeta[1]);
+  const reportChartSuffix = @json($chartSuffix);
+  const rptCss = getComputedStyle(document.documentElement);
+  const rptMuted = rptCss.getPropertyValue('--color-muted-foreground').trim() || '#5c6b88';
+  const rptGrid = rptCss.getPropertyValue('--color-border').trim() || '#e3e9f4';
+  const rptPrimary = rptCss.getPropertyValue('--color-primary').trim() || '#1d4ed8';
+  const rptCard = rptCss.getPropertyValue('--color-card').trim() || '#ffffff';
+
+  if (typeof Chart !== 'undefined' && document.getElementById('reportChart')) {
+    const canvas = document.getElementById('reportChart');
+    const ctx = canvas.getContext('2d');
+    const fill = ctx.createLinearGradient(0, 0, 0, 224);
+    fill.addColorStop(0, 'rgba(29,78,216,.25)');
+    fill.addColorStop(1, 'rgba(29,78,216,0)');
+
+    const isLine = reportChartType === 'line';
+    const dataset = {
+      label: reportChartLabel,
+      data: reportChartData.values || [],
+      borderColor: rptPrimary,
+      borderWidth: isLine ? 2.5 : 0,
+      tension: 0.35,
+      fill: isLine,
+      backgroundColor: isLine ? fill : rptPrimary,
+      pointRadius: isLine ? 3 : 0,
+      pointBackgroundColor: rptCard,
+      pointBorderColor: rptPrimary,
+      pointBorderWidth: isLine ? 2 : 0,
+      pointHoverRadius: isLine ? 5 : 0,
+      borderRadius: isLine ? 0 : 6,
+      maxBarThickness: isLine ? undefined : 52,
+    };
+
+    new Chart(ctx, {
+      type: reportChartType,
+      data: {
+        labels: reportChartData.labels || [],
+        datasets: [dataset],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (context) => ` ${context.parsed.y}${reportChartSuffix} ${reportChartLabel.toLowerCase()}`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: {
+              color: rptMuted,
+              font: { size: 11, weight: '600' },
+              maxRotation: isLine ? 0 : 45,
+              autoSkip: true,
+              maxTicksLimit: 8,
+            },
+          },
+          y: {
+            beginAtZero: true,
+            grid: { color: rptGrid, borderDash: [4, 4] },
+            ticks: {
+              color: rptMuted,
+              font: { size: 11 },
+              precision: 0,
+              callback: (value) => `${value}${reportChartSuffix}`,
+            },
+          },
+        },
+      },
+    });
+  }
+</script>
+@endpush

@@ -16,7 +16,7 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'email'    => 'required|email',
+            'email' => 'required|email',
             'password' => 'required|string',
         ]);
 
@@ -38,18 +38,18 @@ class AuthController extends Controller
         return response()->json([
             'data' => [
                 'token' => $token,
-                'user'  => [
-                    'id'       => $user->id,
-                    'name'     => $user->name,
-                    'email'    => $user->email,
-                    'role'     => $user->role,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role,
                     'initials' => $user->initials,
                 ],
                 'hub' => [
-                    'name'         => $hub->name,
-                    'staff_name'   => $hub->staff_name,
-                    'address'      => $hub->address,
-                    'contact_phone'=> $hub->contact_phone,
+                    'name' => $hub->name,
+                    'staff_name' => $hub->staff_name,
+                    'address' => $hub->address,
+                    'contact_phone' => $hub->contact_phone,
                 ],
             ],
             'message' => 'Logged in successfully.',
@@ -71,10 +71,10 @@ class AuthController extends Controller
 
         return response()->json([
             'data' => [
-                'id'       => $user->id,
-                'name'     => $user->name,
-                'email'    => $user->email,
-                'role'     => $user->role,
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
                 'initials' => $user->initials,
             ],
         ]);

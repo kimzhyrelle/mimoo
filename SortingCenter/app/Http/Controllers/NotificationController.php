@@ -3,44 +3,53 @@
 namespace App\Http\Controllers;
 
 use App\Models\Activity;
-use Illuminate\Http\Request;
+use App\Services\NotificationService;
+use Illuminate\Http\JsonResponse;
 
 class NotificationController extends Controller
 {
-    /** Return latest 15 notifications as JSON for the dropdown */
-    public function index()
+    public function __construct(private NotificationService $notifications) {}
+
+    /**
+     * Return grouped actionable alerts plus the latest activity feed.
+     */
+    public function index(): JsonResponse
     {
-        $notifications = Activity::with(['parcel', 'rider'])
-            ->latest()
-            ->limit(15)
-            ->get()
-            ->map(fn ($a) => [
-                'id'          => $a->id,
-                'description' => $a->description,
-                'icon'        => $a->icon,
-                'icon_classes'=> $a->iconClasses(),
-                'icon_svg'    => $a->iconSvg(),
-                'read'        => $a->read_at !== null,
-                'time'        => $a->created_at->diffForHumans(),
-            ]);
+        $payload = $this->notifications->payload();
 
         return response()->json([
-            'notifications' => $notifications,
-            'unread_count'  => Activity::unread()->count(),
+            'notifications' => $payload['notifications'],
+            'unread_count' => $payload['unread_count'],
+            'actionable_count' => $this->notifications->countActionable(),
         ]);
     }
 
-    /** Mark a single notification as read */
-    public function markRead(Activity $activity)
+    /**
+     * Mark a single activity notification as read.
+     */
+    public function markRead(Activity $activity): JsonResponse
     {
         $activity->markAsRead();
-        return response()->json(['ok' => true]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Notification marked as read.',
+            'unread_count' => Activity::unread()->count(),
+        ]);
     }
 
-    /** Mark all notifications as read */
-    public function markAllRead()
+    /**
+     * Mark every activity notification as read. Actionable parcel/KYC alerts
+     * stay visible until their underlying records are resolved.
+     */
+    public function markAllRead(): JsonResponse
     {
         Activity::unread()->update(['read_at' => now()]);
-        return response()->json(['ok' => true, 'unread_count' => 0]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'All activity notifications marked as read.',
+            'unread_count' => $this->notifications->countActionable(),
+        ]);
     }
 }

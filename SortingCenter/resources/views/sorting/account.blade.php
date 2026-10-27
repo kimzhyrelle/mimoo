@@ -1,566 +1,374 @@
 @extends('layouts.sorting')
 
-@section('title', 'Account Management')
-@section('subtitle', 'Manage your sorting staff profile, hub documents, and preferences.')
+@section('title', 'Account')
 
 @php
-  $input = 'w-full rounded-md border border-input bg-background px-3.5 py-2.5 text-[13.5px] outline-none focus:border-ring focus:ring-3 focus:ring-ring/20';
-  $inputDisabled = 'w-full rounded-md border border-input bg-muted/40 px-3.5 py-2.5 text-[13.5px] text-muted-foreground outline-none cursor-not-allowed';
-  $label = 'mb-1.5 block text-[12px] font-semibold text-foreground';
+  $isPreview = request()->routeIs('preview.*');
+  $initials = \Illuminate\Support\Str::of($hub->name ?? 'Hub')->explode(' ')->map(fn ($w) => mb_substr($w, 0, 1))->take(2)->implode('');
+  $contactFields = ['first_name', 'last_name', 'middle_initial', 'staff_title', 'birthday'];
+  $contactHasError = collect($contactFields)->contains(fn ($f) => $errors->has($f));
+  $entityHasError = $errors->has('entity_name');
+  $docs = [
+    ['SEC Registration Certificate', 'Corporate'],
+    ['BIR Certificate of Registration (2303)', 'Tax'],
+    ["Mayor's / Business Permit", 'Local Government'],
+    ['Fire Safety Inspection Certificate', 'Facility'],
+  ];
+  $nodeId = 'MIM-'.strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $hub->name ?? 'HUB'), 0, 3)).'-'.str_pad((string) ($hub->id ?? 1), 3, '0', STR_PAD_LEFT);
 @endphp
-
-@push('styles')
-<style>
-@keyframes slideUp {
-  from { opacity:0; transform:translateY(16px); }
-  to   { opacity:1; transform:translateY(0); }
-}
-</style>
-@endpush
 
 @section('content')
 
-@if (session('status'))
-  <div class="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-[13px] text-emerald-700">{{ session('status') }}</div>
-@endif
+  {{-- Flash banner — cleared when switching tabs --}}
+  <div id="acctFlash">@include('partials.flash')</div>
 
-<div class="flex gap-6 items-start">
-
-  {{-- Left: Profile card --}}
-  <div class="w-56 shrink-0 rounded-xl border border-border bg-card p-5 text-center shadow-sm">
-
-    {{-- Avatar --}}
-    <div class="mx-auto mb-3 flex size-20 items-center justify-center rounded-full bg-primary text-[22px] font-bold text-primary-foreground">
-      {{ strtoupper(substr($hub->display_initials ?? $hub->staff_initials ?? 'SC', 0, 2)) }}
-    </div>
-
-    <div class="text-[14.5px] font-bold text-foreground">{{ $hub->staff_name ?? 'Sorting Staff' }}</div>
-    <div class="mt-0.5 text-[11.5px] text-muted-foreground">{{ $hub->staff_title ?? 'Sorting Staff' }} · {{ $hub->name ?? 'Santa Cruz Hub' }}</div>
-
-    <div class="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[11.5px] font-semibold text-emerald-700">
-      <span class="size-1.5 rounded-full bg-emerald-500"></span>Account verified
-    </div>
-
-    <button class="mt-2.5 text-[12px] font-semibold text-primary hover:underline">Change photo</button>
-
-    <div class="mt-4 border-t border-border pt-4 text-left space-y-2.5">
-      <div class="flex items-center justify-between text-[12px]">
-        <span class="text-muted-foreground">Hub</span>
-        <span class="font-semibold">{{ $hub->name ?? 'Santa Cruz, Laguna' }}</span>
+  {{-- ── Identity header ── --}}
+  <section class="card mb-5 p-6">
+    <div class="flex flex-wrap items-center gap-6">
+      <div class="relative">
+        <span class="flex size-20 items-center justify-center rounded-2xl bg-primary font-display text-[28px] font-bold text-white shadow-lg shadow-primary/25">{{ $initials }}</span>
+        <span class="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-primary text-white ring-2 ring-card"><x-icon name="check" :size="13" :stroke="3.5" /></span>
       </div>
-      <div class="flex items-center justify-between text-[12px]">
-        <span class="text-muted-foreground">Contact email</span>
-        <span class="font-semibold truncate max-w-[120px]" title="{{ $hub->contact_email }}">{{ $hub->contact_email ?? '—' }}</span>
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-2.5">
+          <h1 class="h-display text-[26px] leading-tight">{{ $hub->name ?? 'Sorting Hub' }}</h1>
+        </div>
+        <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
+          <span>Registered Logistics Hub Partner</span>
+          <span class="flex items-center gap-1.5"><span class="size-1.5 rounded-full bg-muted-foreground/50"></span>NODE ID: <b class="text-foreground">{{ $nodeId }}</b></span>
+          <span class="flex items-center gap-1.5"><span class="size-1.5 rounded-full bg-muted-foreground/50"></span>Accredited since {{ ($hub->created_at ?? now())->format('M j, Y') }}</span>
+        </div>
       </div>
-      <div class="flex items-center justify-between text-[12px]">
-        <span class="text-muted-foreground">Phone</span>
-        <span class="font-semibold">{{ $hub->contact_phone ?? '—' }}</span>
-      </div>
-      <div class="flex items-center justify-between text-[12px]">
-        <span class="text-muted-foreground">Barangays covered</span>
-        <span class="font-bold">{{ $areas->count() }}</span>
+      <div class="flex items-center gap-3">
+        <div class="rounded-xl bg-secondary px-4 py-2.5 text-[12px]"><span class="flex items-center gap-1.5 text-muted-foreground"><span class="size-1.5 rounded-full bg-primary"></span>Hub Operational Tier</span><span class="font-bold">Priority Sorter • Class A</span></div>
+        <button type="button" onclick="window.print()" class="btn-soft"><x-icon name="download" :size="15" />Certificate</button>
       </div>
     </div>
-  </div>
 
-  {{-- Right: Tabbed panel --}}
-  <div class="flex-1 min-w-0 rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-
-    {{-- Tabs --}}
-    <div class="flex border-b border-border px-5 pt-4 gap-1" id="accountTabs">
-      @foreach (['profile' => 'Profile', 'documents' => 'Documents', 'security' => 'Security', 'notifications' => 'Notifications'] as $key => $label)
-        <button
-          onclick="switchTab('{{ $key }}')"
-          id="tab-{{ $key }}"
-          class="tab-btn rounded-md px-4 py-2 text-[13px] font-semibold mb-[-1px] border border-transparent transition-colors
-            {{ $key === 'profile' ? 'bg-primary text-primary-foreground border-primary' : 'text-muted-foreground hover:text-foreground' }}">
-          {{ $label }}
+    <div class="mt-6 flex flex-wrap gap-2" role="tablist">
+      @foreach ([['company', 'Company Profile', 'building', null], ['contact', 'Contact Person', 'account', null], ['documents', 'Documents', 'folder', count($docs)], ['security', 'Security', 'lock', null]] as [$key, $label, $icon, $badge])
+        <button type="button" data-acct-tab="{{ $key }}" class="acct-tab inline-flex items-center gap-2 rounded-xl px-5 py-3 text-[13.5px] font-semibold transition">
+          <x-icon :name="$icon" :size="15" />{{ $label }}
+          @if ($badge)<span class="rounded-full bg-accent px-2 py-0.5 text-[10.5px] text-accent-foreground">{{ $badge }}</span>@endif
         </button>
       @endforeach
     </div>
+  </section>
 
-    {{-- Profile Tab --}}
-    <div id="tabpanel-profile" class="tab-panel p-6">
-      <div class="mb-5">
-        <div class="text-[14px] font-bold">Personal information</div>
-        <div class="text-[12px] text-primary mt-0.5">This information appears on your staff badge and internal reports</div>
-      </div>
+  <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1.9fr_1fr]">
 
-      <form method="POST" action="{{ route('account.update') }}">
-        @csrf
+    {{-- ═════════ Forms / panels ═════════ --}}
+    <form method="POST" action="{{ $isPreview ? '#' : route('account.update') }}" class="card p-6" id="accountForm">
+      @csrf
+      <input type="hidden" name="confirm" id="accountConfirm" value="0">
 
-        <div class="grid grid-cols-2 gap-x-5 gap-y-4">
-
-          <div>
-            <label class="{{ $label }}">Last name</label>
-            <input type="text" name="last_name" value="{{ old('last_name', $hub->last_name ?? 'Garcia') }}" class="{{ $input }}" minlength="2" maxlength="50" required>
-          </div>
-          <div>
-            <label class="{{ $label }}">First name</label>
-            <input type="text" name="first_name" value="{{ old('first_name', $hub->first_name ?? 'Liza') }}" class="{{ $input }}" minlength="2" maxlength="50" required>
-          </div>
-
-          <div>
-            <label class="{{ $label }}">Middle initial</label>
-            <input type="text" name="middle_initial" value="{{ old('middle_initial', $hub->middle_initial ?? '') }}" class="{{ $input }}" maxlength="5" placeholder="e.g. P.">
-          </div>
-          <div>
-            <label class="{{ $label }}">Title / role</label>
-            <input type="text" name="staff_title" value="{{ old('staff_title', $hub->staff_title ?? 'Sorting Staff') }}" class="{{ $input }}" placeholder="e.g. Sorting Staff">
-          </div>
-
-          <div>
-            <label class="{{ $label }}">Birthday</label>
-            <input type="date" name="birthday"
-              value="{{ old('birthday', $hub->birthday?->format('Y-m-d')) }}"
-              max="{{ now()->subYears(18)->format('Y-m-d') }}"
-              class="{{ $input }}"
-              oninput="updateAge(this)">
-            @error('birthday')
-              <p class="mt-1 text-[11px] text-destructive font-semibold">{{ $message }}</p>
-            @enderror
-            @if (!$errors->has('birthday'))
-              <p class="mt-1 text-[11px] text-muted-foreground">Must be at least 18 years old.</p>
-            @endif
-          </div>
-          <div>
-            <label class="{{ $label }}">Age</label>
-            <input type="text" id="age-display"
-              value="{{ $hub->birthday ? now()->diffInYears($hub->birthday) : '' }}"
-              class="{{ $inputDisabled }}" disabled placeholder="—">
-          </div>
-
-          <div>
-            <label class="{{ $label }}">Email address</label>
-            <input type="email" name="contact_email" value="{{ old('contact_email', $hub->contact_email) }}" class="{{ $input }}">
-          </div>
-          <div>
-            <label class="{{ $label }}">Contact number</label>
-            <div class="flex overflow-hidden rounded-md border border-input focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20">
-              {{-- PH flag + code --}}
-              <div class="flex shrink-0 items-center gap-1.5 border-r border-input bg-muted/40 px-3 text-[13px] font-semibold text-muted-foreground select-none">
-                <span class="text-base leading-none">🇵🇭</span>
-                <span>+63</span>
-              </div>
-              {{-- Number input — accepts 09XXXXXXXXX or 9XXXXXXXXX --}}
-              <input
-                type="tel"
-                name="contact_phone"
-                value="{{ old('contact_phone', $hub->contact_phone) }}"
-                placeholder="09XX XXX XXXX"
-                maxlength="13"
-                oninput="formatPHNumber(this)"
-                class="min-w-0 flex-1 bg-background px-3 py-2.5 text-[13.5px] outline-none">
-            </div>
-            <p class="mt-1 text-[11px] text-muted-foreground">Format: 09XX XXX XXXX</p>
-          </div>
-
-          <div class="col-span-2">
-            <label class="{{ $label }}">Street / house number</label>
-            <input type="text" name="address" value="{{ old('address', $hub->address) }}" class="{{ $input }}">
-          </div>
-
-          <div>
-            <label class="{{ $label }}">Province</label>
-            <input type="text" value="Laguna" class="{{ $inputDisabled }}" disabled>
-          </div>
-          <div>
-            <label class="{{ $label }}">Municipality</label>
-            <input type="text" value="Santa Cruz" class="{{ $inputDisabled }}" disabled>
-          </div>
-
-        </div>
-
-        <div class="mt-6 flex justify-end gap-2.5">
-          <button type="reset" class="rounded-md border border-border bg-background px-4 py-2.5 text-[13px] font-semibold text-foreground hover:bg-muted transition-colors">Cancel</button>
-          <button type="submit" class="rounded-md bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">Save changes</button>
-        </div>
-
-      </form>
-    </div>
-
-    {{-- Documents Tab --}}
-    <div id="tabpanel-documents" class="tab-panel p-6 hidden">
-      <div class="mb-5">
-        <div class="text-[14px] font-bold">Verification documents</div>
-        <div class="text-[12px] text-muted-foreground mt-0.5">Required for <span class="text-primary font-semibold">admin</span> approval of this hub account</div>
-      </div>
-
-      <div class="divide-y divide-border rounded-lg border border-border overflow-hidden">
-
-        {{-- Government-issued ID --}}
-        <div class="flex items-center justify-between px-5 py-4 bg-background hover:bg-muted/20 transition-colors">
-          <div class="flex items-center gap-3.5">
-            <div class="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M13 9h4M13 13h4M5 17c0-2 1.8-3 4-3s4 1 4 3"/></svg>
-            </div>
-            <div>
-              <div class="text-[13.5px] font-semibold">Government-issued ID</div>
-              <div class="text-[11.5px] text-muted-foreground mt-0.5">Uploaded Jan 14, 2026 · <span class="font-mono">JPG</span></div>
-            </div>
-          </div>
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[12px] font-semibold text-emerald-700">
-            <span class="size-1.5 rounded-full bg-emerald-500"></span>Verified
-          </span>
-        </div>
-
-        {{-- Business / DTI permit --}}
-        <div class="flex items-center justify-between px-5 py-4 bg-background hover:bg-muted/20 transition-colors">
-          <div class="flex items-center gap-3.5">
-            <div class="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            </div>
-            <div>
-              <div class="text-[13.5px] font-semibold">Business / DTI permit</div>
-              <div class="text-[11.5px] text-muted-foreground mt-0.5">Uploaded Jan 14, 2026 · <span class="font-mono">PDF</span></div>
-            </div>
-          </div>
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[12px] font-semibold text-emerald-700">
-            <span class="size-1.5 rounded-full bg-emerald-500"></span>Verified
-          </span>
-        </div>
-
-        {{-- Hub facility permit renewal --}}
-        <div class="flex items-center justify-between px-5 py-4 bg-background hover:bg-muted/20 transition-colors">
-          <div class="flex items-center gap-3.5">
-            <div class="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-            </div>
-            <div>
-              <div class="text-[13.5px] font-semibold">Hub facility permit renewal</div>
-              <div class="text-[11.5px] text-muted-foreground mt-0.5">Not yet uploaded</div>
-            </div>
-          </div>
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-[12px] font-semibold text-amber-700">
-            <span class="size-1.5 rounded-full bg-amber-500"></span>Action needed
-          </span>
-        </div>
-
-      </div>
-
-      <div class="mt-4 flex justify-end">
-        <button type="button" class="rounded-md bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">Upload document</button>
-      </div>
-    </div>
-
-    {{-- Security Tab --}}
-    <div id="tabpanel-security" class="tab-panel p-6 hidden">
-
-      {{-- Change password --}}
-      <div class="mb-6">
-        <div class="text-[14px] font-bold">Security settings</div>
-        <div class="text-[12px] text-muted-foreground mt-0.5">Manage your password and account access</div>
-      </div>
-
-      <div class="space-y-4">
+      <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <label class="{{ $label }}">Current password</label>
-          <input type="password" name="current_password" class="{{ $input }}" placeholder="••••••••">
+          <h2 class="h-display text-[20px]" id="panelTitle">Registration &amp; Facility Info</h2>
+          <p class="max-w-xs text-[12px] text-muted-foreground" id="panelSub">Manage your corporate credentials and authorized operational locations.</p>
         </div>
+        <div class="flex items-center gap-2.5" id="formActions">
+          <button type="button" id="editBtn" class="btn-soft" data-edit-only="hide"><x-icon name="pencil" :size="14" />Edit</button>
+          <button type="button" id="saveBtn" onclick="saveAccount()" class="btn-primary" {{ $isPreview ? 'disabled' : '' }} data-edit-only="show" disabled><x-icon name="check" :size="15" />Save Changes</button>
+          <button type="button" id="cancelBtn" onclick="cancelEdit()" class="btn-ghost" data-edit-only="show">Cancel</button>
+        </div>
+      </div>
+
+      {{-- Company profile --}}
+      <div data-acct-panel="company" class="space-y-4">
+        <label class="block"><span class="label">Registered Corporate Entity Name</span>
+          <input type="text" name="entity_name" value="{{ old('entity_name', $hub->name ?? config('sorting.hub_name')) }}" class="field acct-input mt-1.5 {{ $errors->has('entity_name') ? 'field-error' : '' }}" maxlength="255" readonly>
+          @if ($errors->has('entity_name'))<span class="field-error-msg">{{ $errors->first('entity_name') }}</span>@else<span class="field-hint">Changing this name requires confirmation.</span>@endif</label>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label class="block"><span class="label">Contact Email</span>
+            <input type="email" name="contact_email" value="{{ old('contact_email', $hub->contact_email ?? '') }}" class="field acct-input mt-1.5 {{ $errors->has('contact_email') ? 'field-error' : '' }}" readonly>
+            @if ($errors->has('contact_email'))<span class="field-error-msg">{{ $errors->first('contact_email') }}</span>@endif</label>
+          <label class="block"><span class="label">Contact Phone</span>
+            <input type="text" name="contact_phone" id="phoneInput" value="{{ old('contact_phone', $hub->contact_phone ?? '') }}" placeholder="0917 123 4567 or (049) 123-4567" class="field acct-input mt-1.5 {{ $errors->has('contact_phone') ? 'field-error' : '' }}" readonly>
+            @if ($errors->has('contact_phone'))<span class="field-error-msg">{{ $errors->first('contact_phone') }}</span>@else<span class="field-hint">PH mobile (09XX XXX XXXX) or landline (049) 123-4567.</span>@endif</label>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5 rounded-xl bg-secondary px-4 py-3 text-[12px] font-semibold">
+          <x-icon name="network" :size="15" class="text-primary" />Hierarchy Mapping:
+          <span class="text-muted-foreground">Region → Province → City / Municipality → Barangay</span>
+        </div>
+
+        <label class="block"><span class="label">Street Address &amp; Landmark</span>
+          <input type="text" name="address" value="{{ old('address', $hub->address ?? '') }}" class="field acct-input mt-1.5 {{ $errors->has('address') ? 'field-error' : '' }}" maxlength="255" readonly>
+          @if ($errors->has('address'))<span class="field-error-msg">{{ $errors->first('address') }}</span>@endif</label>
+
+        <label class="block"><span class="label">Coverage Note</span>
+          <textarea name="coverage_note" rows="3" class="field acct-input mt-1.5 resize-none {{ $errors->has('coverage_note') ? 'field-error' : '' }}" maxlength="1000" readonly>{{ old('coverage_note', $hub->coverage_note ?? '') }}</textarea>
+          @if ($errors->has('coverage_note'))<span class="field-error-msg">{{ $errors->first('coverage_note') }}</span>@endif</label>
+
         <div>
-          <label class="{{ $label }}">New password</label>
-          <input type="password" name="new_password" class="{{ $input }}" placeholder="••••••••">
-        </div>
-        <div>
-          <label class="{{ $label }}">Confirm new password</label>
-          <input type="password" name="new_password_confirmation" class="{{ $input }}" placeholder="••••••••">
-        </div>
-        <div class="flex justify-end gap-2.5 pt-1">
-          <button type="button" class="rounded-md border border-border bg-background px-4 py-2.5 text-[13px] font-semibold text-foreground hover:bg-muted transition-colors">Cancel</button>
-          <button type="button" class="rounded-md bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">Update password</button>
-        </div>
-      </div>
-
-      {{-- Divider --}}
-      <div class="my-7 border-t border-border"></div>
-
-      {{-- Account deactivation --}}
-      <div class="rounded-lg border border-destructive/30 bg-destructive/5 p-5">
-        <div class="flex items-start gap-4">
-          <div class="flex size-9 shrink-0 items-center justify-center rounded-md bg-destructive/10 text-destructive mt-0.5">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="text-[13.5px] font-bold text-destructive">Deactivate this account</div>
-            <p class="mt-1 text-[12px] text-muted-foreground leading-relaxed">
-              Deactivating will immediately suspend all access to this sorting hub. Parcel data and rider assignments are preserved. Only an admin can reactivate the account.
-            </p>
-            <div class="mt-4">
-              <button type="button" onclick="openDeactModal()"
-                class="rounded-md border border-destructive/50 bg-background px-4 py-2.5 text-[13px] font-semibold text-destructive hover:bg-destructive/10 transition-colors">
-                Deactivate account
-              </button>
-            </div>
+          <div class="mb-1.5 flex items-center justify-between"><span class="label">Authorized Regional Service Areas</span><span class="text-[11px] font-bold text-primary">{{ $areas->count() }} Areas Active</span></div>
+          <div class="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-xl bg-secondary p-3">
+            @foreach ($areas as $a)
+              <span class="inline-flex items-center gap-2 rounded-xl bg-card px-3 py-1.5 text-[12px] font-semibold shadow-sm"><span class="size-2 rounded-full" style="background: {{ $a->chart_color ?? '#1d4ed8' }}"></span>{{ $a->name }}</span>
+            @endforeach
           </div>
         </div>
       </div>
 
-      {{-- ── Deactivation Modal ── --}}
-      <div id="deact-modal-backdrop"
-           class="fixed inset-0 z-50 hidden flex items-center justify-center"
-           style="background:rgba(0,0,0,.45);"
-           onclick="backdropClose(event)">
-
-        <div id="deact-modal"
-             class="relative w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden"
-             style="animation:slideUp .2s ease-out;">
-
-          {{-- Modal header --}}
-          <div class="flex items-center justify-between border-b border-border px-6 py-4">
-            <div class="flex items-center gap-2.5">
-              <div class="flex size-8 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              </div>
-              <span class="text-[14.5px] font-bold text-destructive">Deactivate this account?</span>
-            </div>
-            <button onclick="closeDeactModal()" class="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-
-          {{-- Panel: Step 1 — Consequences --}}
-          <div id="modal-step-1">
-            <div class="px-6 pt-5 pb-4">
-              <p class="text-[13px] text-muted-foreground leading-relaxed mb-4">
-                Before you continue, here's what will happen to your hub account:
-              </p>
-              <ul class="space-y-2.5 mb-5">
-                @foreach ([
-                  'All staff logins will be <strong>immediately disabled</strong>.',
-                  'Active deliveries will be <strong>paused</strong> and riders notified.',
-                  'All hub data and parcel history will be <strong>preserved</strong>.',
-                  'Only a <strong>platform admin</strong> can reactivate this account.',
-                ] as $item)
-                  <li class="flex items-start gap-2.5 text-[12.5px] text-foreground">
-                    <svg class="shrink-0 mt-0.5 text-destructive" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    <span>{!! $item !!}</span>
-                  </li>
-                @endforeach
-              </ul>
-              <p class="text-[12.5px] font-semibold text-foreground">Do you want to continue?</p>
-            </div>
-            <div class="flex gap-3 border-t border-border px-6 py-4">
-              <button onclick="closeDeactModal()"
-                class="flex-1 rounded-lg border border-border bg-background py-2.5 text-[13px] font-semibold text-foreground hover:bg-muted transition-colors">
-                No, keep my account
-              </button>
-              <button onclick="modalGoStep(2)"
-                class="flex-1 rounded-lg bg-destructive py-2.5 text-[13px] font-semibold text-white hover:bg-red-700 transition-colors">
-                Yes, continue
-              </button>
-            </div>
-          </div>
-
-          {{-- Panel: Step 2 — Password verification --}}
-          <div id="modal-step-2" class="hidden">
-            <div class="px-6 pt-5 pb-4">
-              <div class="mb-4 flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3">
-                <svg class="shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <p class="text-[12px] font-semibold text-amber-700 leading-relaxed">
-                  For your security, enter your password to confirm this action.
-                </p>
-              </div>
-              <label class="mb-1.5 block text-[12.5px] font-semibold">Current password</label>
-              <div class="relative">
-                <input type="password" id="modal-password"
-                  class="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-[13.5px] outline-none focus:border-destructive focus:ring-3 focus:ring-destructive/20 pr-10"
-                  placeholder="Enter your password"
-                  oninput="modalPasswordInput()">
-                <button type="button" onclick="toggleModalPw()" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  <svg id="modal-eye" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                </button>
-              </div>
-              <p id="modal-pw-error" class="mt-1.5 hidden text-[12px] text-destructive font-semibold">Password is required to continue.</p>
-            </div>
-            <div class="flex gap-3 border-t border-border px-6 py-4">
-              <button onclick="modalGoStep(1)"
-                class="flex-1 rounded-lg border border-border bg-background py-2.5 text-[13px] font-semibold text-foreground hover:bg-muted transition-colors">
-                ← Go back
-              </button>
-              <button id="modal-confirm-btn" onclick="modalVerifyAndConfirm()"
-                class="flex-1 rounded-lg bg-destructive py-2.5 text-[13px] font-semibold text-white hover:bg-red-700 transition-colors opacity-40 cursor-not-allowed"
-                disabled>
-                <span id="modal-confirm-label">Confirm deactivation</span>
-              </button>
-            </div>
-          </div>
-
+      {{-- Contact person --}}
+      <div data-acct-panel="contact" class="hidden space-y-4">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label class="block"><span class="label">First Name</span>
+            <input type="text" name="first_name" value="{{ old('first_name', $hub->first_name ?? \Illuminate\Support\Str::before($hub->staff_name ?? 'Sorting Staff', ' ')) }}" class="field acct-input mt-1.5 {{ $errors->has('first_name') ? 'field-error' : '' }}" maxlength="50" readonly>
+            @if ($errors->has('first_name'))<span class="field-error-msg">{{ $errors->first('first_name') }}</span>@endif</label>
+          <label class="block"><span class="label">Last Name</span>
+            <input type="text" name="last_name" value="{{ old('last_name', $hub->last_name ?? (\Illuminate\Support\Str::contains($hub->staff_name ?? '', ' ') ? \Illuminate\Support\Str::after($hub->staff_name, ' ') : 'Staff')) }}" class="field acct-input mt-1.5 {{ $errors->has('last_name') ? 'field-error' : '' }}" maxlength="50" readonly>
+            @if ($errors->has('last_name'))<span class="field-error-msg">{{ $errors->first('last_name') }}</span>@endif</label>
+          <label class="block"><span class="label">Middle Initial</span>
+            <input type="text" name="middle_initial" value="{{ old('middle_initial', $hub->middle_initial ?? '') }}" class="field acct-input mt-1.5 {{ $errors->has('middle_initial') ? 'field-error' : '' }}" maxlength="5" readonly>
+            @if ($errors->has('middle_initial'))<span class="field-error-msg">{{ $errors->first('middle_initial') }}</span>@endif</label>
+          <label class="block"><span class="label">Position / Title</span>
+            <input type="text" name="staff_title" value="{{ old('staff_title', $hub->staff_title ?? '') }}" placeholder="e.g. Operations Manager" class="field acct-input mt-1.5 {{ $errors->has('staff_title') ? 'field-error' : '' }}" maxlength="100" readonly>
+            @if ($errors->has('staff_title'))<span class="field-error-msg">{{ $errors->first('staff_title') }}</span>@endif</label>
+          <label class="block"><span class="label">Birthday</span>
+            <input type="date" name="birthday" id="birthdayInput" value="{{ old('birthday', optional($hub->birthday ?? null)->format('Y-m-d')) }}" max="{{ now()->subYears(18)->toDateString() }}" class="field acct-input mt-1.5 {{ $errors->has('birthday') ? 'field-error' : '' }}" readonly onchange="checkBirthday()">
+            @if ($errors->has('birthday'))<span class="field-error-msg">{{ $errors->first('birthday') }}</span>@else<span class="field-hint" id="birthdayHint">The contact person must be at least 18 years old.</span>@endif</label>
         </div>
       </div>
 
-    </div>
-
-    {{-- Notifications Tab --}}
-    <div id="tabpanel-notifications" class="tab-panel p-6 hidden">
-      <div class="mb-5 pb-4 border-b border-border">
-        <div class="text-[14px] font-bold">Notification preferences</div>
-        <div class="text-[12px] text-muted-foreground mt-0.5">Choose what you're alerted about <span class="text-primary font-semibold">in real time</span></div>
-      </div>
-
-      <div class="divide-y divide-border">
-
-        @php
-          $notifications = [
-            ['key' => 'new_parcel_arrivals',    'label' => 'New parcel arrivals',      'desc' => 'Alert when a rider drops off parcels at the hub',             'on' => true ],
-            ['key' => 'pickup_cutoff_warnings', 'label' => 'Pickup cutoff warnings',   'desc' => 'Alert when a barangay route is nearing its ready-by cutoff',  'on' => true ],
-            ['key' => 'failed_delivery_scans',  'label' => 'Failed delivery scans',    'desc' => 'Alert when a rider scans a parcel as undelivered',            'on' => true ],
-            ['key' => 'new_chat_messages',      'label' => 'New chat messages',        'desc' => 'Alert for messages from riders, sellers, and admin',          'on' => true ],
-            ['key' => 'weekly_report_reminders','label' => 'Weekly report reminders',  'desc' => 'Reminder to generate and submit reports',                     'on' => false],
-          ];
-        @endphp
-
-        @foreach ($notifications as $n)
-          <div class="flex items-center justify-between py-4 gap-6">
-            <div>
-              <div class="text-[13.5px] font-semibold">{{ $n['label'] }}</div>
-              <div class="text-[12px] text-muted-foreground mt-0.5">{{ $n['desc'] }}</div>
+      {{-- Documents --}}
+      <div data-acct-panel="documents" class="hidden space-y-3">
+        @foreach ($docs as [$title, $kind])
+          <div class="flex items-center gap-4 rounded-2xl bg-secondary p-4">
+            <span class="flex size-10 items-center justify-center rounded-xl bg-card text-primary"><x-icon name="file" :size="18" /></span>
+            <div class="flex-1">
+              <div class="h-display text-[14.5px]">{{ $title }}</div>
+              <div class="text-[12px] text-muted-foreground">{{ $kind }}</div>
+              {{-- Last updated date --}}
+              <div class="mt-1 text-[11px] text-muted-foreground">Last updated: {{ ($hub->updated_at ?? now())->format('M j, Y') }}</div>
             </div>
-            {{-- iOS-style toggle --}}
-            <label class="relative inline-flex shrink-0 cursor-pointer items-center">
-              <input type="checkbox" name="{{ $n['key'] }}" class="peer sr-only" {{ $n['on'] ? 'checked' : '' }}>
-              <div class="h-6 w-11 rounded-full border border-border bg-muted transition-colors peer-checked:bg-emerald-500 peer-checked:border-emerald-500 peer-focus:ring-2 peer-focus:ring-emerald-500/30"></div>
-              <div class="absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></div>
-            </label>
           </div>
         @endforeach
-
+        <p class="text-[12px] text-muted-foreground">Document uploads aren't connected to storage yet — these entries are placeholders. Last updated: {{ ($hub->updated_at ?? now())->format('M j, Y \a\t h:i A') }}</p>
       </div>
 
-      <div class="mt-5 flex justify-end gap-2.5">
-        <button type="button" class="rounded-md border border-border bg-background px-4 py-2.5 text-[13px] font-semibold text-foreground hover:bg-muted transition-colors">Cancel</button>
-        <button type="button" class="rounded-md bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">Save preferences</button>
+      {{-- Security --}}
+      <div data-acct-panel="security" class="hidden space-y-4">
+        <div class="flex items-start gap-4 rounded-2xl bg-secondary p-5">
+          <span class="flex size-10 items-center justify-center rounded-xl bg-card text-primary"><x-icon name="shield" :size="18" /></span>
+          <div><div class="h-display text-[15px]">Strict Matrix Standard</div><p class="mt-1 text-[12.5px] text-muted-foreground">Every parcel handled at this hub must be verified with a 2D QR scan. Linear barcodes are rejected.</p></div>
+        </div>
+        <div class="flex items-start gap-4 rounded-2xl bg-secondary p-5">
+          <span class="flex size-10 items-center justify-center rounded-xl bg-card text-primary"><x-icon name="lock" :size="18" /></span>
+          <div><div class="h-display text-[15px]">Sign-in is turned off</div><p class="mt-1 text-[12.5px] text-muted-foreground">This build runs without login. Password and session controls will appear here once authentication is restored.</p></div>
+        </div>
       </div>
+    </form>
+
+    {{-- ═════════ Side cards ═════════ --}}
+    <div class="space-y-5">
+      <section class="card p-5">
+        <div class="mb-4 flex items-center justify-between"><h2 class="h-display text-[16px]">Key Operations Lead</h2></div>
+        <div class="tile rounded-2xl">
+          <div class="flex items-center gap-3">
+            <span class="flex size-12 items-center justify-center rounded-xl bg-ink text-[14px] font-bold text-white">{{ $hub->display_initials ?? 'SC' }}</span>
+            <div><div class="h-display text-[16px] leading-tight">{{ $hub->staff_name ?? 'Sorting Staff' }}</div><div class="text-[12px] text-muted-foreground">{{ $hub->staff_title ?? 'Sorting Staff' }}</div></div>
+          </div>
+          <div class="mt-4 space-y-2 text-[12.5px] font-medium">
+            <div class="flex items-center gap-2.5"><x-icon name="mail" :size="15" class="text-primary" /><span class="truncate">{{ $hub->contact_email ?? '—' }}</span></div>
+            <div class="flex items-center gap-2.5"><x-icon name="phone" :size="15" class="text-primary" />{{ $hub->contact_phone ?? '—' }}</div>
+          </div>
+        </div>
+        <div class="mt-3 grid grid-cols-2 gap-3">
+          <div class="tile rounded-2xl"><div class="text-[11px] text-muted-foreground">Daily Capacity</div><div class="h-display text-[20px]">12,500</div><div class="text-[11px] font-bold text-primary">Parcels / Day</div></div>
+          <div class="tile rounded-2xl"><div class="text-[11px] text-muted-foreground">Sort S.L.A.</div><div class="h-display text-[20px]">99.4%</div><div class="text-[11px] font-bold text-primary">Met this month</div></div>
+        </div>
+      </section>
+
+      <section class="card p-5 text-center">
+        <div class="flex items-center justify-between"><h2 class="h-display text-[16px]">Sorting Bay Token</h2><span class="text-[11px] font-bold text-primary">Live Scanner</span></div>
+        <x-qr :seed="$nodeId.'-QR'" :size="150" class="mx-auto my-5 text-primary" />
+        <div class="label">Fast Dock Check-In</div>
+        <div class="h-display text-[16px]">{{ $nodeId }}-QR</div>
+        <p class="mx-auto mt-1 max-w-[16rem] text-[12px] text-muted-foreground">Present at bay entry for automated gate clearance and intake ledger.</p>
+      </section>
     </div>
-
   </div>
-</div>
+
+  {{-- Confirm: Save Account Changes --}}
+  <x-confirm-modal id="confirmAccountSave" title="Save Account Changes?" confirmLabel="Save Changes">
+    <ul class="confirm-summary-list" id="accountSaveSummary">
+      <li>Your account settings will be updated</li>
+    </ul>
+  </x-confirm-modal>
 
 @endsection
 
 @push('scripts')
 <script>
-// ── Age auto-updater ──
-function updateAge(input) {
-  const val = input.value;
-  const display = document.getElementById('age-display');
-  if (!val) { display.value = ''; return; }
-  const birth = new Date(val);
-  const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-  display.value = age >= 0 ? age : '';
-}
+  const meta = {
+    company:   ['Registration & Facility Info', 'Manage your corporate credentials and authorized operational locations.', true],
+    contact:   ['Contact Person', 'The person responsible for this hub. Must be 18 or older.', true],
+    documents: ['Compliance Documents', 'Accreditation paperwork on file for this hub.', false],
+    security:  ['Security', 'Access standards for this sorting center.', false],
+  };
+  function showAcctTab(name) {
+    document.querySelectorAll('[data-acct-panel]').forEach(p => p.classList.toggle('hidden', p.dataset.acctPanel !== name));
+    document.querySelectorAll('.acct-tab').forEach(t => {
+      const on = t.dataset.acctTab === name;
+      t.classList.toggle('bg-ink', on); t.classList.toggle('text-ink-foreground', on);
+      t.classList.toggle('text-muted-foreground', !on); t.classList.toggle('hover:bg-secondary', !on);
+    });
+    document.getElementById('panelTitle').textContent = meta[name][0];
+    document.getElementById('panelSub').textContent = meta[name][1];
+    document.getElementById('formActions').classList.toggle('hidden', !meta[name][2]);
+    // Clear flash banner when switching tabs
+    const flash = document.getElementById('acctFlash');
+    if (flash) flash.innerHTML = '';
+  }
+  document.querySelectorAll('.acct-tab').forEach(t => t.addEventListener('click', () => showAcctTab(t.dataset.acctTab)));
+  document.querySelectorAll('[data-acct-goto]').forEach(b => b.addEventListener('click', () => showAcctTab(b.dataset.acctGoto)));
 
-// ── PH phone formatter ──
-function formatPHNumber(input) {
-  let v = input.value.replace(/\D/g, ''); // digits only
-  // strip leading country code if pasted with +63 or 63
-  if (v.startsWith('63')) v = v.slice(2);
-  // keep max 11 digits (09XXXXXXXXX)
-  v = v.slice(0, 11);
-  // format as 0XXX XXX XXXX
-  if (v.length > 7)      v = v.slice(0,4) + ' ' + v.slice(4,7) + ' ' + v.slice(7);
-  else if (v.length > 4) v = v.slice(0,4) + ' ' + v.slice(4);
-  input.value = v;
-}
+  // ── Edit mode toggling ──
+  let isEditing = false;
+  let formChanged = false;
 
-function switchTab(active) {
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
-  document.querySelectorAll('.tab-btn').forEach(b => {
-    b.classList.remove('bg-primary', 'text-primary-foreground', 'border-primary');
-    b.classList.add('text-muted-foreground');
+  function setEditing(on) {
+    isEditing = on;
+    formChanged = false;
+    document.querySelectorAll('.acct-input').forEach(i => {
+      i.readOnly = !on;
+      i.classList.toggle('bg-card', on);
+      i.classList.toggle('border-border', on);
+    });
+    // Toggle Edit/Save/Cancel visibility
+    document.querySelectorAll('[data-edit-only]').forEach(el => {
+      const mode = el.dataset.editOnly;
+      el.classList.toggle('hidden', mode === 'show' ? !on : on);
+    });
+    // Save button disabled until a field changes
+    const saveBtn = document.getElementById('saveBtn');
+    if (saveBtn) saveBtn.disabled = !on || !formChanged;
+  }
+
+  function cancelEdit() {
+    // Reset form to original values
+    document.getElementById('accountForm').reset();
+    setEditing(false);
+  }
+
+  document.getElementById('editBtn').addEventListener('click', () => {
+    setEditing(true);
+    document.querySelector('[data-acct-panel]:not(.hidden) .acct-input')?.focus();
   });
-  document.getElementById('tabpanel-' + active).classList.remove('hidden');
-  const btn = document.getElementById('tab-' + active);
-  btn.classList.add('bg-primary', 'text-primary-foreground', 'border-primary');
-  btn.classList.remove('text-muted-foreground');
-}
 
-// ── Deactivation modal ──
-function openDeactModal() {
-  modalGoStep(1);
-  document.getElementById('deact-modal-backdrop').classList.remove('hidden');
-  document.getElementById('deact-modal-backdrop').classList.add('flex');
-  document.body.style.overflow = 'hidden';
-}
+  // ── Detect field changes to enable Save ──
+  document.getElementById('accountForm').addEventListener('input', () => {
+    formChanged = true;
+    const saveBtn = document.getElementById('saveBtn');
+    if (saveBtn) saveBtn.disabled = !isEditing;
+  });
 
-function closeDeactModal() {
-  document.getElementById('deact-modal-backdrop').classList.add('hidden');
-  document.getElementById('deact-modal-backdrop').classList.remove('flex');
-  document.body.style.overflow = '';
-  // Reset state
-  document.getElementById('modal-password').value = '';
-  document.getElementById('modal-pw-error').classList.add('hidden');
-  const btn = document.getElementById('modal-confirm-btn');
-  btn.disabled = true;
-  btn.classList.add('opacity-40','cursor-not-allowed');
-  document.getElementById('modal-confirm-label').textContent = 'Confirm deactivation';
-}
-
-function backdropClose(e) {
-  if (e.target === document.getElementById('deact-modal-backdrop')) closeDeactModal();
-}
-
-function modalGoStep(n) {
-  document.getElementById('modal-step-1').classList.toggle('hidden', n !== 1);
-  document.getElementById('modal-step-2').classList.toggle('hidden', n !== 2);
-  if (n === 2) setTimeout(() => document.getElementById('modal-password').focus(), 50);
-}
-
-function modalPasswordInput() {
-  const val = document.getElementById('modal-password').value;
-  const btn = document.getElementById('modal-confirm-btn');
-  document.getElementById('modal-pw-error').classList.add('hidden');
-  document.getElementById('modal-password').style.borderColor = '';
-  if (val.length > 0) {
-    btn.disabled = false;
-    btn.classList.remove('opacity-40','cursor-not-allowed');
-  } else {
-    btn.disabled = true;
-    btn.classList.add('opacity-40','cursor-not-allowed');
+  // ── Phone auto-format as typed ──
+  const phoneInput = document.getElementById('phoneInput');
+  if (phoneInput) {
+    phoneInput.addEventListener('input', function(e) {
+      let val = e.target.value.replace(/\D/g, '');
+      if (val.startsWith('09')) {
+        val = val.slice(0, 11);
+        if (val.length > 7) {
+          e.target.value = val.slice(0, 4) + ' ' + val.slice(4, 7) + ' ' + val.slice(7);
+        } else if (val.length > 4) {
+          e.target.value = val.slice(0, 4) + ' ' + val.slice(4);
+        } else {
+          e.target.value = val;
+        }
+      } else {
+        val = val.slice(0, 10);
+        if (val.length > 6) {
+          e.target.value = '(' + val.slice(0, 3) + ') ' + val.slice(3, 6) + '-' + val.slice(6);
+        } else if (val.length > 3) {
+          e.target.value = '(' + val.slice(0, 3) + ') ' + val.slice(3);
+        } else if (val.length > 0) {
+          e.target.value = '(' + val;
+        }
+      }
+    });
   }
-}
 
-function toggleModalPw() {
-  const input = document.getElementById('modal-password');
-  input.type = input.type === 'password' ? 'text' : 'password';
-}
-
-function modalVerifyAndConfirm() {
-  const pw = document.getElementById('modal-password').value;
-  if (!pw) {
-    document.getElementById('modal-pw-error').classList.remove('hidden');
-    document.getElementById('modal-password').style.borderColor = '#c0432f';
-    document.getElementById('modal-password').focus();
-    return;
-  }
-  // Run countdown then submit
-  const btn = document.getElementById('modal-confirm-btn');
-  const lbl = document.getElementById('modal-confirm-label');
-  btn.disabled = true;
-  btn.classList.add('opacity-60','cursor-not-allowed');
-  let secs = 3;
-  lbl.textContent = `Deactivating... (${secs}s)`;
-  const timer = setInterval(() => {
-    secs--;
-    if (secs > 0) {
-      lbl.textContent = `Deactivating... (${secs}s)`;
-    } else {
-      clearInterval(timer);
-      closeDeactModal();
-      const toast = document.createElement('div');
-      toast.className = 'fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border border-destructive/30 bg-white px-5 py-3.5 shadow-2xl text-[13px] font-semibold text-destructive';
-      toast.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Deactivation request submitted — pending admin review.';
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 6000);
+  // ── Birthday validation: must be at least 18 ──
+  function checkBirthday() {
+    const input = document.getElementById('birthdayInput');
+    const hint = document.getElementById('birthdayHint');
+    if (!input || !input.value) return;
+    const birth = new Date(input.value);
+    const age = (Date.now() - birth.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+    if (age < 18 && hint) {
+      hint.textContent = 'Must be at least 18 years old.';
+      hint.className = 'field-error-msg';
+    } else if (hint) {
+      hint.textContent = 'The contact person must be at least 18 years old.';
+      hint.className = 'field-hint';
     }
-  }, 1000);
-}
+  }
 
-// Close modal on Escape key
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeDeactModal();
-});
+  // ── Scroll to first error on load ──
+  document.addEventListener('DOMContentLoaded', () => {
+    const firstError = document.querySelector('.field-error-msg');
+    if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  // Inline save for normal edits; confirmation modal only for entity-name changes.
+  function saveAccount() {
+    const form = document.getElementById('accountForm');
+    const summary = document.getElementById('accountSaveSummary');
+    const saveBtn = document.getElementById('saveBtn');
+    const changes = [];
+
+    form.querySelectorAll('.acct-input').forEach(input => {
+      const original = input.defaultValue || input.getAttribute('value') || '';
+      if (input.value !== original && input.name) {
+        const label = form.querySelector(`[for="${input.id}"] .label, label:has([name="${input.name}"]) .label`);
+        const labelText = label ? label.textContent : input.name;
+        changes.push(`<li><strong>${labelText}</strong> will be updated</li>`);
+      }
+    });
+
+    const nameInput = form.querySelector('[name="entity_name"]');
+    const entityChanged = !!(nameInput && nameInput.value !== nameInput.defaultValue);
+
+    if (!changes.length && !entityChanged) {
+      if (window.showToast) window.showToast('No changes to save.', { type: 'info' });
+      return;
+    }
+
+    document.getElementById('accountConfirm').value = entityChanged ? '1' : '0';
+
+    if (!entityChanged) {
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.dataset.loading = '1';
+      }
+      form.submit();
+      return;
+    }
+
+    changes.push('<li><strong>Entity name</strong> is changing - this affects all downstream records. Please confirm this is intentional.</li>');
+    summary.innerHTML = changes.join('');
+
+    document.getElementById('confirmAccountSave-confirm').onclick = function() {
+      closeConfirmModal('confirmAccountSave');
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.dataset.loading = '1';
+      }
+      form.submit();
+    };
+
+    openConfirmModal('confirmAccountSave');
+  }
+
+  showAcctTab('{{ $entityHasError ? 'company' : ($contactHasError ? 'contact' : 'company') }}');
+  setEditing({{ $errors->any() ? 'true' : 'false' }});
+
+  // Phone: strip spaces so it matches the 09XXXXXXXXX rule the server validates
+  document.querySelector('[name=contact_phone]')?.addEventListener('blur', e => { e.target.value = e.target.value.replace(/\s+/g, ''); });
 </script>
 @endpush

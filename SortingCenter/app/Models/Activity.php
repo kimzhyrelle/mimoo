@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Activity extends Model
 {
-    use HasFactory;
+    use BelongsToCompany, HasFactory;
 
-    protected $fillable = ['parcel_id', 'rider_id', 'icon', 'description', 'read_at'];
+    protected $fillable = ['company_id', 'parcel_id', 'rider_id', 'icon', 'description', 'read_at'];
 
     protected $casts = [
         'read_at' => 'datetime',
@@ -46,11 +47,11 @@ class Activity extends Model
     public function iconClasses(): string
     {
         return match ($this->icon) {
-            'green'  => 'bg-emerald-100 text-emerald-600',
-            'red'    => 'bg-red-100 text-red-600',
-            'accent' => 'bg-purple-100 text-purple-600',
+            'green' => 'bg-emerald-100 text-emerald-600',
+            'red' => 'bg-red-100 text-red-600',
+            'accent' => 'bg-blue-100 text-blue-600',
             'violet' => 'bg-indigo-100 text-indigo-600',
-            default  => 'bg-muted text-muted-foreground',
+            default => 'bg-muted text-muted-foreground',
         };
     }
 
@@ -58,10 +59,10 @@ class Activity extends Model
     public function iconSvg(): string
     {
         return match ($this->icon) {
-            'green'  => '<polyline points="20 6 9 17 4 12"/>',
-            'red'    => '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+            'green' => '<polyline points="20 6 9 17 4 12"/>',
+            'red' => '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
             'accent' => '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
-            default  => '<circle cx="12" cy="12" r="10"/>',
+            default => '<circle cx="12" cy="12" r="10"/>',
         };
     }
 }

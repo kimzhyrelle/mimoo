@@ -1,21 +1,22 @@
-@extends('layouts.sorting')
+﻿@extends('layouts.sorting')
 
-@section('title', 'Chat / Messaging')
-@section('subtitle', 'Communicate with riders, sellers, and admin in real time.')
+@section('title', 'Messages')
 
 @push('styles')
 <style>
-/* ── Layout shell ── */
+/* â”€â”€ Layout shell â”€â”€ */
 .chat-wrap {
   display: flex;
-  height: calc(100vh - 115px);
+  height: calc(100vh - 5rem);
+  height: calc(100dvh - 4.25rem - var(--app-main-y, 1rem));
+  min-height: 480px;
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: 0.75rem;
   background: var(--color-card);
 }
 
-/* ── Left sidebar ── */
+/* â”€â”€ Left sidebar â”€â”€ */
 .chat-sidebar {
   width: 280px;
   flex-shrink: 0;
@@ -145,7 +146,7 @@
   flex-shrink: 0;
 }
 
-/* ── Right panel ── */
+/* â”€â”€ Right panel â”€â”€ */
 .chat-panel {
   flex: 1;
   display: flex;
@@ -194,6 +195,7 @@
 .head-status { font-size: 11.5px; color: var(--ok-600, #16a34a); font-weight: 600; }
 .head-status.offline { color: var(--color-muted-foreground); }
 .head-actions { display: flex; align-items: center; gap: 8px; }
+.chat-panel-head .chat-back-btn { display: none; }
 .head-action-btn {
   width: 34px;
   height: 34px;
@@ -233,7 +235,7 @@
   align-self: center;
   font-size: 11px;
   color: var(--color-muted-foreground);
-  background: rgba(255,255,255,.75);
+  background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: 20px;
   padding: 3px 14px;
@@ -241,7 +243,7 @@
   backdrop-filter: blur(4px);
 }
 
-/* Message groups — avatar shows once per group */
+/* Message groups â€” avatar shows once per group */
 .msg-group { display: flex; flex-direction: column; margin-bottom: 12px; }
 .msg-group.me { align-items: flex-end; }
 .msg-group.them { align-items: flex-start; }
@@ -280,7 +282,7 @@
   width: fit-content;
   max-width: 100%;
 }
-/* Rounded corners — first, middle, last in group */
+/* Rounded corners â€” first, middle, last in group */
 .msg-group.them .msg-bubble { background: var(--color-muted); color: var(--color-foreground); box-shadow: 0 1px 2px rgba(0,0,0,.07); }
 .msg-group.me   .msg-bubble { background: var(--color-primary); color: var(--color-primary-foreground); }
 
@@ -303,8 +305,8 @@
   padding: 0 2px;
 }
 .msg-group.me   .msg-meta { flex-direction: row-reverse; }
-.msg-time { font-size: 11px; color: rgba(0,0,0,.38); }
-.msg-group.me .msg-time { color: rgba(0,0,0,.38); }
+.msg-time { font-size: 11px; color: var(--color-muted-foreground); }
+.msg-group.me .msg-time { color: var(--color-muted-foreground); }
 .msg-seen {
   font-size: 10px;
   color: var(--color-primary);
@@ -386,35 +388,156 @@
   transition: background .15s, transform .1s;
 }
 .send-btn:hover { background: var(--color-accent); transform: scale(1.05); }
+
+/* Quick-reply chips */
+.quick-reply-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px 8px;
+  background: var(--color-card);
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+.quick-reply-chip {
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-foreground);
+  background: var(--color-muted);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.quick-reply-chip:hover {
+  background: var(--color-accent);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Tab counts */
+.ctab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0 5px;
+  margin-left: 4px;
+  background: var(--color-muted);
+  color: var(--color-muted-foreground);
+}
+.ctab.active .ctab-count {
+  background: rgba(255,255,255,.2);
+  color: #fff;
+}
+
+.dark .head-action-btn,
+.dark .input-icon-btn,
+.dark .convo-ref,
+.dark .msg-seen {
+  color: #8fb0ff;
+}
+
+@media (max-width: 639px) {
+  .chat-wrap {
+    display: block;
+    min-height: 0;
+  }
+  .chat-sidebar {
+    width: 100%;
+    height: 100%;
+    border-right: 0;
+  }
+  .chat-panel {
+    height: 100%;
+  }
+  .chat-wrap.has-active .chat-sidebar,
+  .chat-wrap:not(.has-active) .chat-panel {
+    display: none;
+  }
+  .chat-panel-head .chat-back-btn {
+    display: flex;
+  }
+  .chat-panel-head {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .head-who {
+    min-width: 0;
+  }
+  .head-who > div {
+    min-width: 0;
+  }
+  .head-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .head-actions .ref-chip,
+  .head-actions .head-action-btn:last-child {
+    display: none;
+  }
+  .messages-area {
+    padding: 12px;
+  }
+  .msg-bubbles {
+    max-width: 78%;
+  }
+  .chat-input-bar {
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  .quick-reply-bar {
+    padding: 6px 10px 8px;
+  }
+}
 </style>
 @endpush
 
 @section('content')
-<div style="margin:-24px -28px 0;">
-<div class="chat-wrap">
+<div style="margin:calc(var(--app-main-y, 1rem) * -1) calc(var(--app-main-x, 1rem) * -1) 0;">
+<div class="chat-wrap {{ request('conversation') ? 'has-active' : '' }}">
 
-  {{-- ── LEFT SIDEBAR ── --}}
+  {{-- â”€â”€ LEFT SIDEBAR â”€â”€ --}}
   <div class="chat-sidebar">
-    <div class="sidebar-top">
+    <form method="GET" action="{{ route('chat.index') }}" class="sidebar-top">
       <div class="sidebar-title">Messages</div>
       <div class="search-wrap">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input type="text" id="searchInput" placeholder="Search conversations..." oninput="searchConvos(this.value)">
+        <input type="search" name="q" value="{{ request('q') }}" placeholder="Search conversations or messages..." aria-label="Search conversations">
       </div>
-    </div>
+      <div class="mt-2 flex items-center gap-2">
+        <select name="sort" onchange="this.form.submit()" class="w-full rounded-full border border-border bg-muted px-3 py-1.5 text-[12px] text-foreground" aria-label="Sort conversations">
+          <option value="">Newest first</option>
+          <option value="recent" {{ request('sort') === 'recent' ? 'selected' : '' }}>Recent activity</option>
+          <option value="oldest" {{ request('sort') === 'oldest' ? 'selected' : '' }}>Oldest first</option>
+          <option value="name" {{ request('sort') === 'name' ? 'selected' : '' }}>Name A-Z</option>
+        </select>
+        <button type="submit" class="btn-soft shrink-0 px-3 py-1.5 text-[12px]">Search</button>
+      </div>
+    </form>
 
     <div class="chat-tabs">
-      <button class="ctab active" onclick="filterTab(this,'all')">All</button>
-      <button class="ctab" onclick="filterTab(this,'rider')">Riders</button>
-      <button class="ctab" onclick="filterTab(this,'seller')">Sellers</button>
-      <button class="ctab" onclick="filterTab(this,'admin')">Admin</button>
+      <button class="ctab active" onclick="filterTab(this,'all')">All <span class="ctab-count">{{ $tabCounts['all'] }}</span></button>
+      <button class="ctab" onclick="filterTab(this,'rider')">Riders <span class="ctab-count">{{ $tabCounts['rider'] }}</span></button>
+      <button class="ctab" onclick="filterTab(this,'seller')">Sellers <span class="ctab-count">{{ $tabCounts['seller'] }}</span></button>
+      <button class="ctab" onclick="filterTab(this,'admin')">Admin <span class="ctab-count">{{ $tabCounts['admin'] }}</span></button>
     </div>
 
     <div class="convo-list" id="convoList">
-      @foreach ($conversations as $c)
+      @forelse ($conversations as $c)
         <div class="convo-item {{ $c['id'] === $activeConvo['id'] ? 'active' : '' }}"
              data-type="{{ $c['type'] }}"
              data-name="{{ strtolower($c['name']) }}"
+             data-url="{{ route('chat.index', ['conversation' => $c['id']]) }}"
              onclick="openConvo(this)">
           <div class="convo-avatar {{ $c['type'] }} {{ $c['online'] ? 'online-ring' : '' }}">
             {{ $c['initials'] }}
@@ -425,22 +548,37 @@
               <div class="convo-time">{{ $c['time'] }}</div>
             </div>
             <div class="convo-preview {{ $c['unread'] > 0 ? 'unread' : '' }}">{{ $c['preview'] }}</div>
-            <div class="convo-ref">{{ $c['ref'] }}</div>
+            {{-- Make ref a link to the parcel --}}
+            @if (!empty($c['ref']) && preg_match('/#\d+/', $c['ref'], $m))
+              <a href="{{ route('delivery.monitoring', ['q' => $m[0]]) }}" class="convo-ref" onclick="event.stopPropagation()">{{ $c['ref'] }}</a>
+            @else
+              <div class="convo-ref">{{ $c['ref'] ?? '' }}</div>
+            @endif
           </div>
           @if ($c['unread'] > 0)
             <div class="unread-badge">{{ $c['unread'] }}</div>
           @endif
         </div>
-      @endforeach
+      @empty
+        <div class="flex flex-col items-center justify-center py-12 text-center" id="noConvos">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--color-muted-foreground); opacity:.4; margin-bottom:8px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <div style="font-size:13px; font-weight:600; color:var(--color-muted-foreground);">No conversations</div>
+          <div style="font-size:11.5px; color:var(--color-muted-foreground); opacity:.7; margin-top:2px;">Messages will appear here when riders or sellers contact you</div>
+        </div>
+      @endforelse
     </div>
   </div>
 
-  {{-- ── RIGHT PANEL ── --}}
+  {{-- â”€â”€ RIGHT PANEL â”€â”€ --}}
   <div class="chat-panel">
 
     {{-- Header --}}
     <div class="chat-panel-head">
       <div class="head-who">
+        <button type="button" class="head-action-btn chat-back-btn" title="Back to conversations" aria-label="Back to conversations"
+                onclick="window.location.href='{{ route('chat.index') }}'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
         <div class="head-avatar {{ $activeConvo['online'] ? 'online' : '' }}">{{ $activeConvo['initials'] }}</div>
         <div>
           <div class="head-name">{{ $activeConvo['name'] }}</div>
@@ -479,10 +617,17 @@
         }
       @endphp
 
+      @if (empty($messages))
+        <div class="flex flex-1 flex-col items-center justify-center py-12 text-center">
+          <div style="font-size:13px; font-weight:600; color:var(--color-muted-foreground);">No messages yet</div>
+          <div style="font-size:11.5px; color:var(--color-muted-foreground); opacity:.7; margin-top:2px;">Send the first message below.</div>
+        </div>
+      @endif
+
       @foreach ($grouped as $grp)
         <div class="msg-group {{ $grp['from'] }}">
           <div class="msg-group-inner">
-            {{-- Avatar — only for "them", shown once per group --}}
+            {{-- Avatar â€” only for "them", shown once per group --}}
             @if ($grp['from'] === 'them')
               <div class="msg-avatar">{{ $activeConvo['initials'] }}</div>
             @endif
@@ -517,14 +662,25 @@
 
       {{-- Text input --}}
       <div class="chat-input-wrap">
-        <textarea class="chat-input" id="chatInput" rows="1" placeholder="Aa" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-        <button class="emoji-btn" title="Emoji">😊</button>
+        <textarea class="chat-input" id="chatInput" rows="1"
+                   placeholder="Message {{ $activeConvo['name'] }}..."
+                   onkeydown="handleKey(event)" oninput="autoResize(this)" {{ $activeConvo['id'] ? '' : 'disabled' }}></textarea>
+        <button class="emoji-btn" title="Emoji" aria-label="Insert emoji">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/></svg>
+        </button>
       </div>
 
       {{-- Send --}}
-      <button class="send-btn" onclick="sendMessage()" title="Send">
+      <button class="send-btn" onclick="sendMessage()" title="Send" {{ $activeConvo['id'] ? '' : 'disabled' }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
+    </div>
+
+    {{-- Quick-reply chips --}}
+    <div class="quick-reply-bar">
+      @foreach (['On my way', 'Parcel received', 'Delivery confirmed', 'Need to reschedule'] as $chip)
+        <button class="quick-reply-chip" onclick="insertQuickReply('{{ $chip }}')">{{ $chip }}</button>
+      @endforeach
     </div>
 
   </div>
@@ -546,13 +702,9 @@ function autoResize(el) {
   el.style.height = Math.min(el.scrollHeight, 120) + 'px';
 }
 
-function sendMessage() {
-  const input = document.getElementById('chatInput');
-  const text = input.value.trim();
-  if (!text) return;
+const activeConversationId = {{ (int) $activeConvo['id'] }};
 
-  const now = new Date().toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
-
+function appendMyMessage(text, time) {
   const grp = document.createElement('div');
   grp.className = 'msg-group me';
   grp.innerHTML = `
@@ -564,13 +716,45 @@ function sendMessage() {
     </div>
     <div class="msg-meta" style="flex-direction:row-reverse;">
       <span class="msg-seen">Sent</span>
-      <span class="msg-time">${now}</span>
+      <span class="msg-time">${escHtml(time)}</span>
     </div>
   `;
   area.appendChild(grp);
   area.scrollTop = area.scrollHeight;
-  input.value = '';
-  input.style.height = 'auto';
+}
+
+function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || !activeConversationId) return;
+
+  const now = new Date().toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+
+  fetch(`/chat/${activeConversationId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({ body: text }),
+  })
+    .then(async response => {
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Unable to send message.');
+      return data;
+    })
+    .then(data => {
+      appendMyMessage(text, data.data?.time || now);
+      input.value = '';
+      input.style.height = 'auto';
+      const empty = area.querySelector('.flex-1');
+      if (empty) empty.remove();
+    })
+    .catch(error => {
+      if (window.showToast) window.showToast(error.message, { type: 'error' });
+      else alert(error.message);
+    });
 }
 
 function escHtml(s) {
@@ -592,14 +776,17 @@ function searchConvos(val) {
   });
 }
 
+
 function openConvo(el) {
-  document.querySelectorAll('.convo-item').forEach(e => e.classList.remove('active'));
-  el.classList.add('active');
-  // Remove unread badge on click
-  const badge = el.querySelector('.unread-badge');
-  if (badge) badge.remove();
-  const preview = el.querySelector('.convo-preview');
-  if (preview) preview.classList.remove('unread');
+  if (!el.dataset.url) return;
+  window.location.href = el.dataset.url;
+}
+
+function insertQuickReply(text) {
+  const input = document.getElementById('chatInput');
+  input.value = text;
+  input.focus();
+  autoResize(input);
 }
 </script>
 @endpush
