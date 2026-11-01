@@ -1,5 +1,5 @@
 import { Link, useForm } from '@inertiajs/react';
-import { FormEvent, ReactNode, useState } from 'react';
+import { FormEvent, ReactNode, useState, useEffect } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
 const fontPoppins = { fontFamily: 'Poppins, sans-serif' };
@@ -97,6 +97,7 @@ const CheckIcon = () => (
 export default function LogisticsLanding() {
     const [openFaq, setOpenFaq] = useState<number | null>(0);
     const [showPassword, setShowPassword] = useState(false);
+    const [activeLoginCard, setActiveLoginCard] = useState(0);
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
@@ -107,6 +108,36 @@ export default function LogisticsLanding() {
         e.preventDefault();
         post('/login', { onFinish: () => reset('password') });
     };
+
+    const loginCards = [
+        {
+            title: 'Log in as Logistics Partner',
+            subtitle: 'Manage your sorting center and parcel operations',
+            role: 'logistics',
+            icon: <PackageIcon />,
+            color: 'from-[#3B1F6B] to-[#6E5F8F]',
+            registerLink: '/register/logistics',
+            registerText: 'Apply as logistics partner',
+        },
+        {
+            title: 'Log in as Courier Hub',
+            subtitle: 'Track deliveries and coordinate with riders',
+            role: 'courier',
+            icon: <TruckIcon />,
+            color: 'from-[#2E1854] to-[#5B4A7A]',
+            registerLink: '/register/courier',
+            registerText: 'Apply as courier hub',
+        },
+        {
+            title: 'Log in as Rider',
+            subtitle: 'Check your jobs and manage deliveries',
+            role: 'rider',
+            icon: <TruckIcon />,
+            color: 'from-[#4A2B7D] to-[#7A6A9F]',
+            registerLink: '/register/rider',
+            registerText: 'Apply as rider',
+        },
+    ];
 
     return (
         <div className="bg-white min-h-screen" style={fontPoppins}>
@@ -193,90 +224,153 @@ export default function LogisticsLanding() {
                             </div>
                         </div>
 
-                        {/* Login panel */}
-                        <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-md mx-auto lg:ml-auto lg:mr-0 shadow-xl">
-                            <h2 className="text-lg sm:text-xl font-bold text-gray-900" style={fontSyne}>
-                                Log in to your logistics account
-                            </h2>
-                            <p className="text-xs sm:text-sm text-gray-500 mt-1 mb-6">
-                                Check your deliveries, parcels, and earnings.
-                            </p>
-
-                            <form onSubmit={submit} className="space-y-4">
-                                <div>
-                                    <label htmlFor="logistics-email" className="block text-xs font-medium text-gray-700 mb-1.5">
-                                        Email
-                                    </label>
-                                    <input
-                                        id="logistics-email"
-                                        type="email"
-                                        autoComplete="email"
-                                        value={data.email}
-                                        onChange={(e) => setData('email', e.target.value)}
-                                        placeholder="you@example.com"
-                                        required
-                                        className="w-full border border-gray-200 rounded-full px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#9B5DE5] focus:border-transparent"
+                        {/* Login Carousel */}
+                        <div className="w-full max-w-md mx-auto lg:ml-auto lg:mr-0">
+                            {/* Carousel indicators */}
+                            <div className="flex justify-center gap-2 mb-4">
+                                {loginCards.map((_, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => setActiveLoginCard(index)}
+                                        className={`h-1.5 rounded-full transition-all duration-300 ${
+                                            activeLoginCard === index 
+                                                ? 'w-8 bg-white' 
+                                                : 'w-1.5 bg-white/40 hover:bg-white/60'
+                                        }`}
+                                        aria-label={`Go to ${loginCards[index].role} login`}
                                     />
-                                    {errors.email && <p className="text-xs text-red-600 mt-1.5">{errors.email}</p>}
-                                </div>
+                                ))}
+                            </div>
 
-                                <div>
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <label htmlFor="logistics-password" className="block text-xs font-medium text-gray-700">
-                                            Password
-                                        </label>
-                                        <Link href="/forgot-password" className="text-xs text-[#3B1F6B] font-medium hover:underline">
-                                            Forgot password?
-                                        </Link>
-                                    </div>
-                                    <div className="relative">
-                                        <input
-                                            id="logistics-password"
-                                            type={showPassword ? 'text' : 'password'}
-                                            autoComplete="current-password"
-                                            value={data.password}
-                                            onChange={(e) => setData('password', e.target.value)}
-                                            placeholder="Enter your password"
-                                            required
-                                            className="w-full border border-gray-200 rounded-full pl-4 pr-16 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#9B5DE5] focus:border-transparent"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-500 hover:text-[#3B1F6B]"
-                                            aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                        >
-                                            {showPassword ? 'Hide' : 'Show'}
-                                        </button>
-                                    </div>
-                                    {errors.password && <p className="text-xs text-red-600 mt-1.5">{errors.password}</p>}
-                                </div>
-
-                                <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={data.remember}
-                                        onChange={(e) => setData('remember', e.target.checked)}
-                                        className="rounded border-gray-300 text-[#3B1F6B] focus:ring-[#9B5DE5]"
-                                    />
-                                    Keep me logged in
-                                </label>
-
-                                <button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="w-full flex items-center justify-center gap-2 bg-[#3B1F6B] hover:bg-[#2E1854] disabled:opacity-60 text-white text-sm font-semibold px-5 py-3 rounded-full transition"
+                            {/* Login cards */}
+                            <div className="relative overflow-hidden rounded-3xl shadow-xl">
+                                <div 
+                                    className="flex transition-transform duration-500 ease-out"
+                                    style={{ transform: `translateX(-${activeLoginCard * 100}%)` }}
                                 >
-                                    {processing ? 'Logging in...' : 'Log in'}
-                                    {!processing && <span>→</span>}
-                                </button>
-                            </form>
+                                    {loginCards.map((card, index) => (
+                                        <div 
+                                            key={card.role}
+                                            className="w-full flex-shrink-0"
+                                        >
+                                            <div className="bg-white p-6 sm:p-8">
+                                                {/* Card header with icon */}
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${card.color} flex items-center justify-center text-white`}>
+                                                        {card.icon}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <h2 className="text-lg sm:text-xl font-bold text-gray-900" style={fontSyne}>
+                                                            {card.title}
+                                                        </h2>
+                                                        <p className="text-xs text-gray-500 mt-0.5">
+                                                            {card.subtitle}
+                                                        </p>
+                                                    </div>
+                                                </div>
 
-                            <div className="border-t border-gray-100 mt-6 pt-5 text-center text-xs sm:text-sm text-gray-500">
-                                New to mimoo?{' '}
-                                <Link href="/register/logistics" className="text-[#3B1F6B] font-semibold hover:underline">
-                                    Apply as a logistics partner
-                                </Link>
+                                                <form onSubmit={submit} className="space-y-4">
+                                                    <div>
+                                                        <label htmlFor={`email-${card.role}`} className="block text-xs font-medium text-gray-700 mb-1.5">
+                                                            Email
+                                                        </label>
+                                                        <input
+                                                            id={`email-${card.role}`}
+                                                            type="email"
+                                                            autoComplete="email"
+                                                            value={data.email}
+                                                            onChange={(e) => setData('email', e.target.value)}
+                                                            placeholder="you@example.com"
+                                                            required
+                                                            className="w-full border border-gray-200 rounded-full px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#9B5DE5] focus:border-transparent"
+                                                        />
+                                                        {errors.email && <p className="text-xs text-red-600 mt-1.5">{errors.email}</p>}
+                                                    </div>
+
+                                                    <div>
+                                                        <div className="flex items-center justify-between mb-1.5">
+                                                            <label htmlFor={`password-${card.role}`} className="block text-xs font-medium text-gray-700">
+                                                                Password
+                                                            </label>
+                                                            <Link href="/forgot-password" className="text-xs text-[#3B1F6B] font-medium hover:underline">
+                                                                Forgot password?
+                                                            </Link>
+                                                        </div>
+                                                        <div className="relative">
+                                                            <input
+                                                                id={`password-${card.role}`}
+                                                                type={showPassword ? 'text' : 'password'}
+                                                                autoComplete="current-password"
+                                                                value={data.password}
+                                                                onChange={(e) => setData('password', e.target.value)}
+                                                                placeholder="Enter your password"
+                                                                required
+                                                                className="w-full border border-gray-200 rounded-full pl-4 pr-16 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#9B5DE5] focus:border-transparent"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setShowPassword(!showPassword)}
+                                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-500 hover:text-[#3B1F6B]"
+                                                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                                            >
+                                                                {showPassword ? 'Hide' : 'Show'}
+                                                            </button>
+                                                        </div>
+                                                        {errors.password && <p className="text-xs text-red-600 mt-1.5">{errors.password}</p>}
+                                                    </div>
+
+                                                    <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={data.remember}
+                                                            onChange={(e) => setData('remember', e.target.checked)}
+                                                            className="rounded border-gray-300 text-[#3B1F6B] focus:ring-[#9B5DE5]"
+                                                        />
+                                                        Keep me logged in
+                                                    </label>
+
+                                                    <button
+                                                        type="submit"
+                                                        disabled={processing}
+                                                        className={`w-full flex items-center justify-center gap-2 bg-gradient-to-r ${card.color} hover:opacity-90 disabled:opacity-60 text-white text-sm font-semibold px-5 py-3 rounded-full transition`}
+                                                    >
+                                                        {processing ? 'Logging in...' : `Log in as ${card.role}`}
+                                                        {!processing && <span>→</span>}
+                                                    </button>
+                                                </form>
+
+                                                <div className="border-t border-gray-100 mt-6 pt-5 text-center text-xs sm:text-sm text-gray-500">
+                                                    New to mimoo?{' '}
+                                                    <Link href={card.registerLink} className="text-[#3B1F6B] font-semibold hover:underline">
+                                                        {card.registerText}
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Navigation arrows */}
+                            <div className="flex justify-center gap-3 mt-4">
+                                <button
+                                    onClick={() => setActiveLoginCard((prev) => (prev - 1 + 3) % 3)}
+                                    className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center text-white transition"
+                                    aria-label="Previous login card"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="15 18 9 12 15 6" />
+                                    </svg>
+                                </button>
+                                <button
+                                    onClick={() => setActiveLoginCard((prev) => (prev + 1) % 3)}
+                                    className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center text-white transition"
+                                    aria-label="Next login card"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="9 18 15 12 9 6" />
+                                    </svg>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -382,6 +476,7 @@ export default function LogisticsLanding() {
                                 desc: 'Pick up parcels from sellers or hubs and deliver them to buyers in your area.',
                                 points: ['Your own motorcycle, bicycle, or e-bike', 'Paid per completed delivery', 'Work whenever you go online'],
                                 cta: 'Apply as a rider',
+                                link: '/register/rider',
                             },
                             {
                                 icon: <PackageIcon />,
@@ -389,6 +484,7 @@ export default function LogisticsLanding() {
                                 desc: 'Receive, sort, and hand off parcels so riders can make faster final deliveries.',
                                 points: ['A space to receive and sort parcels', 'Paid a handling fee per parcel', 'Become the hub for your community'],
                                 cta: 'Register a sorting center',
+                                link: '/register/logistics',
                             },
                         ].map((role) => (
                             <div key={role.title} className="bg-[#F8F6FC] rounded-2xl p-8 hover:shadow-lg transition">
@@ -405,7 +501,7 @@ export default function LogisticsLanding() {
                                         </li>
                                     ))}
                                 </ul>
-                                <Link href="/register/logistics" className="inline-flex items-center gap-2 text-[#3B1F6B] font-semibold text-sm hover:gap-3 transition-all">
+                                <Link href={role.link} className="inline-flex items-center gap-2 text-[#3B1F6B] font-semibold text-sm hover:gap-3 transition-all">
                                     {role.cta}
                                     <span>→</span>
                                 </Link>

@@ -1,0 +1,12 @@
+Test Case ID,Actual Result,Status,Remarks
+BUY-SRCH-001,"Category browsing implemented at /homepage?category=Electronics. ProductController filters by category field.",Pass,"Active products correctly filtered by category."
+BUY-SRCH-002,"Seller store page exists at /seller/{id} (ViewSeller.tsx) but no store category grouping detected.",Fail,"Products shown as flat list. Store category organization missing - may need store_categories table."
+BUY-SRCH-003,"Search implemented at /homepage?search=keyword. ProductController searches in name, description, category, brand fields.",Pass,"Case-insensitive search working for partial and exact matches."
+BUY-SRCH-004,"Empty results handled gracefully with 'No products found' message.",Pass,"No error pages on empty search. Good UX for no results."
+BUY-SRCH-005,"Eloquent ORM uses parameterized queries preventing SQL injection. React escapes output preventing XSS.",Pass,"Special characters handled safely. No script execution in search queries. Secure by default."
+BUY-SRCH-006,"Empty/whitespace search returns all products. No error thrown.",Pass,"Graceful handling of empty searches."
+BUY-SRCH-007,"Price filtering implemented with min_price and max_price query params. Boundary validation prevents negative values and inverted ranges.",Pass,"Price range filtering working correctly with proper validation."
+BUY-SRCH-008,"Multiple filters can be applied together (category + search + price).",Pass,"Filter combinations work correctly without conflicts."
+BUY-SRCH-009,"Sorting by price (asc/desc), latest, best_selling implemented. API returns paginated results.",Pass,"No duplicate products between pages. Pagination working smoothly."
+BUY-SRCH-010,"Product queries filter by status = 'active'. Soft delete implemented. Draft products excluded.",Pass,"Deleted product URLs return 404/unavailable. Inactive and draft products never appear in listings."
+BUY-SRCH-011,"No vacation mode field detected in sellers/users table.",Blocked,"Vacation mode feature not implemented - sellers cannot set vacation status."

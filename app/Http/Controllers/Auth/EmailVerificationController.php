@@ -71,9 +71,15 @@ class EmailVerificationController extends Controller
             ]);
             
             // Redirect based on account type
-            if ($user->account_type === 'seller' || $user->account_type === 'logistics') {
-                // Sellers and logistics need admin approval
+            if ($user->account_type === 'seller') {
+                // Sellers need admin approval
                 return redirect()->route('seller.pending-approval')
+                    ->with('status', 'Email verified! Your account is pending admin approval.');
+            }
+            
+            if ($user->account_type === 'logistics') {
+                // Logistics need admin approval
+                return redirect()->route('logistics.pending-approval')
                     ->with('status', 'Email verified! Your account is pending admin approval.');
             }
             

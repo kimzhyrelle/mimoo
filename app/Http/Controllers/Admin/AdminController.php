@@ -185,6 +185,41 @@ class AdminController extends Controller
     }
 
     /**
+     * Show the logistics approval page.
+     */
+    public function logisticsApproval(): Response
+    {
+        $registrations = \App\Models\User::query()
+            ->where('account_type', 'logistics')
+            ->where('verification_status', 'verified') // Only show verified logistics
+            ->whereIn('status', ['pending', 'approved', 'disapproved'])
+            ->orderByRaw("FIELD(status, 'pending', 'approved', 'disapproved')")
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(fn ($user) => [
+                'id' => $user->id,
+                'company_name' => $user->business_name ?? $user->name,
+                'email' => $user->email,
+                'account_type' => $user->account_type,
+                'status' => $user->status,
+                'created_at' => $user->created_at->format('M d, Y'),
+                'approved_at' => $user->approved_at?->format('M d, Y'),
+            ]);
+
+        $stats = [
+            'total' => \App\Models\User::where('account_type', 'logistics')->where('verification_status', 'verified')->count(),
+            'pending' => \App\Models\User::where('account_type', 'logistics')->where('verification_status', 'verified')->where('status', 'pending')->count(),
+            'approved' => \App\Models\User::where('account_type', 'logistics')->where('verification_status', 'verified')->where('status', 'approved')->count(),
+            'disapproved' => \App\Models\User::where('account_type', 'logistics')->where('verification_status', 'verified')->where('status', 'disapproved')->count(),
+        ];
+
+        return Inertia::render('admin/LogisticsApproval', [
+            'registrations' => $registrations,
+            'stats' => $stats,
+        ]);
+    }
+
+    /**
      * Show the product approval page.
      */
     public function productApproval(): Response
@@ -269,6 +304,44 @@ class AdminController extends Controller
     }
 
     /**
+     * Approve a logistics registration.
+     */
+    public function approveLogisticsRegistration(Request $request, int $userId): RedirectResponse
+    {
+        $user = \App\Models\User::findOrFail($userId);
+        
+        if ($user->account_type !== 'logistics') {
+            return back()->withErrors(['error' => 'This account is not a logistics provider.']);
+        }
+        
+        $user->update([
+            'status' => 'approved',
+            'approved_at' => now(),
+        ]);
+
+        return back()->with('success', "Logistics partner {$user->business_name} has been approved.");
+    }
+
+    /**
+     * Disapprove a logistics registration.
+     */
+    public function disapproveLogisticsRegistration(Request $request, int $userId): RedirectResponse
+    {
+        $user = \App\Models\User::findOrFail($userId);
+        
+        if ($user->account_type !== 'logistics') {
+            return back()->withErrors(['error' => 'This account is not a logistics provider.']);
+        }
+        
+        $user->update([
+            'status' => 'disapproved',
+            'approved_at' => null,
+        ]);
+
+        return back()->with('success', "Logistics partner {$user->business_name} has been disapproved.");
+    }
+
+    /**
      * Get detailed information about a seller for review.
      */
     public function getSellerDetails(int $userId): \Illuminate\Http\JsonResponse
@@ -311,6 +384,54 @@ class AdminController extends Controller
             'dti_registration_url' => $user->dti_registration ? route('admin.download-document', ['userId' => $user->id, 'type' => 'dti_registration']) : null,
             'bir_2303_url' => $user->bir_2303 ? route('admin.download-document', ['userId' => $user->id, 'type' => 'bir_2303']) : null,
             'sec_certificate_url' => $user->sec_certificate ? route('admin.download-document', ['userId' => $user->id, 'type' => 'sec_certificate']) : null,
+        ]);
+    }
+
+    /**
+     * Get detailed information about a logistics provider for review.
+     */
+    public function getLogisticsDetails(int $userId): \Illuminate\Http\JsonResponse
+    {
+        $user = \App\Models\User::findOrFail($userId);
+        
+        if ($user->account_type !== 'logistics') {
+            return response()->json(['error' => 'User is not a logistics provider.'], 400);
+        }
+        
+        // Decode service_areas if it's stored as JSON
+        $serviceAreas = $user->service_areas;
+        if (is_string($serviceAreas)) {
+            $serviceAreas = json_decode($serviceAreas, true) ?? [];
+        }
+        
+        return response()->json([
+            'id' => $user->id,
+            'company_name' => $user->business_name ?? $user->name,
+            'sec_registration_no' => $user->sec_registration_no,
+            'tin' => $user->tin,
+            'email' => $user->email,
+            'contact_number' => $user->contact_number,
+            'contact_first_name' => $user->first_name,
+            'contact_last_name' => $user->last_name,
+            'contact_position' => $user->contact_position,
+            'account_type' => $user->account_type,
+            'region' => $user->region,
+            'province' => $user->province,
+            'district' => $user->district,
+            'municipality_city' => $user->municipality_city,
+            'barangay' => $user->barangay,
+            'postal_code' => $user->postal_code,
+            'street_address' => $user->street_address,
+            'service_areas' => $serviceAreas,
+            'status' => $user->status,
+            'verification_status' => $user->verification_status,
+            'created_at' => $user->created_at->format('M d, Y g:i A'),
+            'approved_at' => $user->approved_at?->format('M d, Y g:i A'),
+            // Document URLs
+            'sec_certificate_url' => $user->sec_certificate ? route('admin.download-document', ['userId' => $user->id, 'type' => 'sec_certificate']) : null,
+            'bir_form_2303_url' => $user->bir_2303 ? route('admin.download-document', ['userId' => $user->id, 'type' => 'bir_2303']) : null,
+            'business_permit_url' => $user->business_permit ? route('admin.download-document', ['userId' => $user->id, 'type' => 'business_permit']) : null,
+            'valid_id_url' => $user->id_document ? route('admin.download-document', ['userId' => $user->id, 'type' => 'id_document']) : null,
         ]);
     }
 

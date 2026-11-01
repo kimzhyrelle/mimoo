@@ -76,6 +76,18 @@ class CreateNewUser implements CreatesNewUsers
             'bir_2303'         => ['required_if:account_type,seller', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'sec_certificate'  => ['required_if:business_type,corporation', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
 
+            // ── Logistics-only fields ─────────────────────────────────────
+            'company_name'        => ['required_if:account_type,logistics', 'nullable', 'string', 'max:255'],
+            'sec_registration_no' => ['required_if:account_type,logistics', 'nullable', 'string', 'max:50'],
+            'contact_first_name'  => ['required_if:account_type,logistics', 'nullable', 'string', 'max:100'],
+            'contact_last_name'   => ['required_if:account_type,logistics', 'nullable', 'string', 'max:100'],
+            'contact_position'    => ['required_if:account_type,logistics', 'nullable', 'string', 'max:100'],
+            'service_areas'       => ['required_if:account_type,logistics', 'nullable', 'array'],
+            'service_areas.*'     => ['string', 'max:100'],
+            'sec_certificate'     => ['required_if:account_type,logistics', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'bir_form_2303'       => ['required_if:account_type,logistics', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'valid_id'            => ['required_if:account_type,logistics', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+
             // ── Security ──────────────────────────────────────────────────
             'password'        => ['required', 'string', new StrongPassword(), 'confirmed'],
         ], [
@@ -86,11 +98,19 @@ class CreateNewUser implements CreatesNewUsers
             'business_permit.required_if' => 'A business permit is required for seller and logistics accounts.',
             'dti_registration.required_if' => 'DTI registration is required for sellers.',
             'bir_2303.required_if' => 'BIR Form 2303 is required for sellers.',
-            'sec_certificate.required_if' => 'SEC certificate is required for corporations.',
+            'sec_certificate.required_if' => 'SEC certificate is required for corporations and logistics companies.',
             'terms_accepted.required_if' => 'You must accept the Terms and Privacy Policy.',
             'terms_accepted.accepted' => 'You must accept the Terms and Privacy Policy.',
             'privacy_policy_accepted.required_if' => 'You must accept the Privacy Policy.',
             'privacy_policy_accepted.accepted' => 'You must accept the Privacy Policy.',
+            'company_name.required_if' => 'Company name is required for logistics registration.',
+            'sec_registration_no.required_if' => 'SEC registration number is required for logistics companies.',
+            'contact_first_name.required_if' => 'Contact person first name is required for logistics registration.',
+            'contact_last_name.required_if' => 'Contact person last name is required for logistics registration.',
+            'contact_position.required_if' => 'Contact person position is required for logistics registration.',
+            'service_areas.required_if' => 'At least one service area is required for logistics registration.',
+            'valid_id.required_if' => 'Valid ID of authorized representative is required for logistics registration.',
+            'bir_form_2303.required_if' => 'BIR Form 2303 is required for logistics companies.',
         ]);
         
         $validator->validate();
@@ -110,6 +130,12 @@ class CreateNewUser implements CreatesNewUsers
                 : null;
             $secCertificatePath = isset($input['sec_certificate']) && $input['sec_certificate'] instanceof UploadedFile
                 ? $this->storeFile($input['sec_certificate'], 'sec_certificates')
+                : null;
+            $birForm2303Path = isset($input['bir_form_2303']) && $input['bir_form_2303'] instanceof UploadedFile
+                ? $this->storeFile($input['bir_form_2303'], 'bir_form_2303')
+                : null;
+            $validIdPath = isset($input['valid_id']) && $input['valid_id'] instanceof UploadedFile
+                ? $this->storeFile($input['valid_id'], 'valid_ids')
                 : null;
 
             // ── Create user ────────────────────────────────────────────────────
@@ -140,6 +166,14 @@ class CreateNewUser implements CreatesNewUsers
                 'dti_registration'  => $dtiRegistrationPath,
                 'bir_2303'          => $bir2303Path,
                 'sec_certificate'   => $secCertificatePath,
+                // Logistics fields
+                'company_name'      => $input['company_name'] ?? null,
+                'sec_registration_no' => $input['sec_registration_no'] ?? null,
+                'contact_first_name' => $input['contact_first_name'] ?? null,
+                'contact_last_name'  => $input['contact_last_name'] ?? null,
+                'contact_position'   => $input['contact_position'] ?? null,
+                'service_areas'      => isset($input['service_areas']) ? json_encode($input['service_areas']) : null,
+                'valid_id'           => $validIdPath,
                 'privacy_policy_accepted' => filter_var($input['privacy_policy_accepted'] ?? false, FILTER_VALIDATE_BOOLEAN),
                 'password'          => $input['password'],
                 // All accounts start as pending and unverified

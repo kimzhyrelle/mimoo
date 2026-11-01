@@ -30,7 +30,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
         
         return match ($user->account_type) {
             'seller' => redirect()->route('seller.dashboard'),
-            'logistics' => redirect('/homepage'), // TODO: Create logistics dashboard later
+            'logistics' => redirect()->route('logistics.dashboard'),
             default => redirect('/homepage'), // Buyers go to homepage
         };
     })->name('dashboard');
@@ -54,6 +54,246 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     
     // Seller Dashboard - for approved sellers only
     Route::get('/seller/dashboard', [\App\Http\Controllers\SellerDashboardController::class, 'index'])->name('seller.dashboard');
+    
+    // Logistics Dashboard - for approved logistics users only
+    Route::get('/logistics/dashboard', function () {
+        $user = auth()->user();
+        
+        return Inertia::render('logistics/LogisticsDashboard', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'company' => [
+                'name' => $user->company_name ?? $user->business_name,
+                'contact_person' => trim($user->contact_first_name . ' ' . $user->contact_last_name),
+            ],
+        ]);
+    })->name('logistics.dashboard');
+    
+    // Logistics Incoming Parcels
+    Route::get('/logistics/incoming-parcels', function () {
+        $user = auth()->user();
+        
+        return Inertia::render('logistics/IncomingParcels', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'company' => [
+                'name' => $user->company_name ?? $user->business_name,
+                'contact_person' => trim($user->contact_first_name . ' ' . $user->contact_last_name),
+            ],
+        ]);
+    })->name('logistics.incoming-parcels');
+    
+    // Logistics Sort & Assign
+    Route::get('/logistics/sort-assign', function () {
+        $user = auth()->user();
+        
+        return Inertia::render('logistics/SortAssign', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'company' => [
+                'name' => $user->company_name ?? $user->business_name,
+                'contact_person' => trim($user->contact_first_name . ' ' . $user->contact_last_name),
+            ],
+        ]);
+    })->name('logistics.sort-assign');
+    
+    // Logistics Delivery Monitoring
+    Route::get('/logistics/delivery-monitoring', function () {
+        $user = auth()->user();
+        
+        return Inertia::render('logistics/DeliveryMonitoring', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'company' => [
+                'name' => $user->company_name ?? $user->business_name,
+                'contact_person' => trim($user->contact_first_name . ' ' . $user->contact_last_name),
+            ],
+        ]);
+    })->name('logistics.delivery-monitoring');
+    
+    // Logistics Riders
+    Route::get('/logistics/riders', function () {
+        $user = auth()->user();
+        
+        return Inertia::render('logistics/Riders', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'company' => [
+                'name' => $user->company_name ?? $user->business_name,
+                'contact_person' => trim($user->contact_first_name . ' ' . $user->contact_last_name),
+            ],
+        ]);
+    })->name('logistics.riders');
+    
+    // Logistics Branches & Checklists
+    Route::get('/logistics/branches-checklists', function () {
+        $user = auth()->user();
+        
+        return Inertia::render('logistics/BranchesChecklists', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'company' => [
+                'name' => $user->company_name ?? $user->business_name,
+                'contact_person' => trim($user->contact_first_name . ' ' . $user->contact_last_name),
+            ],
+        ]);
+    })->name('logistics.branches-checklists');
+    
+    // Logistics Zones & Rates
+    Route::get('/logistics/zones-rates', function () {
+        $user = auth()->user();
+        
+        return Inertia::render('logistics/ZonesRates', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'company' => [
+                'name' => $user->company_name ?? $user->business_name,
+                'contact_person' => trim($user->contact_first_name . ' ' . $user->contact_last_name),
+            ],
+        ]);
+    })->name('logistics.zones-rates');
+    
+    // Logistics COD & Remittance
+    Route::get('/logistics/cod-remittance', function () {
+        $user = auth()->user();
+        
+        return Inertia::render('logistics/CODRemittance', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'company' => [
+                'name' => $user->company_name ?? $user->business_name,
+                'contact_person' => trim($user->contact_first_name . ' ' . $user->contact_last_name),
+            ],
+        ]);
+    })->name('logistics.cod-remittance');
+    
+    // Logistics Reports
+    Route::get('/logistics/reports', function () {
+        $user = auth()->user();
+        
+        return Inertia::render('logistics/Reports', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'company' => [
+                'name' => $user->company_name ?? $user->business_name,
+                'contact_person' => trim($user->contact_first_name . ' ' . $user->contact_last_name),
+            ],
+        ]);
+    })->name('logistics.reports');
+    
+    // Logistics Support
+    Route::get('/logistics/support', function () {
+        $user = auth()->user();
+        
+        return Inertia::render('logistics/Support', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'company' => [
+                'name' => $user->company_name ?? $user->business_name,
+                'contact_person' => trim($user->contact_first_name . ' ' . $user->contact_last_name),
+            ],
+        ]);
+    })->name('logistics.support');
+    
+    // Logistics Messages
+    Route::get('/logistics/messages', function () {
+        $user = auth()->user();
+        
+        return Inertia::render('logistics/Messages', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'company' => [
+                'name' => $user->company_name ?? $user->business_name,
+                'contact_person' => trim($user->contact_first_name . ' ' . $user->contact_last_name),
+            ],
+        ]);
+    })->name('logistics.messages');
+    
+    // Logistics Account
+    Route::get('/logistics/account', function () {
+        $user = auth()->user();
+        
+        return Inertia::render('logistics/Account', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'company' => [
+                'name' => $user->company_name ?? $user->business_name,
+                'contact_person' => trim($user->contact_first_name . ' ' . $user->contact_last_name),
+            ],
+        ]);
+    })->name('logistics.account');
     
     // Seller Orders Page
     Route::get('/seller/orders', function () {
@@ -209,6 +449,14 @@ Route::get('/register/logistics', function () {
     return Inertia::render('logistics/LogisticsRegistration');
 })->name('register.logistics');
 
+Route::get('/register/courier', function () {
+    return Inertia::render('logistics/CourierRegistration');
+})->name('register.courier');
+
+Route::get('/register/rider', function () {
+    return Inertia::render('logistics/RiderRegistration');
+})->name('register.rider');
+
 Route::get('/register/pending', function () {
     return Inertia::render('register-pending');
 })->name('register.pending');
@@ -225,6 +473,11 @@ Route::post('/verify-email/resend', [\App\Http\Controllers\Auth\EmailVerificatio
 Route::get('/seller/pending-approval', function () {
     return Inertia::render('seller/PendingApproval');
 })->name('seller.pending-approval');
+
+// Logistics pending approval page
+Route::get('/logistics/pending-approval', function () {
+    return Inertia::render('logistics/PendingApproval');
+})->name('logistics.pending-approval');
 
 // Privacy Policy page
 Route::get('/privacy-policy', function () {
@@ -490,6 +743,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/seller-approval/{userId}/download/{type}', [AdminController::class, 'downloadDocument'])->name('download-document');
         Route::post('/seller-approval/{userId}/approve', [AdminController::class, 'approveSellerRegistration'])->name('seller-approval.approve');
         Route::post('/seller-approval/{userId}/disapprove', [AdminController::class, 'disapproveSellerRegistration'])->name('seller-approval.disapprove');
+        
+        // Logistics approval routes
+        Route::get('/logistics-approval', [AdminController::class, 'logisticsApproval'])->name('logistics-approval');
+        Route::get('/logistics-approval/{userId}/details', [AdminController::class, 'getLogisticsDetails'])->name('logistics-approval.details');
+        Route::post('/logistics-approval/{userId}/approve', [AdminController::class, 'approveLogisticsRegistration'])->name('logistics-approval.approve');
+        Route::post('/logistics-approval/{userId}/disapprove', [AdminController::class, 'disapproveLogisticsRegistration'])->name('logistics-approval.disapprove');
         
         // Product approval routes
         Route::get('/product-approval', [AdminController::class, 'productApproval'])->name('product-approval');

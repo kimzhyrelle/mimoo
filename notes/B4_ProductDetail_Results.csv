@@ -1,0 +1,9 @@
+Test Case ID,Actual Result,Status,Remarks
+BUY-PDP-001,"Variant selection required before Add to Cart/Buy Now. ProductDetail.tsx validates all variant types selected.",Pass,"Products have has_variants, variant_options, variants JSON fields. Validation working correctly."
+BUY-PDP-002,"Dynamic variant switching implemented. Price, stock, and SKU update on selection.",Pass,"Variant-specific images supported. Real-time UI updates working."
+BUY-PDP-003,"Variants with stock = 0 are disabled/grayed out in UI.",Pass,"Out-of-stock variants cannot be selected. Proper visual indication."
+BUY-PDP-004,"Quantity validation against available stock. Min 1, max = stock. Decimal and negative values rejected.",Pass,"API validates before adding to cart. Proper boundaries enforced."
+BUY-PDP-005,"No purchase_limit field detected in products table.",Fail,"Per-buyer purchase limits not implemented. Cannot enforce 'max 2 per customer' rules."
+BUY-PDP-006,"No sale_price, flash_sale_price, or voucher display detected.",Blocked,"Sale pricing system not implemented. Voucher module (B7) completely missing."
+BUY-PDP-007,"Buy Now uses replace_quantity: true flag in cart API. Replaces cart with selected item and redirects to /checkout.",Pass,"Existing cart items preserved separately. Buy Now flow working correctly."
+BUY-PDP-008,"Deleted/inactive product URLs return appropriate error or unavailable message.",Pass,"No crash or data leak on unavailable product pages."

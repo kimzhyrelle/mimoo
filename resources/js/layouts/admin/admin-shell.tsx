@@ -10,6 +10,7 @@ import {
     LayoutDashboard,
     LogOut,
     MessageSquare,
+    Truck,
     UserCheck,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -21,17 +22,19 @@ export type AdminNavKey =
     | 'commission'
     | 'reports'
     | 'seller-approval'
+    | 'logistics-approval'
     | 'product-approval'
     | 'notifications'
     | 'monitoring';
 
 const navItems: { key: AdminNavKey; label: string; icon: React.ElementType; href: string }[] = [
-    { key: 'dashboard',         label: 'Dashboard',         icon: LayoutDashboard,  href: '/admin/dashboard'         },
-    { key: 'commission',        label: 'Commission',        icon: CircleDollarSign, href: '/admin/commission'        },
-    { key: 'seller-approval',   label: 'Seller Approval',   icon: UserCheck,        href: '/admin/seller-approval'   },
-    { key: 'product-approval',  label: 'Product Approval',  icon: CheckSquare,      href: '/admin/product-approval'  },
-    { key: 'reports',           label: 'Product Reports',   icon: AlertTriangle,    href: '/admin/reports'           },
-    { key: 'monitoring',        label: 'Monitoring',        icon: Eye,              href: '/admin/monitoring'        },
+    { key: 'dashboard',          label: 'Dashboard',          icon: LayoutDashboard,  href: '/admin/dashboard'          },
+    { key: 'commission',         label: 'Commission',         icon: CircleDollarSign, href: '/admin/commission'         },
+    { key: 'seller-approval',    label: 'Seller Approval',    icon: UserCheck,        href: '/admin/seller-approval'    },
+    { key: 'logistics-approval', label: 'Logistics Approval', icon: Truck,            href: '/admin/logistics-approval' },
+    { key: 'product-approval',   label: 'Product Approval',   icon: CheckSquare,      href: '/admin/product-approval'   },
+    { key: 'reports',            label: 'Product Reports',    icon: AlertTriangle,    href: '/admin/reports'            },
+    { key: 'monitoring',         label: 'Monitoring',         icon: Eye,              href: '/admin/monitoring'         },
 ];
 
 // ─── Shell ────────────────────────────────────────────────────────────────────
