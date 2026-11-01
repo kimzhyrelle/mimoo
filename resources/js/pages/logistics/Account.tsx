@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+﻿import { Head, Link } from '@inertiajs/react';
 import { ReactNode, useState } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
@@ -68,11 +68,11 @@ export default function Account({ auth, company }: Props) {
 
     return (
         <>
-            <Head title="Account" />
+            <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`}</style><Head title="Account" />
             
             <div className="flex h-screen bg-gray-50" style={fontSyne}>
                 {/* Sidebar */}
-                <aside className="w-64 bg-[#2B2249] text-white flex-shrink-0 hidden lg:block overflow-y-auto">
+                <aside className="w-64 bg-[#2B2249] text-white flex-shrink-0 hidden lg:block overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     <div className="p-6">
                         <Link href="/" className="flex items-center gap-2 mb-8">
                             <span className="w-8 h-8 rounded-full bg-[#9B5DE5]" />
@@ -88,8 +88,8 @@ export default function Account({ auth, company }: Props) {
                                     href={item.href}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition ${
                                         activeTab === item.id
-                                            ? 'bg-[#3d2e5f] text-white'
-                                            : 'text-gray-300 hover:bg-[#3d2e5f]/50 hover:text-white'
+                                            ? 'bg-[#2E2240] text-white'
+                                            : 'text-gray-300 hover:bg-[#2E2240]/50 hover:text-white'
                                     }`}
                                 >
                                     {getIcon(item.icon)}
@@ -105,7 +105,7 @@ export default function Account({ auth, company }: Props) {
                             className={`w-full flex items-center gap-3 px-6 py-4 text-sm font-medium transition ${
                                 activeTab === 'account'
                                     ? 'bg-[#4B5EF9] text-white'
-                                    : 'text-gray-300 hover:bg-[#3d2e5f]/50 hover:text-white'
+                                    : 'text-gray-300 hover:bg-[#2E2240]/50 hover:text-white'
                             }`}
                         >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -186,15 +186,15 @@ export default function Account({ auth, company }: Props) {
                                         <div>
                                             <h1 className="text-xl font-bold text-gray-900" style={fontSyncopate}>Laguna Hub (Santa Cruz)</h1>
                                             <p className="text-sm text-gray-600 mt-1">
-                                                Registered Logistics Hub Partner • NODE ID: <span className="font-semibold">MIM-LAG-001</span> • Accredited since Oct 24, 2026
+                                                Registered Logistics Hub Partner â€¢ NODE ID: <span className="font-semibold">MIM-LAG-001</span> â€¢ Accredited since Oct 24, 2026
                                             </p>
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-2">
-                                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">
-                                            ★ Hub Operational Tier
+                                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#E8E3F0] text-blue-700 text-xs font-semibold">
+                                            â˜… Hub Operational Tier
                                         </span>
-                                        <span className="text-xs text-gray-600">Priority Sorter • Class A</span>
+                                        <span className="text-xs text-gray-600">Priority Sorter â€¢ Class A</span>
                                         <button className="mt-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50">
                                             Certificate
                                         </button>
@@ -329,7 +329,7 @@ export default function Account({ auth, company }: Props) {
                                                     <div>
                                                         <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">Middle Initial</label>
                                                         <div className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg">
-                                                            <p className="text-sm text-gray-400">—</p>
+                                                            <p className="text-sm text-gray-400">â€”</p>
                                                         </div>
                                                     </div>
                                                     <div>
@@ -376,7 +376,7 @@ export default function Account({ auth, company }: Props) {
                                                     </div>
                                                 ))}
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-4">Document uploads aren't connected to storage yet — these entries are placeholders. Last updated: Oct 24, 2026 at 09:48 PM</p>
+                                            <p className="text-xs text-gray-500 mt-4">Document uploads aren't connected to storage yet â€” these entries are placeholders. Last updated: Oct 24, 2026 at 09:48 PM</p>
                                         </div>
                                     )}
 
@@ -386,7 +386,7 @@ export default function Account({ auth, company }: Props) {
                                             <p className="text-sm text-gray-600 mb-6">Access standards for this sorting center.</p>
                                             
                                             <div className="space-y-4">
-                                                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
+                                                <div className="p-4 bg-[#E8E3F0] border border-[#D4CEE0] rounded-lg flex items-start gap-3">
                                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2B2249" strokeWidth="2">
                                                         <circle cx="12" cy="12" r="10"/>
                                                         <path d="M12 8v4m0 4h.01"/>

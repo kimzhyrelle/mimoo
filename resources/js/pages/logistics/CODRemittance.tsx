@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+﻿import { Head, Link } from '@inertiajs/react';
 import { ReactNode, useState } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
@@ -54,8 +54,8 @@ export default function CODRemittance({ auth }: Props) {
             name: 'J. Ramos',
             id: '#16745652',
             timestamp: 'Oct 25, 10:45 PM',
-            expected: '₱598.00',
-            collected: '₱598.00',
+            expected: 'â‚±598.00',
+            collected: 'â‚±598.00',
             time: 'Oct 26, 10:01 PM',
             status: 'Confirm'
         },
@@ -63,16 +63,16 @@ export default function CODRemittance({ auth }: Props) {
             name: 'T. Lim',
             id: '#10948321',
             timestamp: 'Oct 26, 10:41 PM',
-            expected: '₱598.00',
-            collected: '₱598.00',
+            expected: 'â‚±598.00',
+            collected: 'â‚±598.00',
             time: 'Oct 26, 10:45 PM'
         },
         {
             name: 'T. Lim',
             id: '234019323',
             timestamp: 'Oct 26, 9:52 PM',
-            expected: '₱598.00',
-            collected: '₱598.00',
+            expected: 'â‚±598.00',
+            collected: 'â‚±598.00',
             time: 'Oct 26, 9:52 PM'
         }
     ];
@@ -122,11 +122,11 @@ export default function CODRemittance({ auth }: Props) {
 
     return (
         <>
-            <Head title="COD & Remittance" />
+            <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`}</style><Head title="COD & Remittance" />
             
             <div className="flex h-screen bg-gray-50" style={fontSyne}>
                 {/* Sidebar */}
-                <aside className="w-64 bg-[#2B2249] text-white flex-shrink-0 hidden lg:block overflow-y-auto">
+                <aside className="w-64 bg-[#2B2249] text-white flex-shrink-0 hidden lg:block overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     <div className="p-6">
                         <Link href="/" className="flex items-center gap-2 mb-8">
                             <span className="w-8 h-8 rounded-full bg-[#9B5DE5]" />
@@ -142,8 +142,8 @@ export default function CODRemittance({ auth }: Props) {
                                     href={item.href}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition ${
                                         activeTab === item.id
-                                            ? 'bg-[#3d2e5f] text-white'
-                                            : 'text-gray-300 hover:bg-[#3d2e5f]/50 hover:text-white'
+                                            ? 'bg-[#2E2240] text-white'
+                                            : 'text-gray-300 hover:bg-[#2E2240]/50 hover:text-white'
                                     }`}
                                 >
                                     {getIcon(item.icon)}
@@ -159,7 +159,7 @@ export default function CODRemittance({ auth }: Props) {
                             className={`w-full flex items-center gap-3 px-6 py-4 text-sm font-medium transition ${
                                 activeTab === 'account'
                                     ? 'bg-[#4B5EF9] text-white'
-                                    : 'text-gray-300 hover:bg-[#3d2e5f]/50 hover:text-white'
+                                    : 'text-gray-300 hover:bg-[#2E2240]/50 hover:text-white'
                             }`}
                         >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -229,7 +229,7 @@ export default function CODRemittance({ auth }: Props) {
                         <div className="max-w-7xl mx-auto">
                             {/* Top Action Buttons */}
                             <div className="flex items-center justify-between mb-6">
-                                <button className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-100 transition flex items-center gap-2">
+                                <button className="px-4 py-2 bg-[#E8E3F0] text-[#5B4B6E] rounded-lg text-sm font-semibold hover:bg-[#D4CEE0] transition flex items-center gap-2">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <rect x="2" y="5" width="20" height="14" rx="2"/>
                                         <line x1="2" y1="10" x2="22" y2="10"/>
@@ -237,7 +237,7 @@ export default function CODRemittance({ auth }: Props) {
                                     CASH OPERATIONS
                                 </button>
                                 
-                                <button className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-100 transition flex items-center gap-2">
+                                <button className="px-4 py-2 bg-[#E8E3F0] text-[#5B4B6E] rounded-lg text-sm font-semibold hover:bg-[#D4CEE0] transition flex items-center gap-2">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <line x1="12" y1="20" x2="12" y2="10"/>
                                         <line x1="18" y1="20" x2="18" y2="4"/>
@@ -263,21 +263,21 @@ export default function CODRemittance({ auth }: Props) {
                                                 <div className="flex items-start justify-between mb-4">
                                                     <div>
                                                         <h4 className="text-base font-bold text-gray-900">{rider.name}</h4>
-                                                        <p className="text-xs text-gray-500">{rider.id} • {rider.parcels}</p>
+                                                        <p className="text-xs text-gray-500">{rider.id} â€¢ {rider.parcels}</p>
                                                     </div>
                                                     <div className="text-right">
                                                         <div className="text-xs text-gray-500 mb-1">Expected</div>
-                                                        <div className="text-lg font-bold text-gray-900">₱{rider.collected.toFixed(2)}</div>
+                                                        <div className="text-lg font-bold text-gray-900">â‚±{rider.collected.toFixed(2)}</div>
                                                     </div>
                                                 </div>
 
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <div>
-                                                        <label className="block text-xs text-gray-500 mb-1">Collected ₱</label>
+                                                        <label className="block text-xs text-gray-500 mb-1">Collected â‚±</label>
                                                         <input
                                                             type="text"
                                                             defaultValue={rider.collected.toFixed(2)}
-                                                            className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                            className="w-full px-3 py-2 bg-[#E8E3F0] border border-[#D4CEE0] rounded-lg text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#B8B0C8]"
                                                         />
                                                     </div>
                                                     <div>
@@ -290,7 +290,7 @@ export default function CODRemittance({ auth }: Props) {
                                                     </div>
                                                 </div>
 
-                                                <button className="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
+                                                <button className="w-full mt-4 px-4 py-2 bg-[#3D2E54] text-white rounded-lg text-sm font-semibold hover:bg-[#2E2240] transition">
                                                     Record
                                                 </button>
                                             </div>
@@ -312,7 +312,7 @@ export default function CODRemittance({ auth }: Props) {
                                                 <div className="flex items-start justify-between mb-3">
                                                     <div>
                                                         <h4 className="text-base font-bold text-gray-900">{remittance.name}</h4>
-                                                        <p className="text-xs text-gray-500">{remittance.id} • {remittance.timestamp}</p>
+                                                        <p className="text-xs text-gray-500">{remittance.id} â€¢ {remittance.timestamp}</p>
                                                         <div className="flex gap-4 mt-2 text-xs">
                                                             <div>
                                                                 <span className="text-gray-500">Expected </span>
@@ -326,7 +326,7 @@ export default function CODRemittance({ auth }: Props) {
                                                     </div>
                                                     <div className="text-right">
                                                         {remittance.status ? (
-                                                            <button className="px-3 py-1 bg-blue-600 text-white rounded text-xs font-semibold hover:bg-blue-700 transition">
+                                                            <button className="px-3 py-1 bg-[#3D2E54] text-white rounded text-xs font-semibold hover:bg-[#2E2240] transition">
                                                                 {remittance.status}
                                                             </button>
                                                         ) : (

@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+﻿import { Link } from '@inertiajs/react';
 import { ReactNode } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
@@ -22,7 +22,7 @@ export default function CourierRegistration() {
 
                     <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                         <Link href="/logistics" className="text-xs sm:text-sm font-medium text-gray-500 hover:text-gray-700 transition">
-                            ← Back
+                            â† Back
                         </Link>
                         <Link href="/login" className="text-xs sm:text-sm font-medium text-gray-700 hover:text-[#3B1F6B] transition">
                             Log in
@@ -65,19 +65,19 @@ export default function CourierRegistration() {
                             <h3 className="font-semibold mb-4">What you'll need when registration opens:</h3>
                             <ul className="text-left space-y-2 text-sm">
                                 <li className="flex items-start gap-3">
-                                    <span className="text-white/60">•</span>
+                                    <span className="text-white/60">â€¢</span>
                                     <span>Business registration or DTI permit</span>
                                 </li>
                                 <li className="flex items-start gap-3">
-                                    <span className="text-white/60">•</span>
+                                    <span className="text-white/60">â€¢</span>
                                     <span>Warehouse or office location details</span>
                                 </li>
                                 <li className="flex items-start gap-3">
-                                    <span className="text-white/60">•</span>
+                                    <span className="text-white/60">â€¢</span>
                                     <span>Fleet size and coverage areas</span>
                                 </li>
                                 <li className="flex items-start gap-3">
-                                    <span className="text-white/60">•</span>
+                                    <span className="text-white/60">â€¢</span>
                                     <span>Bank account for settlements</span>
                                 </li>
                             </ul>
@@ -88,14 +88,14 @@ export default function CourierRegistration() {
                                 href="/logistics" 
                                 className="inline-flex items-center justify-center gap-2 bg-white text-[#3B1F6B] px-6 py-3 rounded-full font-semibold hover:bg-gray-50 transition"
                             >
-                                ← Back to Logistics
+                                â† Back to Logistics
                             </Link>
                             <a 
                                 href="mailto:logistics@mimoo.ph"
                                 className="inline-flex items-center justify-center gap-2 bg-white/10 backdrop-blur-sm text-white px-6 py-3 rounded-full font-semibold hover:bg-white/20 transition"
                             >
                                 Contact Us
-                                <span>→</span>
+                                <span>â†’</span>
                             </a>
                         </div>
                     </div>

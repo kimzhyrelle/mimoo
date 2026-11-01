@@ -1,4 +1,4 @@
-import { Link, useForm } from '@inertiajs/react';
+﻿import { Link, useForm } from '@inertiajs/react';
 import { FormEvent, ReactNode, useState, useEffect } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
@@ -13,7 +13,7 @@ const RIDER_SAMPLE_TOTAL = RIDER_FEE_PER_DELIVERY * RIDER_SAMPLE_DELIVERIES;
 const HUB_FEE_PER_PARCEL = 8;
 const HUB_SAMPLE_PARCELS = 200;
 const HUB_SAMPLE_TOTAL = HUB_FEE_PER_PARCEL * HUB_SAMPLE_PARCELS;
-const peso = (n: number) => `₱${n.toLocaleString('en-PH')}`;
+const peso = (n: number) => `â‚±${n.toLocaleString('en-PH')}`;
 
 const navLinks = [
     { label: 'Home', href: '/' },
@@ -335,7 +335,7 @@ export default function LogisticsLanding() {
                                                         className={`w-full flex items-center justify-center gap-2 bg-gradient-to-r ${card.color} hover:opacity-90 disabled:opacity-60 text-white text-sm font-semibold px-5 py-3 rounded-full transition`}
                                                     >
                                                         {processing ? 'Logging in...' : `Log in as ${card.role}`}
-                                                        {!processing && <span>→</span>}
+                                                        {!processing && <span>â†’</span>}
                                                     </button>
                                                 </form>
 
@@ -503,7 +503,7 @@ export default function LogisticsLanding() {
                                 </ul>
                                 <Link href={role.link} className="inline-flex items-center gap-2 text-[#3B1F6B] font-semibold text-sm hover:gap-3 transition-all">
                                     {role.cta}
-                                    <span>→</span>
+                                    <span>â†’</span>
                                 </Link>
                             </div>
                         ))}
@@ -527,7 +527,7 @@ export default function LogisticsLanding() {
                                 className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-[#3B1F6B] text-sm font-semibold px-5 py-2.5 rounded-full transition"
                             >
                                 Join the team
-                                <span>→</span>
+                                <span>â†’</span>
                             </Link>
                         </div>
 
@@ -536,7 +536,7 @@ export default function LogisticsLanding() {
                                 <p className="text-xs text-gray-400 mb-2" style={fontSFCompact}>Example rider day</p>
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between text-gray-500">
-                                        <span>{RIDER_SAMPLE_DELIVERIES} deliveries × {peso(RIDER_FEE_PER_DELIVERY)}</span>
+                                        <span>{RIDER_SAMPLE_DELIVERIES} deliveries Ã— {peso(RIDER_FEE_PER_DELIVERY)}</span>
                                         <span>{peso(RIDER_SAMPLE_TOTAL)}</span>
                                     </div>
                                     <div className="border-t border-gray-100 pt-2 flex justify-between items-center">
@@ -549,7 +549,7 @@ export default function LogisticsLanding() {
                                 <p className="text-xs text-gray-400 mb-2" style={fontSFCompact}>Example sorting center day</p>
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between text-gray-500">
-                                        <span>{HUB_SAMPLE_PARCELS} parcels × {peso(HUB_FEE_PER_PARCEL)}</span>
+                                        <span>{HUB_SAMPLE_PARCELS} parcels Ã— {peso(HUB_FEE_PER_PARCEL)}</span>
                                         <span>{peso(HUB_SAMPLE_TOTAL)}</span>
                                     </div>
                                     <div className="border-t border-gray-100 pt-2 flex justify-between items-center">
@@ -595,7 +595,7 @@ export default function LogisticsLanding() {
                         <div className="grid grid-cols-3 gap-3 mb-4">
                             {[
                                 { label: 'Deliveries today', value: '8' },
-                                { label: 'Earned today', value: '₱480' },
+                                { label: 'Earned today', value: 'â‚±480' },
                                 { label: 'Pending pick-ups', value: '3' },
                             ].map((s) => (
                                 <div key={s.label} className="bg-white rounded-xl p-3 text-center">
@@ -725,7 +725,7 @@ export default function LogisticsLanding() {
                             className="inline-flex items-center gap-2 bg-[#9B5DE5] hover:bg-[#8B4FD1] text-white text-sm font-semibold px-6 py-3 rounded-full transition"
                         >
                             Join the team
-                            <span>→</span>
+                            <span>â†’</span>
                         </Link>
                     </div>
                 </div>

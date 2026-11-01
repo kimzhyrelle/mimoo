@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+﻿import { Head, Link } from '@inertiajs/react';
 import { ReactNode, useState } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
@@ -112,11 +112,11 @@ export default function Riders({ auth }: Props) {
 
     return (
         <>
-            <Head title="Riders" />
+            <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`}</style><Head title="Riders" />
             
             <div className="flex h-screen bg-gray-50" style={fontSyne}>
                 {/* Sidebar */}
-                <aside className="w-64 bg-[#2B2249] text-white flex-shrink-0 hidden lg:block overflow-y-auto">
+                <aside className="w-64 bg-[#2B2249] text-white flex-shrink-0 hidden lg:block overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     <div className="p-6">
                         <Link href="/" className="flex items-center gap-2 mb-8">
                             <span className="w-8 h-8 rounded-full bg-[#9B5DE5]" />
@@ -132,8 +132,8 @@ export default function Riders({ auth }: Props) {
                                     href={item.href}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition ${
                                         activeTab === item.id
-                                            ? 'bg-[#3d2e5f] text-white'
-                                            : 'text-gray-300 hover:bg-[#3d2e5f]/50 hover:text-white'
+                                            ? 'bg-[#2E2240] text-white'
+                                            : 'text-gray-300 hover:bg-[#2E2240]/50 hover:text-white'
                                     }`}
                                 >
                                     {getIcon(item.icon)}
@@ -149,7 +149,7 @@ export default function Riders({ auth }: Props) {
                             className={`w-full flex items-center gap-3 px-6 py-4 text-sm font-medium transition ${
                                 activeTab === 'account'
                                     ? 'bg-[#4B5EF9] text-white'
-                                    : 'text-gray-300 hover:bg-[#3d2e5f]/50 hover:text-white'
+                                    : 'text-gray-300 hover:bg-[#2E2240]/50 hover:text-white'
                             }`}
                         >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -220,7 +220,7 @@ export default function Riders({ auth }: Props) {
                             {/* Top Action Buttons */}
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-3">
-                                    <button className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-100 transition flex items-center gap-2">
+                                    <button className="px-4 py-2 bg-[#E8E3F0] text-[#5B4B6E] rounded-lg text-sm font-semibold hover:bg-[#D4CEE0] transition flex items-center gap-2">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                                             <polyline points="22 4 12 14.01 9 11.01"/>
@@ -234,7 +234,7 @@ export default function Riders({ auth }: Props) {
                                 
                                 <div className="flex items-center gap-4">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        <div className="w-2 h-2 bg-[#E8E3F0] rounded-full"></div>
                                         <span className="text-sm text-gray-600">Online: <span className="font-semibold">4 Pending</span></span>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -263,12 +263,12 @@ export default function Riders({ auth }: Props) {
                                     onClick={() => setRiderTab('active')}
                                     className={`px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 ${
                                         riderTab === 'active'
-                                            ? 'bg-blue-50 text-blue-600 border border-blue-200'
+                                            ? 'bg-[#E8E3F0] text-[#5B4B6E] border border-[#D4CEE0]'
                                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }`}
                                 >
                                     Active Riders
-                                    <span className="w-5 h-5 bg-blue-600 text-white rounded-full text-xs flex items-center justify-center">
+                                    <span className="w-5 h-5 bg-[#3D2E54] text-white rounded-full text-xs flex items-center justify-center">
                                         16
                                     </span>
                                 </button>
@@ -281,7 +281,7 @@ export default function Riders({ auth }: Props) {
                                         <div className="flex items-center justify-between mb-6">
                                             <div>
                                                 <h3 className="text-lg font-bold text-gray-900" style={fontSyncopate}>Active Riders</h3>
-                                                <p className="text-sm text-gray-500">One rider per barangay — 15 cleared, 1 unassigned</p>
+                                                <p className="text-sm text-gray-500">One rider per barangay â€” 15 cleared, 1 unassigned</p>
                                             </div>
                                         </div>
 
@@ -347,12 +347,12 @@ export default function Riders({ auth }: Props) {
                                                         <tr key={idx} className="hover:bg-gray-50">
                                                             <td className="px-6 py-4">
                                                                 <div className="flex items-center gap-3">
-                                                                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                                                                    <div className="w-10 h-10 rounded-full bg-[#D4CEE0] text-[#5B4B6E] flex items-center justify-center text-sm font-bold flex-shrink-0">
                                                                         {rider.initial}
                                                                     </div>
                                                                     <div>
                                                                         <div className="text-sm font-bold text-gray-900">{rider.name}</div>
-                                                                        <div className="text-xs text-gray-500">{rider.id} • {rider.hub}</div>
+                                                                        <div className="text-xs text-gray-500">{rider.id} â€¢ {rider.hub}</div>
                                                                         <div className="text-xs text-gray-500">{rider.status}</div>
                                                                     </div>
                                                                 </div>
@@ -366,7 +366,7 @@ export default function Riders({ auth }: Props) {
                                                                 <div className="text-xs text-gray-500">{rider.barangay}</div>
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
-                                                                <button className="text-sm font-semibold text-blue-600 hover:underline">
+                                                                <button className="text-sm font-semibold text-[#5B4B6E] hover:underline">
                                                                     View
                                                                 </button>
                                                             </td>

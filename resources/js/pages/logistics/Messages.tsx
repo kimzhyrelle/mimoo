@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+﻿import { Head, Link } from '@inertiajs/react';
 import { ReactNode, useState } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
@@ -67,11 +67,11 @@ export default function Messages({ auth, company }: Props) {
 
     return (
         <>
-            <Head title="Messages" />
+            <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`}</style><Head title="Messages" />
             
             <div className="flex h-screen bg-gray-50" style={fontPoppins}>
                 {/* Sidebar */}
-                <aside className="w-64 bg-[#2B2249] text-white flex-shrink-0 hidden lg:block overflow-y-auto">
+                <aside className="w-64 bg-[#2B2249] text-white flex-shrink-0 hidden lg:block overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     <div className="p-6">
                         <Link href="/" className="flex items-center gap-2 mb-8">
                             <span className="w-8 h-8 rounded-full bg-[#9B5DE5]" />
@@ -87,8 +87,8 @@ export default function Messages({ auth, company }: Props) {
                                     href={item.href}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition ${
                                         activeTab === item.id
-                                            ? 'bg-[#3d2e5f] text-white'
-                                            : 'text-gray-300 hover:bg-[#3d2e5f]/50 hover:text-white'
+                                            ? 'bg-[#2E2240] text-white'
+                                            : 'text-gray-300 hover:bg-[#2E2240]/50 hover:text-white'
                                     }`}
                                 >
                                     {getIcon(item.icon)}
@@ -104,7 +104,7 @@ export default function Messages({ auth, company }: Props) {
                             className={`w-full flex items-center gap-3 px-6 py-4 text-sm font-medium transition ${
                                 activeTab === 'account'
                                     ? 'bg-[#4B5EF9] text-white'
-                                    : 'text-gray-300 hover:bg-[#3d2e5f]/50 hover:text-white'
+                                    : 'text-gray-300 hover:bg-[#2E2240]/50 hover:text-white'
                             }`}
                         >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -175,7 +175,7 @@ export default function Messages({ auth, company }: Props) {
                             <h1 className="text-2xl font-bold text-gray-900 mb-6">Messages</h1>
                             
                             <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 text-blue-600 mb-4">
+                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#E8E3F0] text-[#5B4B6E] mb-4">
                                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <circle cx="5.5" cy="17.5" r="3.5"/>
                                         <circle cx="18.5" cy="17.5" r="3.5"/>

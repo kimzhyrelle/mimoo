@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+﻿import { Link } from '@inertiajs/react';
 import { ReactNode } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
@@ -91,15 +91,15 @@ export default function PendingApproval() {
                     <p className="text-xs text-[#B4A7D6] mb-3">What happens next?</p>
                     <ul className="text-sm text-[#CEC6E6] space-y-2">
                         <li className="flex items-start gap-2">
-                            <span className="text-[#9B5DE5] mt-1">•</span>
+                            <span className="text-[#9B5DE5] mt-1">â€¢</span>
                             <span>Our team will review your company registration documents</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-[#9B5DE5] mt-1">•</span>
+                            <span className="text-[#9B5DE5] mt-1">â€¢</span>
                             <span>You'll receive an email notification once approved</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="text-[#9B5DE5] mt-1">•</span>
+                            <span className="text-[#9B5DE5] mt-1">â€¢</span>
                             <span>Review typically takes 1-2 business days</span>
                         </li>
                     </ul>

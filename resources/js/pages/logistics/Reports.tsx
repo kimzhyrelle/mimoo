@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+﻿import { Head, Link } from '@inertiajs/react';
 import { ReactNode, useState } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
@@ -113,11 +113,11 @@ export default function Reports({ auth, company }: Props) {
 
     return (
         <>
-            <Head title="Reports" />
+            <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`}</style><Head title="Reports" />
             
             <div className="flex h-screen bg-gray-50" style={fontSyne}>
                 {/* Sidebar */}
-                <aside className="w-64 bg-[#2B2249] text-white flex-shrink-0 hidden lg:block overflow-y-auto">
+                <aside className="w-64 bg-[#2B2249] text-white flex-shrink-0 hidden lg:block overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     <div className="p-6">
                         <Link href="/" className="flex items-center gap-2 mb-8">
                             <span className="w-8 h-8 rounded-full bg-[#9B5DE5]" />
@@ -133,8 +133,8 @@ export default function Reports({ auth, company }: Props) {
                                     href={item.href}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition ${
                                         activeTab === item.id
-                                            ? 'bg-[#3d2e5f] text-white'
-                                            : 'text-gray-300 hover:bg-[#3d2e5f]/50 hover:text-white'
+                                            ? 'bg-[#2E2240] text-white'
+                                            : 'text-gray-300 hover:bg-[#2E2240]/50 hover:text-white'
                                     }`}
                                 >
                                     {getIcon(item.icon)}
@@ -150,7 +150,7 @@ export default function Reports({ auth, company }: Props) {
                             className={`w-full flex items-center gap-3 px-6 py-4 text-sm font-medium transition ${
                                 activeTab === 'account'
                                     ? 'bg-[#4B5EF9] text-white'
-                                    : 'text-gray-300 hover:bg-[#3d2e5f]/50 hover:text-white'
+                                    : 'text-gray-300 hover:bg-[#2E2240]/50 hover:text-white'
                             }`}
                         >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -238,12 +238,12 @@ export default function Reports({ auth, company }: Props) {
                                         onClick={() => setSelectedReport(card.id)}
                                         className={`p-4 rounded-xl border-2 text-left transition ${
                                             selectedReport === card.id
-                                                ? 'bg-blue-50 border-blue-500'
+                                                ? 'bg-[#E8E3F0] border-[#B8B0C8]'
                                                 : 'bg-white border-gray-200 hover:border-gray-300'
                                         }`}
                                     >
                                         <div className="flex items-start gap-3">
-                                            <div className={`p-2 rounded-lg ${selectedReport === card.id ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                                            <div className={`p-2 rounded-lg ${selectedReport === card.id ? 'bg-[#D4CEE0]' : 'bg-gray-100'}`}>
                                                 {card.icon === 'box' && (
                                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -344,7 +344,7 @@ export default function Reports({ auth, company }: Props) {
                                         </div>
                                     </div>
 
-                                    <button className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition flex items-center gap-2">
+                                    <button className="px-6 py-2 bg-[#E8E3F0] text-white rounded-lg text-sm font-semibold hover:bg-[#3D2E54] transition flex items-center gap-2">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                             <polyline points="7 10 12 15 17 10"/>
@@ -362,7 +362,7 @@ export default function Reports({ auth, company }: Props) {
                                             onClick={() => setTimePeriod(period)}
                                             className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${
                                                 timePeriod === period
-                                                    ? 'text-blue-600 underline'
+                                                    ? 'text-[#5B4B6E] underline'
                                                     : 'text-gray-600 hover:text-gray-900'
                                             }`}
                                         >
@@ -377,7 +377,7 @@ export default function Reports({ auth, company }: Props) {
                                 {kpiData.map((kpi, idx) => (
                                     <div key={idx} className="bg-white rounded-xl border border-gray-200 p-5">
                                         <div className="flex items-start justify-between mb-4">
-                                            <div className={`p-2 rounded-lg ${kpi.color === 'red' ? 'bg-red-50' : 'bg-blue-50'}`}>
+                                            <div className={`p-2 rounded-lg ${kpi.color === 'red' ? 'bg-red-50' : 'bg-[#E8E3F0]'}`}>
                                                 {kpi.icon === 'alert-triangle' && (
                                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={kpi.color === 'red' ? '#dc2626' : '#2563eb'} strokeWidth="2">
                                                         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -406,10 +406,10 @@ export default function Reports({ auth, company }: Props) {
                                             </div>
                                         </div>
                                         <div className="text-xs font-semibold text-gray-600 uppercase mb-2">{kpi.label}</div>
-                                        <div className={`text-3xl font-bold mb-1 ${kpi.color === 'red' ? 'text-red-600' : 'text-blue-600'}`}>
+                                        <div className={`text-3xl font-bold mb-1 ${kpi.color === 'red' ? 'text-red-600' : 'text-[#5B4B6E]'}`}>
                                             {kpi.value} <span className="text-base font-normal text-gray-600">{kpi.unit}</span>
                                         </div>
-                                        <div className={`text-xs mt-2 flex items-center gap-1 ${kpi.color === 'red' ? 'text-red-600' : 'text-blue-600'}`}>
+                                        <div className={`text-xs mt-2 flex items-center gap-1 ${kpi.color === 'red' ? 'text-red-600' : 'text-[#5B4B6E]'}`}>
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                                             </svg>
@@ -425,18 +425,18 @@ export default function Reports({ auth, company }: Props) {
                                     <h3 className="text-base font-bold text-gray-900" style={fontSyncopate}>Overdue Parcels by Barangay</h3>
                                     <div className="flex items-center gap-4">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                                            <div className="w-3 h-3 bg-[#E8E3F0] rounded"></div>
                                             <span className="text-xs text-gray-600">Overdue parcels</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="text-xs text-gray-500 mb-6">Overdue Parcels • Oct 1 - 26</div>
+                                <div className="text-xs text-gray-500 mb-6">Overdue Parcels â€¢ Oct 1 - 26</div>
                                 
                                 {/* Simple Bar Chart */}
                                 <div className="flex items-end gap-4 h-40">
                                     {barangayData.map((item, idx) => (
                                         <div key={idx} className="flex-1 flex flex-col items-center">
-                                            <div className="w-full bg-blue-500 rounded-t" style={{ height: `${item.count * 20}px` }}></div>
+                                            <div className="w-full bg-[#E8E3F0] rounded-t" style={{ height: `${item.count * 20}px` }}></div>
                                             <div className="text-xs text-gray-600 mt-2 text-center">{item.name}</div>
                                         </div>
                                     ))}
@@ -453,8 +453,8 @@ export default function Reports({ auth, company }: Props) {
                                         <h3 className="text-base font-bold text-gray-900" style={fontSyncopate}>Overdue Parcels</h3>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                        <button className="text-sm text-blue-600 hover:underline">Show all rows</button>
-                                        <button className="text-sm text-blue-600 hover:underline">Oct 01, 2026-26</button>
+                                        <button className="text-sm text-[#5B4B6E] hover:underline">Show all rows</button>
+                                        <button className="text-sm text-[#5B4B6E] hover:underline">Oct 01, 2026-26</button>
                                     </div>
                                 </div>
                                 
@@ -484,7 +484,7 @@ export default function Reports({ auth, company }: Props) {
                                                     <span className="text-sm text-gray-600">{parcel.received}</span>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <button className="text-sm font-semibold text-blue-600 hover:underline">View</button>
+                                                    <button className="text-sm font-semibold text-[#5B4B6E] hover:underline">View</button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -492,14 +492,14 @@ export default function Reports({ auth, company }: Props) {
                                 </table>
                                 
                                 <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
-                                    <p className="text-xs text-gray-500">56 overdue parcels • Oct 1 - Oct 26, 2026</p>
+                                    <p className="text-xs text-gray-500">56 overdue parcels â€¢ Oct 1 - Oct 26, 2026</p>
                                 </div>
                             </div>
 
                             {/* Daily Parcel Passthrough Chart */}
                             <div className="bg-white rounded-xl border border-gray-200 p-6">
                                 <h3 className="text-base font-bold text-gray-900 mb-6" style={fontSyncopate}>Daily Parcel Passthrough</h3>
-                                <div className="text-xs text-gray-500 mb-6">Parcels Processed • Dec 1 - 26</div>
+                                <div className="text-xs text-gray-500 mb-6">Parcels Processed â€¢ Dec 1 - 26</div>
                                 
                                 {/* Simple Area Chart */}
                                 <div className="relative h-48">
@@ -542,8 +542,8 @@ export default function Reports({ auth, company }: Props) {
                                         <h3 className="text-base font-bold text-gray-900" style={fontSyncopate}>Sorting Center Breakdown</h3>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                        <button className="text-sm text-blue-600 hover:underline">Show all rows</button>
-                                        <button className="text-sm text-blue-600 hover:underline">Oct 01, 2026-26</button>
+                                        <button className="text-sm text-[#5B4B6E] hover:underline">Show all rows</button>
+                                        <button className="text-sm text-[#5B4B6E] hover:underline">Oct 01, 2026-26</button>
                                     </div>
                                 </div>
                                 
@@ -566,7 +566,7 @@ export default function Reports({ auth, company }: Props) {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-2">
-                                                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                                        <div className="w-2 h-2 bg-[#E8E3F0] rounded-full"></div>
                                                         <span className="text-sm text-gray-900">{row.branch}</span>
                                                     </div>
                                                 </td>
@@ -574,13 +574,13 @@ export default function Reports({ auth, company }: Props) {
                                                     <span className="text-sm text-gray-600">{row.processed}</span>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <span className="text-sm text-blue-600">{row.delivered}</span>
+                                                    <span className="text-sm text-[#5B4B6E]">{row.delivered}</span>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <span className="text-sm text-gray-600">{row.overdue}</span>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <button className="text-sm font-semibold text-blue-600 hover:underline">View</button>
+                                                    <button className="text-sm font-semibold text-[#5B4B6E] hover:underline">View</button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -588,7 +588,7 @@ export default function Reports({ auth, company }: Props) {
                                 </table>
                                 
                                 <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
-                                    <p className="text-xs text-gray-500">26 days in range • Oct 1 - Oct 26, 2026</p>
+                                    <p className="text-xs text-gray-500">26 days in range â€¢ Oct 1 - Oct 26, 2026</p>
                                 </div>
                             </div>
                         </div>

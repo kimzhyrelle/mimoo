@@ -1,4 +1,4 @@
-import { Link, useForm } from '@inertiajs/react';
+﻿import { Link, useForm } from '@inertiajs/react';
 import { FormEvent, ReactNode, useEffect, useRef, useState } from 'react';
 import StepProgress from '../../components/registration/StepProgress';
 
@@ -19,7 +19,7 @@ const NCR_DISTRICTS = [
     '1st District (Manila)',
     '2nd District (Marikina, Pasig, Quezon City - East)',
     '3rd District (Caloocan, Malabon, Navotas, Valenzuela)',
-    '4th District (Las Piñas, Muntinlupa, Parañaque, Pasay, Taguig)',
+    '4th District (Las PiÃ±as, Muntinlupa, ParaÃ±aque, Pasay, Taguig)',
 ];
 
 const SIDEBAR_STEPS = [
@@ -245,11 +245,11 @@ function PasswordInput({
             </div>
             {value && (
                 <div className="mt-2 text-xs space-y-1">
-                    <div className={hasLength ? 'text-green-600' : 'text-gray-500'}>✓ 8+ characters</div>
-                    <div className={hasUpper ? 'text-green-600' : 'text-gray-500'}>✓ Uppercase</div>
-                    <div className={hasLower ? 'text-green-600' : 'text-gray-500'}>✓ Lowercase</div>
-                    <div className={hasNumber ? 'text-green-600' : 'text-gray-500'}>✓ Number</div>
-                    <div className={hasSpecial ? 'text-green-600' : 'text-gray-500'}>✓ Special character</div>
+                    <div className={hasLength ? 'text-green-600' : 'text-gray-500'}>âœ“ 8+ characters</div>
+                    <div className={hasUpper ? 'text-green-600' : 'text-gray-500'}>âœ“ Uppercase</div>
+                    <div className={hasLower ? 'text-green-600' : 'text-gray-500'}>âœ“ Lowercase</div>
+                    <div className={hasNumber ? 'text-green-600' : 'text-gray-500'}>âœ“ Number</div>
+                    <div className={hasSpecial ? 'text-green-600' : 'text-gray-500'}>âœ“ Special character</div>
                 </div>
             )}
         </div>
@@ -643,7 +643,7 @@ export default function LogisticsRegistration() {
                             className="text-xs font-semibold uppercase tracking-wide text-[#7A63AC] mb-4 focus:outline-none"
                             style={fontSFCompact}
                         >
-                            Step {step} · {stepTitles[step - 1]}
+                            Step {step} Â· {stepTitles[step - 1]}
                         </h3>
 
                         {/* STEP 1: Company */}
@@ -714,7 +714,7 @@ export default function LogisticsRegistration() {
                                         className={inputCls(err('region'))}
                                         disabled={loading.regions}
                                     >
-                                        <option value="">Select…</option>
+                                        <option value="">Selectâ€¦</option>
                                         {regions.map((r) => (
                                             <option key={r.code} value={r.name}>{r.name}</option>
                                         ))}
@@ -734,7 +734,7 @@ export default function LogisticsRegistration() {
                                             }}
                                             className={inputCls(err('district'))}
                                         >
-                                            <option value="">Select…</option>
+                                            <option value="">Selectâ€¦</option>
                                             {NCR_DISTRICTS.map((d) => (
                                                 <option key={d} value={d}>{d}</option>
                                             ))}
@@ -753,7 +753,7 @@ export default function LogisticsRegistration() {
                                             className={inputCls(err('province'))}
                                             disabled={!data.region || loading.provinces}
                                         >
-                                            <option value="">{!data.region ? 'Select region first' : 'Select…'}</option>
+                                            <option value="">{!data.region ? 'Select region first' : 'Selectâ€¦'}</option>
                                             {provinces.map((p) => (
                                                 <option key={p.code} value={p.name}>{p.name}</option>
                                             ))}
@@ -774,8 +774,8 @@ export default function LogisticsRegistration() {
                                     >
                                         <option value="">
                                             {isNCR 
-                                                ? (!data.district ? 'Select district first' : 'Select…')
-                                                : (!data.province ? 'Select province first' : 'Select…')
+                                                ? (!data.district ? 'Select district first' : 'Selectâ€¦')
+                                                : (!data.province ? 'Select province first' : 'Selectâ€¦')
                                             }
                                         </option>
                                         {cities.map((c) => (
@@ -792,7 +792,7 @@ export default function LogisticsRegistration() {
                                         className={inputCls(err('barangay'))}
                                         disabled={!data.municipality_city || loading.barangays}
                                     >
-                                        <option value="">{!data.municipality_city ? 'Select city first' : 'Select…'}</option>
+                                        <option value="">{!data.municipality_city ? 'Select city first' : 'Selectâ€¦'}</option>
                                         {barangays.map((b) => (
                                             <option key={b.code} value={b.name}>{b.name}</option>
                                         ))}

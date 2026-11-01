@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+﻿import { Head, Link } from '@inertiajs/react';
 import { ReactNode, useState } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
@@ -21,6 +21,11 @@ interface Props {
 
 export default function LogisticsDashboard({ auth, company }: Props) {
     const [activeTab, setActiveTab] = useState('dashboard');
+    const [showUserMenu, setShowUserMenu] = useState(false);
+
+    const handleLogout = () => {
+        window.location.href = '/logout';
+    };
 
     // Mock data for now - replace with real data later
     const stats = {
@@ -40,7 +45,7 @@ export default function LogisticsDashboard({ auth, company }: Props) {
 
     const activityTimeline = [
         { type: 'success', message: 'Shift checklist submitted - Inbound 3 of 3 steps completed', time: '1 day ago' },
-        { type: 'success', message: 'Palasan — 1 parcels dispatched to A. Santos', time: '1 day ago' },
+        { type: 'success', message: 'Palasan â€” 1 parcels dispatched to A. Santos', time: '1 day ago' },
         { type: 'info', message: '#1037 status updated to awaiting_sort', time: '1 day ago' },
         { type: 'info', message: '#1037 status updated to awaiting_sort', time: '2 days ago' },
     ];
@@ -90,11 +95,11 @@ export default function LogisticsDashboard({ auth, company }: Props) {
 
     return (
         <>
-            <Head title="Logistics Dashboard" />
+            <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`}</style><Head title="Logistics Dashboard" />
             
             <div className="flex h-screen bg-gray-50" style={fontPoppins}>
                 {/* Sidebar */}
-                <aside className="w-64 bg-[#2B2249] text-white flex-shrink-0 hidden lg:block overflow-y-auto">
+                <aside className="w-64 bg-[#2B2249] text-white flex-shrink-0 hidden lg:block overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     <div className="p-6">
                         <Link href="/" className="flex items-center gap-2 mb-8">
                             <span className="w-8 h-8 rounded-full bg-[#9B5DE5]" />
@@ -110,8 +115,8 @@ export default function LogisticsDashboard({ auth, company }: Props) {
                                     href={item.href}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition ${
                                         activeTab === item.id
-                                            ? 'bg-[#3d2e5f] text-white'
-                                            : 'text-gray-300 hover:bg-[#3d2e5f]/50 hover:text-white'
+                                            ? 'bg-[#2E2240] text-white'
+                                            : 'text-gray-300 hover:bg-[#2E2240]/50 hover:text-white'
                                     }`}
                                 >
                                     {getIcon(item.icon)}
@@ -127,7 +132,7 @@ export default function LogisticsDashboard({ auth, company }: Props) {
                             className={`w-full flex items-center gap-3 px-6 py-4 text-sm font-medium transition ${
                                 activeTab === 'account'
                                     ? 'bg-[#4B5EF9] text-white'
-                                    : 'text-gray-300 hover:bg-[#3d2e5f]/50 hover:text-white'
+                                    : 'text-gray-300 hover:bg-[#2E2240]/50 hover:text-white'
                             }`}
                         >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -185,9 +190,41 @@ export default function LogisticsDashboard({ auth, company }: Props) {
                                     </svg>
                                     <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                                 </button>
-                                <button className="w-9 h-9 rounded-full bg-[#2B2249] text-white flex items-center justify-center text-sm font-bold">
-                                    {auth.user.name.charAt(0)}
-                                </button>
+                                <div className="relative">
+                                    <button 
+                                        onClick={() => setShowUserMenu(!showUserMenu)}
+                                        className="w-9 h-9 rounded-full bg-[#2B2249] text-white flex items-center justify-center text-sm font-bold hover:bg-[#3d2e5f] transition"
+                                    >
+                                        {auth.user.name.charAt(0)}
+                                    </button>
+                                    {showUserMenu && (
+                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                                            <Link
+                                                href="/logistics/account"
+                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                                        <circle cx="12" cy="7" r="4"/>
+                                                    </svg>
+                                                    Account
+                                                </div>
+                                            </Link>
+                                            <button
+                                                onClick={handleLogout}
+                                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                                    <polyline points="16 17 21 12 16 7"/>
+                                                    <line x1="21" y1="12" x2="9" y2="12"/>
+                                                </svg>
+                                                Log out
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </header>
@@ -196,10 +233,10 @@ export default function LogisticsDashboard({ auth, company }: Props) {
                     <main className="flex-1 overflow-auto p-6 bg-gray-50">
                         {/* Stream Live Badge */}
                         <div className="mb-6 flex items-center justify-between">
-                            <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200">
-                                <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                            <div className="flex items-center gap-2 bg-[#E8E3F0] text-blue-700 px-3 py-1.5 rounded-lg border border-[#D4CEE0]">
+                                <span className="w-2 h-2 bg-[#E8E3F0] rounded-full animate-pulse"></span>
                                 <span className="text-xs font-semibold">STREAM LIVE</span>
-                                <span className="text-xs text-blue-600">Wednesday, Oct 28, 2026 • 05:05 AM</span>
+                                <span className="text-xs text-[#5B4B6E]">Wednesday, Oct 28, 2026 â€¢ 05:05 AM</span>
                             </div>
                             <button className="bg-[#2B2249] hover:bg-[#3B1F6B] text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -215,7 +252,7 @@ export default function LogisticsDashboard({ auth, company }: Props) {
                             {/* Parcels Today */}
                             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                                 <div className="flex items-start justify-between mb-3">
-                                    <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                                    <div className="w-10 h-10 rounded-lg bg-[#E8E3F0] flex items-center justify-center">
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2">
                                             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
                                         </svg>
@@ -228,7 +265,7 @@ export default function LogisticsDashboard({ auth, company }: Props) {
                             {/* Pending Sort */}
                             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                                 <div className="flex items-start justify-between mb-3">
-                                    <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                                    <div className="w-10 h-10 rounded-lg bg-[#E8E3F0] flex items-center justify-center">
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2">
                                             <path d="M3 6h18M7 12h10M10 18h4"/>
                                         </svg>
@@ -242,7 +279,7 @@ export default function LogisticsDashboard({ auth, company }: Props) {
                             {/* Out for Delivery */}
                             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                                 <div className="flex items-start justify-between mb-3">
-                                    <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                                    <div className="w-10 h-10 rounded-lg bg-[#E8E3F0] flex items-center justify-center">
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2">
                                             <circle cx="5.5" cy="17.5" r="3.5"/>
                                             <circle cx="18.5" cy="17.5" r="3.5"/>
@@ -277,13 +314,13 @@ export default function LogisticsDashboard({ auth, company }: Props) {
                             <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
                                 <div className="border-b border-gray-200 px-5 py-4">
                                     <h2 className="text-sm font-bold text-gray-900">Parcels Processed Per Hour</h2>
-                                    <p className="text-xs text-gray-500 mt-0.5">Operating timeline: 06:00 – 22:00</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">Operating timeline: 06:00 â€“ 22:00</p>
                                 </div>
                                 <div className="p-5">
                                     <div className="h-64 flex items-end justify-between gap-2">
                                         {/* Simple bar chart placeholder */}
                                         <div className="flex-1 h-full border-l border-b border-gray-200 relative">
-                                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500"></div>
+                                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#E8E3F0]"></div>
                                             <div className="absolute bottom-0 left-0 text-[10px] text-gray-400">0</div>
                                             <div className="absolute top-0 left-0 text-[10px] text-gray-400">8</div>
                                         </div>
@@ -318,7 +355,7 @@ export default function LogisticsDashboard({ auth, company }: Props) {
                                 <div className="p-5 space-y-4">
                                     {activityTimeline.map((activity, index) => (
                                         <div key={index} className="flex gap-3">
-                                            <div className={`w-2 h-2 mt-1.5 rounded-full flex-shrink-0 ${activity.type === 'success' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+                                            <div className={`w-2 h-2 mt-1.5 rounded-full flex-shrink-0 ${activity.type === 'success' ? 'bg-green-500' : 'bg-[#E8E3F0]'}`}></div>
                                             <div className="flex-1">
                                                 <p className="text-xs text-gray-900">{activity.message}</p>
                                                 <p className="text-xs text-gray-400 mt-0.5">{activity.time}</p>
@@ -381,7 +418,7 @@ export default function LogisticsDashboard({ auth, company }: Props) {
                                                 </td>
                                                 <td className="px-4 py-4">
                                                     <div className="flex items-center gap-2">
-                                                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700">
+                                                        <div className="w-6 h-6 rounded-full bg-[#D4CEE0] flex items-center justify-center text-xs font-bold text-blue-700">
                                                             {shipment.rider.charAt(0)}
                                                         </div>
                                                         <span className="text-sm text-gray-900">{shipment.rider}</span>
@@ -409,7 +446,7 @@ export default function LogisticsDashboard({ auth, company }: Props) {
                             </div>
                             <div className="border-t border-gray-200 px-5 py-3 bg-gray-50/50">
                                 <p className="text-xs text-gray-500">
-                                    50 parcels • Sorted by urgency • 05:05 AM
+                                    50 parcels â€¢ Sorted by urgency â€¢ 05:05 AM
                                 </p>
                             </div>
                         </div>

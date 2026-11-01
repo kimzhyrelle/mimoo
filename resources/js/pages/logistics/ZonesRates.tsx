@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+﻿import { Head, Link } from '@inertiajs/react';
 import { ReactNode, useState } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
@@ -87,11 +87,11 @@ export default function ZonesRates({ auth }: Props) {
 
     return (
         <>
-            <Head title="Zones & Shipping Rates" />
+            <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`}</style><Head title="Zones & Shipping Rates" />
             
             <div className="flex h-screen bg-gray-50" style={fontSyne}>
                 {/* Sidebar */}
-                <aside className="w-64 bg-[#2B2249] text-white flex-shrink-0 hidden lg:block overflow-y-auto">
+                <aside className="w-64 bg-[#2B2249] text-white flex-shrink-0 hidden lg:block overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     <div className="p-6">
                         <Link href="/" className="flex items-center gap-2 mb-8">
                             <span className="w-8 h-8 rounded-full bg-[#9B5DE5]" />
@@ -107,8 +107,8 @@ export default function ZonesRates({ auth }: Props) {
                                     href={item.href}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition ${
                                         activeTab === item.id
-                                            ? 'bg-[#3d2e5f] text-white'
-                                            : 'text-gray-300 hover:bg-[#3d2e5f]/50 hover:text-white'
+                                            ? 'bg-[#2E2240] text-white'
+                                            : 'text-gray-300 hover:bg-[#2E2240]/50 hover:text-white'
                                     }`}
                                 >
                                     {getIcon(item.icon)}
@@ -124,7 +124,7 @@ export default function ZonesRates({ auth }: Props) {
                             className={`w-full flex items-center gap-3 px-6 py-4 text-sm font-medium transition ${
                                 activeTab === 'account'
                                     ? 'bg-[#4B5EF9] text-white'
-                                    : 'text-gray-300 hover:bg-[#3d2e5f]/50 hover:text-white'
+                                    : 'text-gray-300 hover:bg-[#2E2240]/50 hover:text-white'
                             }`}
                         >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -194,7 +194,7 @@ export default function ZonesRates({ auth }: Props) {
                         <div className="max-w-7xl mx-auto">
                             {/* Top Action Buttons */}
                             <div className="flex items-center justify-between mb-6">
-                                <button className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-100 transition flex items-center gap-2">
+                                <button className="px-4 py-2 bg-[#E8E3F0] text-[#5B4B6E] rounded-lg text-sm font-semibold hover:bg-[#D4CEE0] transition flex items-center gap-2">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                                         <circle cx="12" cy="10" r="3"/>
@@ -202,7 +202,7 @@ export default function ZonesRates({ auth }: Props) {
                                     CHECKOUT CONFIGURATIONS
                                 </button>
                                 
-                                <button className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-100 transition flex items-center gap-2">
+                                <button className="px-4 py-2 bg-[#E8E3F0] text-[#5B4B6E] rounded-lg text-sm font-semibold hover:bg-[#D4CEE0] transition flex items-center gap-2">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
                                         <polyline points="14 2 14 8 20 8"/>
@@ -226,7 +226,7 @@ export default function ZonesRates({ auth }: Props) {
                                                     placeholder="e.g. Metro Manila"
                                                     value={zoneName}
                                                     onChange={(e) => setZoneName(e.target.value)}
-                                                    className="w-full px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full px-4 py-2 bg-[#E8E3F0] border border-[#D4CEE0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#B8B0C8]"
                                                 />
                                             </div>
 
@@ -237,7 +237,7 @@ export default function ZonesRates({ auth }: Props) {
                                                     placeholder="e.g. NCR"
                                                     value={region}
                                                     onChange={(e) => setRegion(e.target.value)}
-                                                    className="w-full px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full px-4 py-2 bg-[#E8E3F0] border border-[#D4CEE0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#B8B0C8]"
                                                 />
                                             </div>
 
@@ -258,14 +258,14 @@ export default function ZonesRates({ auth }: Props) {
                                                     id="serviceable"
                                                     checked={serviceable}
                                                     onChange={(e) => setServiceable(e.target.checked)}
-                                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                    className="w-4 h-4 text-[#5B4B6E] border-gray-300 rounded focus:ring-[#B8B0C8]"
                                                 />
                                                 <label htmlFor="serviceable" className="text-sm text-gray-700">
                                                     Serviceable at checkout
                                                 </label>
                                             </div>
 
-                                            <button className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
+                                            <button className="w-full px-4 py-3 bg-[#3D2E54] text-white rounded-lg text-sm font-semibold hover:bg-[#2E2240] transition">
                                                 Add Zone
                                             </button>
                                         </div>
@@ -279,7 +279,7 @@ export default function ZonesRates({ auth }: Props) {
                                             <div className="flex items-start justify-between mb-6">
                                                 <div>
                                                     <h3 className="text-lg font-bold text-gray-900 mb-1" style={fontSyncopate}>{zone.name}</h3>
-                                                    <p className="text-sm text-gray-500">{zone.region} — {zone.areas}</p>
+                                                    <p className="text-sm text-gray-500">{zone.region} â€” {zone.areas}</p>
                                                 </div>
                                                 {zone.serviceable && (
                                                     <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
@@ -296,7 +296,7 @@ export default function ZonesRates({ auth }: Props) {
                                                         <input
                                                             type="text"
                                                             defaultValue={zone.name}
-                                                            className="w-full px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                            className="w-full px-4 py-2 bg-[#E8E3F0] border border-[#D4CEE0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#B8B0C8]"
                                                         />
                                                     </div>
                                                     <div>
@@ -304,7 +304,7 @@ export default function ZonesRates({ auth }: Props) {
                                                         <input
                                                             type="text"
                                                             defaultValue={zone.region}
-                                                            className="w-full px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                            className="w-full px-4 py-2 bg-[#E8E3F0] border border-[#D4CEE0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#B8B0C8]"
                                                         />
                                                     </div>
                                                 </div>
@@ -315,7 +315,7 @@ export default function ZonesRates({ auth }: Props) {
                                                     <input
                                                         type="text"
                                                         defaultValue={zone.areas}
-                                                        className="w-full px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        className="w-full px-4 py-2 bg-[#E8E3F0] border border-[#D4CEE0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#B8B0C8]"
                                                     />
                                                 </div>
 
@@ -326,13 +326,13 @@ export default function ZonesRates({ auth }: Props) {
                                                             type="checkbox"
                                                             id={`serviceable-${idx}`}
                                                             defaultChecked={zone.serviceable}
-                                                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                            className="w-4 h-4 text-[#5B4B6E] border-gray-300 rounded focus:ring-[#B8B0C8]"
                                                         />
                                                         <label htmlFor={`serviceable-${idx}`} className="text-sm text-gray-700">
                                                             Serviceable
                                                         </label>
                                                     </div>
-                                                    <button className="text-sm text-blue-600 hover:underline font-semibold">
+                                                    <button className="text-sm text-[#5B4B6E] hover:underline font-semibold">
                                                         Save Zone
                                                     </button>
                                                 </div>
@@ -359,15 +359,15 @@ export default function ZonesRates({ auth }: Props) {
                                                                     {zone.tiers.map((tier, tierIdx) => (
                                                                         <tr key={tierIdx} className="hover:bg-gray-50">
                                                                             <td className="px-4 py-3 font-semibold text-gray-900">{tier.weight}</td>
-                                                                            <td className="px-4 py-3">₱{tier.base.toFixed(2)}</td>
-                                                                            <td className="px-4 py-3">₱{tier.perKg.toFixed(2)}</td>
-                                                                            <td className="px-4 py-3">₱{tier.sample3kg.toFixed(2)}</td>
+                                                                            <td className="px-4 py-3">â‚±{tier.base.toFixed(2)}</td>
+                                                                            <td className="px-4 py-3">â‚±{tier.perKg.toFixed(2)}</td>
+                                                                            <td className="px-4 py-3">â‚±{tier.sample3kg.toFixed(2)}</td>
                                                                             <td className="px-4 py-3 text-gray-600">{tier.col5.toFixed(2)}</td>
                                                                             <td className="px-4 py-3 text-gray-600">{tier.col6.toFixed(2)}</td>
                                                                             <td className="px-4 py-3 text-gray-600">{tier.col7.toFixed(2)}</td>
                                                                             <td className="px-4 py-3 text-gray-600">{tier.col7.toFixed(2)}</td>
                                                                             <td className="px-4 py-3 text-right">
-                                                                                <button className="text-blue-600 hover:underline text-xs font-semibold">
+                                                                                <button className="text-[#5B4B6E] hover:underline text-xs font-semibold">
                                                                                     Save
                                                                                 </button>
                                                                             </td>
@@ -381,12 +381,12 @@ export default function ZonesRates({ auth }: Props) {
                                                         <div className="mt-4 grid grid-cols-4 gap-3">
                                                             <input
                                                                 type="text"
-                                                                placeholder="Base ₱"
+                                                                placeholder="Base â‚±"
                                                                 className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2B2249]"
                                                             />
                                                             <input
                                                                 type="text"
-                                                                placeholder="Per kg ₱"
+                                                                placeholder="Per kg â‚±"
                                                                 className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2B2249]"
                                                             />
                                                             <input
@@ -401,7 +401,7 @@ export default function ZonesRates({ auth }: Props) {
                                                             />
                                                         </div>
 
-                                                        <button className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
+                                                        <button className="mt-3 px-4 py-2 bg-[#3D2E54] text-white rounded-lg text-sm font-semibold hover:bg-[#2E2240] transition">
                                                             Add Tier
                                                         </button>
                                                     </div>
