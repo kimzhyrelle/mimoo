@@ -6,7 +6,7 @@ class RegistrationApprovedScreen extends StatelessWidget {
   final String fleetName, riderId, hubName; final VoidCallback onLogin;
   const RegistrationApprovedScreen({super.key, required this.fleetName, required this.riderId, required this.hubName, required this.onLogin});
   @override
-  Widget build(BuildContext context) => MScaffold(body: ListView(padding: const EdgeInsets.all(16), children: [
+  Widget build(BuildContext context) => MScaffold(body: ListView(padding: MS.pagePadding, children: [
     MCard(child: Column(children: [
       const SizedBox(height: 8),
       Container(width: 64, height: 64, decoration: const BoxDecoration(color: MC.green, shape: BoxShape.circle), child: const Icon(Icons.check, color: Colors.white, size: 38)),
@@ -25,7 +25,7 @@ class RegistrationRejectedScreen extends StatelessWidget {
   const RegistrationRejectedScreen({super.key, required this.reason, required this.onEditAndResubmit, required this.supportPhone,
     this.guidance = 'Please take a clear photo in good lighting showing all four corners of the card. Avoid glare and reflections.', this.documentLabel = "Driver's License"});
   @override
-  Widget build(BuildContext context) => MScaffold(body: ListView(padding: const EdgeInsets.all(16), children: [
+  Widget build(BuildContext context) => MScaffold(body: ListView(padding: MS.pagePadding, children: [
     MCard(color: MC.tintLow, child: Column(children: [
       Transform.rotate(angle: .05, child: const IconCircle(Icons.shield, bg: MC.errorSoft, fg: MC.coralDark, size: 64)), const SizedBox(height: 12),
       const Pill('Action required', bg: MC.coralSoft, fg: MC.coral, icon: Icons.error), const SizedBox(height: 8),

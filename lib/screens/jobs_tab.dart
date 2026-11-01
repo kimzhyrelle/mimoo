@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../core/connectivity.dart';
+import '../core/rider_status_controller.dart';
 import '../core/theme.dart';
+import '../data/parcel_flow.dart';
+import '../data/models/entities.dart' as db;
+import '../data/repositories/app_repositories_scope.dart';
 import '../widgets/common.dart';
 
 class JobsTab extends StatefulWidget {
@@ -11,109 +15,308 @@ class JobsTab extends StatefulWidget {
 
 class _JobsTabState extends State<JobsTab> {
   int seg = 0; // 0 = For Pickup, 1 = For Delivery
-  final accepted = <String>{};
+  ParcelStatus? _filter;
 
-  Widget _segment() => Container(
+  Widget _segment(int pickupCount, int deliveryCount) => Container(
         padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(color: MC.container, borderRadius: BorderRadius.circular(99)),
+        decoration: BoxDecoration(
+            color: MC.container, borderRadius: BorderRadius.circular(99)),
         child: Row(children: [
-          for (final e in [(0, Icons.inventory_2, 'For Pickup (3)'), (1, Icons.local_shipping, 'For Delivery (4)')])
-            Expanded(child: GestureDetector(
+          for (final e in [
+            (0, Icons.inventory_2, 'For Pickup ($pickupCount)'),
+            (1, Icons.local_shipping, 'For Delivery ($deliveryCount)')
+          ])
+            Expanded(
+                child: GestureDetector(
               onTap: () => setState(() => seg = e.$1),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(color: seg == e.$1 ? MC.primaryContainer : Colors.transparent, borderRadius: BorderRadius.circular(99)),
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(e.$2, size: 18, color: seg == e.$1 ? Colors.white : MC.onSurfaceVariant),
+                decoration: BoxDecoration(
+                    color:
+                        seg == e.$1 ? MC.primaryContainer : Colors.transparent,
+                    borderRadius: BorderRadius.circular(99)),
+                child:
+                    Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(e.$2,
+                      size: 18,
+                      color: seg == e.$1 ? Colors.white : MC.onSurfaceVariant),
                   const SizedBox(width: 6),
-                  Text(e.$3, style: MT.labelLg.copyWith(color: seg == e.$1 ? Colors.white : MC.onSurfaceVariant)),
+                  Text(e.$3,
+                      style: MT.labelLg.copyWith(
+                          color: seg == e.$1
+                              ? Colors.white
+                              : MC.onSurfaceVariant)),
                 ]),
               ),
             )),
         ]),
       );
 
-  Widget _pickupCard(String id, String seller, String addr, int parcels, String ago, {bool isNew = false}) {
-    final done = accepted.contains(id);
+  Widget _pickupCard(db.JobOffer offer, db.Parcel parcel) {
+    final secondsLeft =
+        offer.expiresAt.difference(DateTime.now()).inSeconds.clamp(0, 60);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: MCard(
-        onTap: () => Navigator.pushNamed(context, '/pickup-detail'),
+        onTap: () =>
+            Navigator.pushNamed(context, '/job-offer', arguments: offer.id),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Row(children: [if (isNew) const MChip('New', bg: MC.tertiaryContainer, fg: Colors.white), if (isNew) const SizedBox(width: 6), const MChip('Bilis Hatid', bg: MC.highest)]),
-            Text(ago, style: MT.bodySm),
+            Row(children: [
+              const MChip('New', bg: MC.tertiaryContainer, fg: Colors.white),
+            ]),
+            Text('Expires in ${secondsLeft}s', style: MT.bodySm),
           ]),
           const SizedBox(height: 10),
-          Text(seller, style: MT.headlineMd),
+          Text(parcel.sellerName, style: MT.headlineMd),
           const SizedBox(height: 4),
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.location_on, size: 18, color: MC.primary), const SizedBox(width: 6), Expanded(child: Text(addr, style: MT.bodyMd.copyWith(color: MC.onSurfaceVariant)))]),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Icon(Icons.location_on, size: 18, color: MC.primary),
+            const SizedBox(width: 6),
+            Expanded(
+                child: Text(parcel.sellerAddress,
+                    style: MT.bodyMd.copyWith(color: MC.onSurfaceVariant)))
+          ]),
           const SizedBox(height: 10),
-          Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: MC.container, borderRadius: BorderRadius.circular(8)), child: Row(children: [const Icon(Icons.inventory, size: 20, color: MC.primary), const SizedBox(width: 8), Text('$parcels parcel${parcels > 1 ? 's' : ''} ready for dispatch', style: MT.labelMd)])),
+          Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                  color: MC.container, borderRadius: BorderRadius.circular(8)),
+              child: Row(children: [
+                const Icon(Icons.inventory, size: 20, color: MC.primary),
+                const SizedBox(width: 8),
+                Text(parcel.item ?? 'Parcel ready for dispatch',
+                    style: MT.labelMd)
+              ])),
           const SizedBox(height: 12),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Payout Rate', style: MT.bodySm), Text('₱30.00', style: MT.currency.copyWith(color: MC.primary))]),
-            SizedBox(width: 170, child: PillButton(done ? 'Accepted' : 'Accept Pickup', trailing: done ? Icons.check : Icons.arrow_forward, height: 44, onPressed: done ? null : () => setState(() => accepted.add(id)))),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Payout Rate', style: MT.bodySm),
+              Text(peso(offer.payout),
+                  style: MT.currency.copyWith(color: MC.primary))
+            ]),
+            SizedBox(
+                width: 170,
+                child: PillButton('View Offer',
+                    trailing: Icons.arrow_forward,
+                    height: 44,
+                    onPressed: () => Navigator.pushNamed(context, '/job-offer',
+                        arguments: offer.id))),
           ]),
         ]),
       ),
     );
   }
 
-  Widget _deliveryCard(String trk, String dest, String status, String pay, {bool cod = true}) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: MCard(
-          onTap: () => Navigator.pushNamed(context, status == 'At Hub' ? '/out-for-delivery' : '/delivery'),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(trk, style: MT.labelLg), MChip(status, bg: status == 'Out for Delivery' ? MC.primary : MC.secondaryFixed, fg: status == 'Out for Delivery' ? Colors.white : const Color(0xFF24005B))]),
-            const SizedBox(height: 10),
-            Text('Destination', style: MT.bodySm),
-            Row(children: [const Icon(Icons.pin_drop, size: 18, color: MC.tertiaryContainer), const SizedBox(width: 6), Expanded(child: Text(dest, style: MT.bodyMd.copyWith(fontWeight: FontWeight.w600)))]),
-            const SizedBox(height: 10),
-            Row(children: [MChip(pay, bg: cod ? MC.container : MC.greenBg, fg: cod ? MC.tertiary : MC.green, icon: cod ? Icons.payments : Icons.check_circle)]),
-          ]),
+  Widget _pill(String label, int count,
+      {required bool selected,
+      required VoidCallback onTap,
+      bool danger = false}) {
+    final bg = selected
+        ? (danger ? MC.coral : MC.primaryContainer)
+        : (danger ? MC.coralSoft : MC.container);
+    final fg =
+        selected ? Colors.white : (danger ? MC.coral : MC.onSurfaceVariant);
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(99),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration:
+              BoxDecoration(color: bg, borderRadius: BorderRadius.circular(99)),
+          child:
+              Text('$label $count', style: ts(12, w: FontWeight.w700, c: fg)),
         ),
-      );
+      ),
+    );
+  }
+
+  Widget _deliveryCard(DispatchParcel p) {
+    final (bg, fg) = switch (p.status) {
+      ParcelStatus.assigned || ParcelStatus.readyForPickup => (
+          MC.tertiaryFixed,
+          MC.tertiary
+        ),
+      ParcelStatus.pickedUp ||
+      ParcelStatus.atHub ||
+      ParcelStatus.outForDelivery =>
+        (MC.primary, Colors.white),
+      ParcelStatus.delivered || ParcelStatus.returned => (MC.greenBg, MC.green),
+      ParcelStatus.failedDelivery || ParcelStatus.returnToSender => (
+          MC.coral,
+          Colors.white
+        ),
+    };
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: MCard(
+        onTap: p.status == ParcelStatus.delivered
+            ? null
+            : () => Navigator.pushNamed(
+                  context,
+                  p.status == ParcelStatus.assigned
+                      ? '/out-for-delivery'
+                      : '/delivery',
+                  arguments: p.tracking,
+                ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text(p.tracking, style: MT.labelLg),
+                  Text(p.carrierLabel, style: MT.bodySm),
+                ])),
+            MChip(p.status.label, bg: bg, fg: fg),
+          ]),
+          const SizedBox(height: 10),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Icon(Icons.pin_drop, size: 18, color: MC.tertiaryContainer),
+            const SizedBox(width: 6),
+            Expanded(
+                child: Text(p.address,
+                    style: MT.bodyMd.copyWith(fontWeight: FontWeight.w600))),
+          ]),
+          const SizedBox(height: 10),
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            Text(p.isCod ? 'COD ${peso(p.cod)}' : 'Paid online',
+                style: MT.bodySm
+                    .copyWith(color: p.isCod ? MC.tertiary : MC.green)),
+            MChip(p.weightLabel,
+                bg: MC.highest, fg: MC.muted, icon: Icons.scale),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  Widget _deliverySegment(List<DispatchParcel> all, bool isOnline) {
+    int count(ParcelStatus? status) => status == null
+        ? all.length
+        : all.where((p) => p.status == status).length;
+    final filtered =
+        _filter == null ? all : all.where((p) => p.status == _filter).toList();
+    final groups =
+        AppRepositoriesScope.of(context).parcels.groupedByArea(filtered);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      if (!isOnline) ...[
+        InfoBanner(
+          Icons.pause_circle_outline,
+          "You're off shift. The hub only dispatches parcels to active riders.",
+          bg: MC.amberSoft,
+          fg: MC.amberText,
+        ),
+        const SizedBox(height: 12),
+      ],
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(children: [
+          _pill('All', count(null),
+              selected: _filter == null,
+              onTap: () => setState(() => _filter = null)),
+          for (final status in ParcelStatus.values)
+            _pill(
+              status.label,
+              count(status),
+              selected: _filter == status,
+              danger: status == ParcelStatus.failedDelivery ||
+                  status == ParcelStatus.returnToSender,
+              onTap: () => setState(() => _filter = status),
+            ),
+        ]),
+      ),
+      const SizedBox(height: 14),
+      if (filtered.isEmpty)
+        MCard(
+            color: MC.container,
+            child: Column(children: [
+              const IconDot(Icons.inbox_outlined, size: 56),
+              const SizedBox(height: 8),
+              Text('No parcels in this filter', style: MT.headlineMd),
+              Text('New dispatches from the hub will appear here.',
+                  style: MT.bodySm, textAlign: TextAlign.center),
+            ]))
+      else
+        for (final entry in groups.entries) ...[
+          Builder(builder: (context) {
+            final parts = entry.key.split('|');
+            final area = parts.first;
+            final routeCode = parts.length > 1 ? parts[1] : '';
+            final measured =
+                entry.value.where((p) => p.weightKg != null).toList();
+            final totalWeight =
+                measured.fold<double>(0, (sum, p) => sum + (p.weightKg ?? 0));
+            final weightText = measured.isEmpty
+                ? 'No measured weights'
+                : '${totalWeight.toStringAsFixed(2)} kg measured';
+            return Padding(
+              padding: const EdgeInsets.only(bottom: MS.md),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text(area, style: MT.headlineMd),
+                      Text(
+                          'Route $routeCode · ${entry.value.length} parcel${entry.value.length == 1 ? '' : 's'} · $weightText',
+                          style: MT.bodySm),
+                    ])),
+              ]),
+            );
+          }),
+          for (final p in entry.value) _deliveryCard(p),
+          const SizedBox(height: 6),
+        ],
+    ]);
+  }
 
   @override
-  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(16), children: [
-        const ConnectivityBanner(),
-        _segment(),
-        const SizedBox(height: 16),
-        if (seg == 0) ...[
-          InfoBanner(Icons.near_me, '3 pickup requests available near you', body: 'Fairview & Commonwealth corridor', bg: MC.primaryFixed, fg: const Color(0xFF5114C4)),
-          const SizedBox(height: 12),
-          _pickupCard('p1', 'Maria Clara Handicrafts', 'Blk 12 Lot 8, Sampaguita St., Commonwealth, QC', 2, 'Requested 10 mins ago', isNew: true),
-          _pickupCard('p2', "Auring's Native Delicacies", 'Fairview Market Stalls, Fairview, QC', 1, 'Requested 25 mins ago'),
-          MCard(color: MC.container, child: Column(children: [
-            const IconDot(Icons.moped, size: 56),
-            const SizedBox(height: 8),
-            Text('No pickup requests right now', style: MT.headlineMd),
-            Text('Stay online to receive new requests automatically.', style: MT.bodySm, textAlign: TextAlign.center),
-          ])),
-        ] else ...[
-          InfoBanner(Icons.backpack, 'Active Jobs: 2/3', body: 'You can accept 1 more pickup', bg: MC.secondaryFixed, fg: const Color(0xFF24005B)),
-          const SizedBox(height: 16),
-          Text('Available pickup requests', style: MT.headlineMd),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 130,
-            child: ListView(scrollDirection: Axis.horizontal, children: [
-              for (final s in [('Manila Craft Hub', 'Fairview Center Mall', '1.1 km'), ('QC Books & Stationery', 'Regalado Highway', '1.8 km')])
-                Container(width: 240, margin: const EdgeInsets.only(right: 8), child: MCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(s.$3, style: MT.bodySm), Text('₱30.00', style: MT.headlineMd.copyWith(color: MC.primary))]),
-                  Text(s.$1, style: MT.labelLg, overflow: TextOverflow.ellipsis),
-                  Text(s.$2, style: MT.bodySm),
-                  PillButton('Accept', trailing: null, height: 32, onPressed: () => Navigator.pushNamed(context, '/pickup-detail')),
-                ]))),
+  Widget build(BuildContext context) {
+    final status = RiderStatusScope.of(context);
+    final repositories = AppRepositoriesScope.of(context);
+    final offers = repositories.offers;
+    final parcels = repositories.parcels;
+    return ListenableBuilder(
+      listenable: Listenable.merge([parcels, status, offers]),
+      builder: (context, _) {
+        final pendingOffers = offers.offers
+            .where((offer) => offer.state == 'pending')
+            .toList(growable: false);
+        final deliveryJobs = parcels.parcels
+            .where((parcel) => parcel.jobType == db.ParcelJobType.delivery)
+            .toList(growable: false);
+        final activeJobs = parcels.active.length;
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: ListView(padding: MS.pagePadding, children: [
+              const ConnectivityBanner(),
+              _segment(pendingOffers.length, deliveryJobs.length),
+              const SizedBox(height: MS.xl),
+              if (seg == 0) ...[
+                if (pendingOffers.isEmpty)
+                  const MCard(
+                      child: Center(child: Text('No pickup offers right now')))
+                else
+                  for (final offer in pendingOffers)
+                    if (parcels.byTracking(offer.parcelId) case final parcel?)
+                      _pickupCard(offer, parcel),
+              ] else ...[
+                InfoBanner(Icons.backpack, 'Active Jobs: $activeJobs/3',
+                    body: 'You can accept ${3 - activeJobs} more pickup',
+                    bg: MC.secondaryFixed,
+                    fg: const Color(0xFF24005B)),
+                const SizedBox(height: 14),
+                _deliverySegment(deliveryJobs, status.isOnline),
+              ],
             ]),
           ),
-          const SizedBox(height: 16),
-          Text('Assigned Packages', style: MT.headlineMd),
-          const SizedBox(height: 8),
-          _deliveryCard('TRK-0012345', '45 Kalayaan Ave., Brgy. Central, Quezon City', 'Out for Delivery', 'COD ₱500.00'),
-          _deliveryCard('TRK-0012388', 'Batasan Hills, Quezon City', 'At Hub', 'Paid online · ₱0.00', cod: false),
-        ],
-      ]);
+        );
+      },
+    );
+  }
 }

@@ -12,13 +12,13 @@ class SuspendedScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MScaffold(
         title: 'mimoo  •  RIDER',
-        body: ListView(padding: const EdgeInsets.all(16), children: [
+        body: ListView(padding: MS.pagePadding, children: [
           Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: MC.errorSoft.withValues(alpha: .6), borderRadius: BorderRadius.circular(20)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const IconCircle(Icons.gpp_maybe, bg: Colors.white, fg: MC.coralDark, size: 48), const SizedBox(width: 12),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('ACCOUNT NOTICE', style: ts(11, w: FontWeight.w800, c: MC.coralDark)),
+                  Text('ACCOUNT NOTICE', style: ts(12, w: FontWeight.w800, c: MC.coralDark)),
                   Text('Your account has been suspended by $fleetName', style: ts(18, w: FontWeight.w700, c: const Color(0xFF93000A), h: 1.3)),
                 ])),
               ]),
@@ -46,7 +46,7 @@ class SuspendedScreen extends StatelessWidget {
             Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: MC.tintLow, borderRadius: BorderRadius.circular(8)),
               child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Text('Dispatcher Clearance Status', style: ts(12, w: FontWeight.w600, c: MC.muted)),
-                Text('ACTION REQUIRED', style: ts(11, w: FontWeight.w800, c: MC.coral))])),
+                Text('ACTION REQUIRED', style: ts(12, w: FontWeight.w800, c: MC.coral))])),
           ])),
           const SizedBox(height: 12),
           MCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

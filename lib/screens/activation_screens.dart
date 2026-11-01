@@ -41,7 +41,7 @@ class _SetPasswordState extends State<SetPasswordScreen> {
     final canSubmit = allOk && _cf.text == _pw.text && !_busy;
     final eye = IconButton(icon: Icon(_show ? Icons.visibility_off : Icons.visibility), onPressed: () => setState(() => _show = !_show));
     return MScaffold(
-      body: ListView(padding: const EdgeInsets.all(16), children: [
+      body: ListView(padding: MS.pagePadding, children: [
         Row(children: [
           const IconCircle(Icons.two_wheeler, bg: MC.violetDark, fg: Colors.white, size: 32), const SizedBox(width: 8),
           Text('Mimoo Rider', style: ts(18, w: FontWeight.w700, c: MC.violetDark)), const Spacer(),
@@ -101,7 +101,7 @@ class _LinkExpiredState extends State<LinkExpiredScreen> {
   bool _busy = false, _sent = false;
   @override
   Widget build(BuildContext context) => MScaffold(
-        body: ListView(padding: const EdgeInsets.all(16), children: [
+        body: ListView(padding: MS.pagePadding, children: [
           const SizedBox(height: 16),
           const Center(child: IconCircle(Icons.link_off, bg: MC.coralSoft, fg: MC.coralDark, size: 88)),
           const SizedBox(height: 12),
@@ -139,7 +139,7 @@ class ActivationSuccessScreen extends StatelessWidget {
   const ActivationSuccessScreen({super.key, required this.riderName, required this.fleetName, required this.vehicle, required this.hub, required this.referenceId, required this.onLogin});
   @override
   Widget build(BuildContext context) => MScaffold(
-        body: ListView(padding: const EdgeInsets.all(16), children: [
+        body: ListView(padding: MS.pagePadding, children: [
           const SizedBox(height: 16),
           Center(child: Container(width: 80, height: 80, decoration: const BoxDecoration(color: MC.green, shape: BoxShape.circle),
               child: const Icon(Icons.check, color: Colors.white, size: 44))),
@@ -153,7 +153,7 @@ class ActivationSuccessScreen extends StatelessWidget {
           MCard(child: Column(children: [
             Row(children: [const IconCircle(Icons.person, size: 48), const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('ACTIVATED RIDER', style: ts(11, w: FontWeight.w600, c: MC.muted)), Text(riderName, style: ts(18, w: FontWeight.w700))])),
+                Text('ACTIVATED RIDER', style: ts(12, w: FontWeight.w600, c: MC.muted)), Text(riderName, style: ts(18, w: FontWeight.w700))])),
               const Pill('Ready')]),
             const SizedBox(height: 12),
             _row(Icons.local_shipping, 'Assigned Fleet', fleetName),

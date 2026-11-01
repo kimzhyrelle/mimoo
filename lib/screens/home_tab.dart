@@ -1,209 +1,165 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../core/job_offer_notifications.dart';
+import '../core/rider_status_controller.dart';
 import '../core/theme.dart';
-import '../data/mock_data.dart';
+import '../data/parcel_flow.dart';
+import '../data/repositories/app_repositories_scope.dart';
 import '../widgets/common.dart';
+import '../widgets/shell.dart';
 import 'location_permission_sheet.dart';
 import 'pickup_detail_screen.dart';
 
 class HomeTab extends StatefulWidget {
-  const HomeTab({super.key});
+  final VoidCallback? onOpenEarnings;
+  const HomeTab({super.key, this.onOpenEarnings});
   @override
   State<HomeTab> createState() => _HomeTabState();
 }
 
-class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
-  bool online = true;
-  bool _locationOn = true;
-  bool _pendingGoOnline = false;
-
+class _HomeTabState extends State<HomeTab> {
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    unawaited(_refreshLocationStatus());
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) unawaited(_syncLocationOnResume());
-  }
-
-  Future<void> _syncLocationOnResume() async {
-    final status = await Permission.location.status;
-    if (!mounted) return;
-    final granted = status.isGranted;
-    final shouldGoOnline = granted && _pendingGoOnline;
-    setState(() {
-      _locationOn = granted;
-      if (shouldGoOnline) {
-        online = true;
-        _pendingGoOnline = false;
-      } else if (!granted) {
-        online = false;
-      }
-    });
-    if (shouldGoOnline) unawaited(JobOfferNotifications.requestPermission());
-  }
-
-  Future<void> _refreshLocationStatus() async {
-    final status = await Permission.location.status;
-    if (!mounted) return;
-    setState(() {
-      _locationOn = status.isGranted;
-      if (!status.isGranted) online = false;
-    });
-  }
-
-  /// Called before going Online. Shows the permission sheet when needed and
-  /// only returns true once location access is actually granted.
-  Future<bool> _ensureLocation() async {
-    var status = await Permission.location.status;
-    if (status.isGranted) {
-      if (mounted) setState(() => _locationOn = true);
-      return true;
-    }
-
-    if (status.isDenied) {
-      status = await Permission.location.request();
-      if (status.isGranted) {
-        if (mounted) setState(() => _locationOn = true);
-        return true;
-      }
-    }
-
-    if (!mounted) return false;
-    await showLocationPermissionSheet(context, permanentlyDenied: status.isPermanentlyDenied);
-    status = await Permission.location.status;
-    if (status.isGranted) {
-      if (mounted) setState(() => _locationOn = true);
-      return true;
-    }
-
-    if (mounted) setState(() => _locationOn = false);
-    return false;
-  }
-
-  Future<void> _toggle(bool v) async {
-    if (v) {
-      _pendingGoOnline = true;
-      final granted = await _ensureLocation();
-      if (!granted || !mounted) {
-        if (mounted) setState(() => online = false);
-        return;
-      }
-      _pendingGoOnline = false;
-      setState(() => online = true);
-      unawaited(JobOfferNotifications.requestPermission());
-      return;
-    }
-
-    _pendingGoOnline = false;
-
-    // Going offline with a picked-up parcel → confirmation dialog (screen 8)
-    final stay = await showDialog<bool>(
-      context: context,
-      builder: (c) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const IconDot(Icons.inventory_2, size: 64, bg: MC.tertiaryFixed, fg: MC.tertiaryContainer),
-            const SizedBox(height: 12),
-            Text('You have 1 active parcel', style: MT.headlineLg, textAlign: TextAlign.center),
-            const SizedBox(height: 8),
-            Text('You can go Offline, but you must still deliver it to the buyer. No new jobs will be offered while offline.', style: MT.bodyMd.copyWith(color: MC.onSurfaceVariant), textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            PillButton('Stay Online', onPressed: () => Navigator.pop(c, true)),
-            const SizedBox(height: 8),
-            TextButton.icon(onPressed: () => Navigator.pop(c, false), icon: const Icon(Icons.power_settings_new, color: MC.tertiaryContainer), label: Text('Go Offline', style: MT.labelLg.copyWith(color: MC.tertiaryContainer))),
-          ]),
-        ),
-      ),
-    );
-    if (stay == true || stay == null) return;
-    setState(() => online = false);
-  }
-
-  @override
-  Widget build(BuildContext context) => ListView(padding: EdgeInsets.zero, children: [
-        Container(
-          color: MC.primary,
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-          child: Row(children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Pedro Jose Garcia', style: MT.headlineLg.copyWith(color: Colors.white)),
-              Text('Bilis Hatid Express Inc. • Quezon City Hub', style: MT.bodySm.copyWith(color: const Color(0xFFE4D9FF))),
-            ])),
-            const CircleAvatar(radius: 24, backgroundColor: MC.highest, child: Icon(Icons.person, color: MC.primary)),
-          ]),
-        ),
-        Transform.translate(
-          offset: const Offset(0, -12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+  Widget build(BuildContext context) {
+    final status = RiderStatusScope.of(context);
+    final repositories = AppRepositoriesScope.of(context);
+    final parcels = repositories.parcels;
+    final online = status.isOnline;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child:
+            ListView(padding: const EdgeInsets.only(bottom: MS.xl), children: [
+          Container(
+            color: MC.primary,
+            padding: const EdgeInsets.fromLTRB(MS.lg, MS.lg, MS.lg, 20),
             child: Column(children: [
-              if (!_locationOn) ...[
-                const LocationOffBanner(),
+              Row(children: [
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text('Pedro Jose Garcia',
+                          style: MT.headlineLg.copyWith(color: Colors.white)),
+                      Text('Bilis Hatid Express Inc. • Quezon City Hub',
+                          style: MT.bodySm
+                              .copyWith(color: const Color(0xFFE4D9FF))),
+                    ])),
+                const CircleAvatar(
+                    radius: 24,
+                    backgroundColor: MC.highest,
+                    child: Icon(Icons.person, color: MC.primary)),
+              ]),
+              const SizedBox(height: 16),
+              if (!status.locationOn) ...[
+                LocationOffBanner(
+                  onFix: () => toggleRiderStatus(context, status, true),
+                ),
                 const SizedBox(height: 8),
               ],
-              MCard(child: Row(children: [
-                const IconDot(Icons.power_settings_new, fg: MC.primaryContainer),
-                const SizedBox(width: 8),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(online ? 'ONLINE' : 'OFFLINE', style: MT.labelLg.copyWith(color: online ? MC.green : MC.onSurfaceVariant)),
-                  Text('Fairview, QC • Oct 28, 2026', style: MT.bodySm),
-                ])),
-                Switch(value: online, onChanged: _toggle, activeThumbColor: Colors.white, activeTrackColor: MC.green),
-              ])),
-              const SizedBox(height: 16),
-              Row(children: const [
-                Expanded(child: _Stat('Active', '1', '/3', 'Capacity OK')),
-                SizedBox(width: 8),
-                Expanded(child: _Stat('Earned', '₱210', '', '4 trips')),
-                SizedBox(width: 8),
-                Expanded(child: _Stat('COD Remit', '₱1,800', '', 'Due 10:00 PM', warn: true)),
-              ]),
-              const SizedBox(height: 16),
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text('Active Dispatch', style: MT.headlineMd),
-                Row(children: [const Icon(Icons.circle, size: 8, color: MC.primaryContainer), const SizedBox(width: 4), Text('LIVE PRIORITY', style: MT.badge.copyWith(color: MC.primaryContainer))]),
-              ]),
-              const SizedBox(height: 8),
-              MCard(
-                onTap: () => Navigator.pushNamed(context, '/delivery'),
-                child: Column(children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    Row(children: const [MChip('Assigned', bg: MC.tertiaryFixed, fg: MC.tertiary), SizedBox(width: 6), MChip('Bilis Express', bg: MC.highest, fg: MC.primaryContainer)]),
-                    Text('#MM-98241', style: MT.labelMd.copyWith(color: MC.onSurfaceVariant)),
-                  ]),
-                  const SizedBox(height: 12),
-                  const RouteTimeline(fromLabel: 'Pickup point', from: 'Maria Clara Handicrafts', toLabel: 'Drop-off destination', to: 'Katipunan Ave, Loyola Heights, QC'),
-                  const SizedBox(height: 12),
-                  if (mockActivePickup != null)
-                    PillButton(
-                      'Navigate to Pickup',
-                      height: 48,
-                      onPressed: () => showNavigationPicker(
-                        context,
-                        address: mockActivePickup!.address,
-                        etaMins: mockActivePickup!.etaMins,
-                        km: mockActivePickup!.km,
-                        title: 'Navigate to Seller',
-                      ),
+            ]),
+          ),
+          Padding(
+            padding: MS.pagePadding,
+            child: Column(children: [
+              LayoutBuilder(builder: (context, constraints) {
+                final scale = MediaQuery.textScalerOf(context).scale(1);
+                final count = scale > 1.2 || constraints.maxWidth < 380
+                    ? 1
+                    : constraints.maxWidth < 480
+                        ? 2
+                        : 3;
+                final width =
+                    (constraints.maxWidth - MS.md * (count - 1)) / count;
+                return ListenableBuilder(
+                  listenable: parcels,
+                  builder: (context, _) {
+                    final today = DateTime.now();
+                    final startOfDay =
+                        DateTime(today.year, today.month, today.day);
+                    final active = parcels.active.length;
+                    final cod = parcels.codOnHand;
+                    final earnings = parcels.earningsSince(startOfDay);
+                    final jobs = parcels.completedJobsSince(startOfDay);
+                    return Wrap(spacing: MS.md, runSpacing: MS.md, children: [
+                      SizedBox(
+                          width: width,
+                          child: _Stat('Active', '$active', '/3',
+                              active >= 3 ? 'Capacity full' : 'Capacity OK')),
+                      SizedBox(
+                          width: width,
+                          child: _Stat(
+                              'Earned', peso(earnings), '', '$jobs trips')),
+                      SizedBox(
+                          width: width,
+                          child: _Stat(
+                              'COD Remit', peso(cod), '', 'Due 10:00 PM',
+                              warn: cod > 0, onTap: widget.onOpenEarnings)),
+                    ]);
+                  },
+                );
+              }),
+              const SizedBox(height: MS.xl),
+              Text('Active Dispatch', style: MT.headlineMd),
+              const SizedBox(height: MS.md),
+              ListenableBuilder(
+                listenable: parcels,
+                builder: (context, _) {
+                  final active = parcels.active;
+                  if (active.isEmpty) {
+                    return const MCard(
+                      child: Center(child: Text('No active dispatch')),
+                    );
+                  }
+                  final parcel = active.first;
+                  final isPickup = parcel.jobType == ParcelJobType.pickup;
+                  final destination =
+                      isPickup ? parcel.sellerAddress : parcel.address;
+                  return MCard(
+                    onTap: () => Navigator.pushNamed(
+                      context,
+                      isPickup ? '/pickup-detail' : '/delivery',
+                      arguments: parcel.trackingNo,
                     ),
-                ]),
+                    child: Column(children: [
+                      Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            MChip(parcel.status.label,
+                                bg: MC.tertiaryFixed, fg: MC.tertiary),
+                            Text(parcel.trackingNo,
+                                style: MT.labelMd
+                                    .copyWith(color: MC.onSurfaceVariant)),
+                          ]),
+                      const SizedBox(height: 12),
+                      RouteTimeline(
+                        fromLabel: isPickup ? 'Pickup point' : 'Hub',
+                        from: isPickup
+                            ? parcel.sellerName
+                            : parcel.areaName ?? '',
+                        toLabel: isPickup
+                            ? 'Pickup address'
+                            : 'Drop-off destination',
+                        to: destination,
+                      ),
+                      const SizedBox(height: 12),
+                      if (isPickup)
+                        PillButton(
+                          'Navigate to Pickup',
+                          height: 48,
+                          onPressed: () => showNavigationPicker(
+                            context,
+                            address: destination,
+                            title: 'Navigate to Seller',
+                          ),
+                        ),
+                    ]),
+                  );
+                },
               ),
+              const SizedBox(height: MS.xl),
+              Text('Recent activity', style: MT.headlineMd),
+              const SizedBox(height: MS.md),
+              const _RecentActivityList(),
               if (kDebugMode && online) ...[
                 const SizedBox(height: 8),
                 Row(mainAxisAlignment: MainAxisAlignment.end, children: [
@@ -227,22 +183,101 @@ class _HomeTabState extends State<HomeTab> with WidgetsBindingObserver {
               ],
             ]),
           ),
-        ),
-      ]);
+        ]),
+      ),
+    );
+  }
 }
 
 class _Stat extends StatelessWidget {
   final String label, value, suffix, sub;
   final bool warn;
-  const _Stat(this.label, this.value, this.suffix, this.sub, {this.warn = false});
+  final VoidCallback? onTap;
+  const _Stat(this.label, this.value, this.suffix, this.sub,
+      {this.warn = false, this.onTap});
   @override
   Widget build(BuildContext context) => MCard(
         color: warn ? MC.tertiaryFixed : MC.lowest,
-        padding: const EdgeInsets.all(8),
-        child: SizedBox(height: 80, child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text(label.toUpperCase(), style: MT.badge.copyWith(color: MC.onSurfaceVariant), overflow: TextOverflow.ellipsis),
-          Text.rich(TextSpan(text: value, style: MT.currency.copyWith(color: warn ? MC.tertiary : MC.primary), children: [TextSpan(text: suffix, style: MT.bodyMd)])),
-          Text(sub, style: MT.badge.copyWith(color: warn ? MC.tertiary : MC.secondary), overflow: TextOverflow.ellipsis),
-        ])),
+        onTap: onTap,
+        child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 80),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(label.toUpperCase(),
+                      style: MT.badge.copyWith(color: MC.onSurfaceVariant),
+                      overflow: TextOverflow.ellipsis),
+                  Text.rich(
+                      TextSpan(
+                          text: value,
+                          style: MT.currency
+                              .copyWith(color: warn ? MC.tertiary : MC.primary),
+                          children: [TextSpan(text: suffix, style: MT.bodyMd)]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  Text(sub,
+                      style: MT.badge
+                          .copyWith(color: warn ? MC.tertiary : MC.secondary),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                ])),
       );
+}
+
+/// Completed and failed jobs from the same dispatch store used by Jobs and
+/// History, so Home never invents a separate activity feed.
+class _RecentActivityList extends StatelessWidget {
+  const _RecentActivityList();
+  @override
+  Widget build(BuildContext context) {
+    final parcels = AppRepositoriesScope.of(context).parcels;
+    return ListenableBuilder(
+      listenable: parcels,
+      builder: (context, _) {
+        final items = parcels.parcels
+            .where((p) =>
+                p.status == ParcelStatus.delivered ||
+                p.status == ParcelStatus.failedDelivery)
+            .take(3)
+            .toList();
+        if (items.isEmpty) {
+          return MCard(
+              color: MC.container,
+              child: Text('No recent activity yet.', style: MT.bodySm));
+        }
+        return MCard(
+          child: Column(children: [
+            for (var i = 0; i < items.length; i++) ...[
+              if (i > 0) const Divider(height: 1),
+              ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                leading: IconDot(
+                  items[i].status == ParcelStatus.delivered
+                      ? Icons.check_circle
+                      : Icons.error_outline,
+                  bg: items[i].status == ParcelStatus.delivered
+                      ? MC.greenBg
+                      : MC.coralSoft,
+                  fg: items[i].status == ParcelStatus.delivered
+                      ? MC.green
+                      : MC.coral,
+                ),
+                title: Text(
+                    '${items[i].status == ParcelStatus.delivered ? 'Delivered' : 'Failed'} · ${items[i].buyer}',
+                    style: MT.labelLg),
+                subtitle: Text(
+                    '${items[i].tracking} · ${clock(items[i].deliveredAt ?? items[i].assignedAt ?? items[i].updatedAt)}',
+                    style: MT.bodySm),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.pushNamed(context, '/delivery',
+                    arguments: items[i].tracking),
+              ),
+            ],
+          ]),
+        );
+      },
+    );
+  }
 }

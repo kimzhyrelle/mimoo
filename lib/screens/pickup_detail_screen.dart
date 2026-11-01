@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../core/settings_controller.dart';
 import '../core/theme.dart';
 
 class PickupJob {
@@ -19,7 +20,7 @@ class PickupDetailScreen extends StatelessWidget {
         bottom: SafeArea(child: Padding(padding: const EdgeInsets.all(12), child: Row(children: [
           Expanded(child: PillButton('Navigate', icon: Icons.navigation, style: BtnStyle.tonal, onPressed: () => showNavigationPicker(context, address: job.address, etaMins: job.etaMins, km: job.km, title: 'Navigate to Seller'))), const SizedBox(width: 8),
           Expanded(child: PillButton('Scan Waybill', icon: Icons.arrow_forward, onPressed: onScanWaybill))]))),
-        body: ListView(padding: const EdgeInsets.all(16), children: [
+        body: ListView(padding: MS.pagePadding, children: [
           MCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -30,20 +31,36 @@ class PickupDetailScreen extends StatelessWidget {
             const SizedBox(height: 12),
             Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: MC.tintLow, borderRadius: BorderRadius.circular(8)), child: Column(children: [
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const IconCircle(Icons.storefront, size: 28), const SizedBox(width: 10),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('PICKUP ADDRESS', style: ts(11, w: FontWeight.w800, c: MC.muted)), Text(job.address, style: ts(14, w: FontWeight.w500, h: 1.3))]))]),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('PICKUP ADDRESS', style: ts(12, w: FontWeight.w800, c: MC.muted)), Text(job.address, style: ts(14, w: FontWeight.w500, h: 1.3))]))]),
               Align(alignment: Alignment.centerRight, child: TextButton.icon(icon: const Icon(Icons.content_copy, size: 16), label: const Text('Copy Address'),
                 onPressed: () { Clipboard.setData(ClipboardData(text: job.address)); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Address copied'))); })),
             ])),
             const SizedBox(height: 12),
             Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: MC.tint, borderRadius: BorderRadius.circular(8)), child: Row(children: [
               const IconCircle(Icons.phone_in_talk, bg: Colors.white, fg: MC.violetDark), const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('SELLER CONTACT', style: ts(11, w: FontWeight.w800, c: MC.muted)), Text(job.phone, style: ts(14, w: FontWeight.w700))])),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('SELLER CONTACT', style: ts(12, w: FontWeight.w800, c: MC.muted)), Text(job.phone, style: ts(14, w: FontWeight.w700))])),
               FilledButton.icon(style: FilledButton.styleFrom(backgroundColor: MC.violetDark), icon: const Icon(Icons.call, size: 16), label: const Text('Call Seller'),
                 onPressed: () => launchUrl(Uri.parse('tel:${job.phone}')))])),
             const SizedBox(height: 12),
-            Row(children: [
-              Expanded(child: _meta(Icons.inventory_2, 'PARCEL DETAILS', '1 Parcel', job.parcelLabel)), const SizedBox(width: 8),
-              Expanded(child: _meta(Icons.payments, 'PICKUP PAY', peso(job.pay), 'Guaranteed base tier', big: true))]),
+            LayoutBuilder(builder: (context, constraints) {
+              final compact =
+                  MediaQuery.textScalerOf(context).scale(1) > 1.2 ||
+                      constraints.maxWidth < 380;
+              final columns = compact ? 1 : 2;
+              final width =
+                  (constraints.maxWidth - MS.sm * (columns - 1)) / columns;
+              return Wrap(spacing: MS.sm, runSpacing: MS.sm, children: [
+                SizedBox(
+                    width: width,
+                    child: _meta(Icons.inventory_2, 'PARCEL DETAILS',
+                        '1 Parcel', job.parcelLabel)),
+                SizedBox(
+                    width: width,
+                    child: _meta(Icons.payments, 'PICKUP PAY', peso(job.pay),
+                        'Guaranteed base tier',
+                        big: true)),
+              ]);
+            }),
           ])),
           const SizedBox(height: 12),
           InfoBanner(Icons.near_me, '${job.km} km away · Est. ${job.etaMins} mins'),
@@ -52,7 +69,7 @@ class PickupDetailScreen extends StatelessWidget {
   Widget _meta(IconData i, String k, String v, String sub, {bool big = false}) => Container(padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(color: MC.tintLow, borderRadius: BorderRadius.circular(8)),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [Icon(i, size: 16, color: MC.muted), const SizedBox(width: 4), Text(k, style: ts(11, w: FontWeight.w800, c: MC.muted))]),
+      Row(children: [Icon(i, size: 16, color: MC.muted), const SizedBox(width: 4), Text(k, style: ts(12, w: FontWeight.w800, c: MC.muted))]),
       const SizedBox(height: 4), Text(v, style: big ? ts(24, w: FontWeight.w800, c: MC.violetDark) : ts(14, w: FontWeight.w700)), Text(sub, style: ts(12, c: MC.muted))]));
 }
 
@@ -66,22 +83,33 @@ Future<void> showNavigationPicker(
   String title = 'Navigate to Seller',
   double? lat,
   double? lng,
-}) {
+}) async {
   final destination = lat != null && lng != null ? '$lat,$lng' : address;
   final q = Uri.encodeComponent(destination);
   final etaLabel = etaMins > 0 ? '$etaMins mins · ' : '';
   final kmLabel = km > 0 ? '$km km fastest' : 'Fastest route';
+  final mapsUri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$q&travelmode=driving');
+  final wazeUri = Uri.parse('https://waze.com/ul?q=$q&navigate=yes');
+  final preferred = SettingsScope.maybeOf(context)?.navApp ?? NavAppPreference.ask;
+  if (preferred != NavAppPreference.ask) {
+    final opened = await launchUrl(
+      preferred == NavAppPreference.waze ? wazeUri : mapsUri,
+      mode: LaunchMode.externalApplication,
+    );
+    if (opened || !context.mounted) return;
+  }
   final apps = [
-    ('Google Maps', '$etaLabel$kmLabel', 'https://www.google.com/maps/dir/?api=1&destination=$q&travelmode=driving', 'Recommended'),
-    ('Waze', 'Real-time traffic route updates', 'https://waze.com/ul?q=$q&navigate=yes', null),
+    ('Google Maps', '$etaLabel$kmLabel', mapsUri, 'Recommended'),
+    ('Waze', 'Real-time traffic route updates', wazeUri, null),
   ];
+  if (!context.mounted) return;
   return showModalBottomSheet<void>(context: context, backgroundColor: Colors.white,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
     builder: (ctx) => SafeArea(child: Padding(padding: const EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
       Center(child: Container(width: 48, height: 6, decoration: BoxDecoration(color: const Color(0xFFCBC3D7), borderRadius: BorderRadius.circular(9)))),
       const SizedBox(height: 12), Text(title, style: ts(22, w: FontWeight.w700)), Text('Choose your preferred GPS navigation app', style: ts(12, c: MC.muted)), const SizedBox(height: 12),
       for (final a in apps) Padding(padding: const EdgeInsets.only(bottom: 8), child: InkWell(borderRadius: BorderRadius.circular(12),
-        onTap: () { launchUrl(Uri.parse(a.$3), mode: LaunchMode.externalApplication); Navigator.pop(ctx); },
+        onTap: () { launchUrl(a.$3, mode: LaunchMode.externalApplication); Navigator.pop(ctx); },
         child: Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: MC.tintLow, borderRadius: BorderRadius.circular(12)), child: Row(children: [
           const IconCircle(Icons.map, bg: Colors.white, size: 48), const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(a.$1, style: ts(14, w: FontWeight.w700)), Text(a.$2, style: ts(12, c: MC.muted))])),

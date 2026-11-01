@@ -4,10 +4,9 @@
 // navigated while the backend is not connected. Replace each mock with a
 // repository/API call and keep the screen constructors unchanged.
 
-import '../screens/cod_remittance_screen.dart';
+import '../screens/history_job_detail.dart';
 import '../screens/job_offer_screen.dart';
 import '../screens/notifications_screen.dart';
-import '../screens/out_for_delivery_screen.dart';
 import '../screens/pickup_detail_screen.dart';
 
 /// Mock account state. The login screen routes on this instead of always going
@@ -16,6 +15,20 @@ enum AccountStatus { active, suspended, pending, rejected }
 
 // TODO: replace with real API response
 const AccountStatus mockAccountStatus = AccountStatus.active;
+
+/// Rider area shown on Home. TODO(api): resolve from GPS / reverse geocode.
+const String mockRiderArea = 'Fairview, Quezon City';
+
+/// Money figures shared by Home and Earnings so both screens agree.
+/// TODO(api): replace with the rider earnings endpoint.
+const double mockTodayEarnings = 210;
+const int mockTodayJobs = 5;
+const double mockWeekEarnings = 1180;
+const int mockWeekJobs = 26;
+const int mockPickupJobsToday = 2;
+const int mockDeliveryJobsToday = 3;
+const int mockWeekPickups = 6;
+const int mockWeekDeliveries = 20;
 
 /// Mock job offer. The expiry is relative to now so the countdown is always live.
 JobOffer mockJobOffer({String id = 'OFFER-1001'}) => JobOffer(
@@ -47,24 +60,55 @@ const PickupJob mockPickupJob = PickupJob(
 /// pickup, in which case Home hides the "Navigate to Pickup" button.
 PickupJob? get mockActivePickup => mockPickupJob;
 
-const HubParcel mockHubParcel = HubParcel(
-  tracking: 'TRK-0012388',
-  hubName: 'Quezon City Hub',
-  recipient: 'Juan Miguel D.',
-  phone: '+639181234567',
-  address: '45 Kalayaan Ave., Brgy. Central, Quezon City',
-  landmark: 'Blue gate beside bakery, ring the small doorbell twice',
-  parcelLabel: '1 parcel · 2 kg',
-  cod: 500,
-  weightKg: 2,
-  arrivedAt: '9:42 AM',
-);
-
-const List<CollectedParcel> mockCollectedParcels = [
-  CollectedParcel('TRK-0012345', 'Handwoven table runner', 500, '2:15 PM', '45 Kalayaan Ave., QC'),
-  CollectedParcel('TRK-0012322', 'Rattan storage basket', 650, '1:05 PM', 'Batasan Hills, QC'),
-  CollectedParcel('TRK-0012308', 'Set of 4 placemats', 650, '11:48 AM', 'Fairview, QC'),
+/// Closed jobs shown in History. TODO(api): replace with the job-history
+/// endpoint; keep isToday in sync with the server's timezone.
+const List<HistoryJob> mockHistory = [
+  HistoryJob(
+    tracking: 'TRK-0012345',
+    type: 'Delivery',
+    status: 'Delivered',
+    time: 'Oct 30, 2026, 2:15 PM',
+    label: 'Buyer location',
+    location: '45 Kalayaan Ave., Brgy. Central, QC',
+    earnings: 50,
+    cod: 'COD ₱500.00',
+  ),
+  HistoryJob(
+    tracking: 'TRK-0012388',
+    type: 'Pickup',
+    status: 'Picked Up',
+    time: 'Oct 30, 2026, 11:30 AM',
+    label: 'Seller hub',
+    location: 'Maria Clara Handicrafts, Commonwealth',
+    earnings: 30,
+  ),
+  HistoryJob(
+    tracking: 'TRK-0012301',
+    type: 'Delivery',
+    status: 'Failed (Attempt 1)',
+    time: 'Oct 30, 2026, 09:15 AM',
+    label: 'Incident note',
+    location: 'Buyer not home · Rescheduled',
+    earnings: 0,
+  ),
+  HistoryJob(
+    tracking: 'TRK-0011982',
+    type: 'Delivery',
+    status: 'Return to Sender',
+    time: 'Oct 28, 2026, 4:40 PM',
+    label: 'RTS reason',
+    location: 'Refused by buyer · Returned to hub',
+    earnings: 0,
+    isToday: false,
+  ),
 ];
+
+/// Unread badge counts for the shell app bar. TODO(api): read from the inbox
+/// and support threads; notifications derive from the seeded list below.
+const int mockUnreadMessages = 2;
+
+int get mockUnreadNotifications =>
+    mockNotifications.where((n) => n.unread).length;
 
 const List<AppNotification> mockNotifications = [
   AppNotification(
