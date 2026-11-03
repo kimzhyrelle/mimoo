@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
+import '../../data/repositories/app_repositories_scope.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/common.dart';
 
@@ -44,12 +45,24 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _saving = true);
-    // TODO(api): verify the current password and persist the new credential.
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-    setState(() => _saving = false);
-    Navigator.pop(context);
-    messenger.showSnackBar(SnackBar(content: Text(l10n.changePasswordUpdated)));
+    try {
+      await AppRepositoriesScope.of(context).riderProfile.changePassword(
+            currentPassword: _current.text,
+            newPassword: _newPass.text,
+          );
+      if (!mounted) return;
+      setState(() => _saving = false);
+      Navigator.pop(context);
+      messenger
+          .showSnackBar(SnackBar(content: Text(l10n.changePasswordUpdated)));
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      final msg = error.toString().replaceFirst('Exception: ', '');
+      messenger.showSnackBar(
+        SnackBar(content: Text(msg.isEmpty ? 'Could not update password.' : msg)),
+      );
+    }
   }
 
   @override

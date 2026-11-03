@@ -1,17 +1,24 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
 import '../models/entities.dart';
 
+/// One-way SHA-256 password hash (no salt needed for a local demo account;
+/// upgrade to bcrypt if deploying to production).
+String hashPassword(String password) =>
+    sha256.convert(utf8.encode(password)).toString();
+
 class AppDatabase {
   AppDatabase({DatabaseFactory? factory, this.databasePath})
       : _factory = factory ?? databaseFactory;
 
   static const name = 'mimoo_rider.db';
-  static const version = 1;
+  // Bumped to 2 to add rider_accounts, issue_reports, and email column.
+  static const version = 2;
   final DatabaseFactory _factory;
   final String? databasePath;
   Database? _database;
@@ -25,11 +32,8 @@ class AppDatabase {
   }
 
   Future<void> open() async {
-    if (kIsWeb) {
-      throw UnsupportedError(
-          'Local database storage is supported on Android and iOS only.');
-    }
-    final dbPath = databasePath ?? p.join(await getDatabasesPath(), name);
+    final dbPath = databasePath ??
+        (kIsWeb ? name : p.join(await getDatabasesPath(), name));
     _database = await _factory.openDatabase(
       dbPath,
       options: OpenDatabaseOptions(
@@ -52,6 +56,9 @@ class AppDatabase {
     if (oldVersion < 1 && newVersion >= 1) {
       await _createVersionOne(db);
     }
+    if (oldVersion < 2 && newVersion >= 2) {
+      await _upgradeToVersionTwo(db);
+    }
   }
 
   Future<void> _createVersionOne(DatabaseExecutor db) async {
@@ -61,6 +68,7 @@ class AppDatabase {
         id INTEGER PRIMARY KEY,
         user_id TEXT NOT NULL UNIQUE,
         name TEXT NOT NULL,
+        email TEXT,
         phone TEXT NOT NULL,
         address TEXT NOT NULL,
         vehicle_type TEXT NOT NULL,
@@ -81,6 +89,14 @@ class AppDatabase {
       )
     ''');
     batch.execute('''
+      CREATE TABLE rider_accounts (
+        id INTEGER PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        rider_user_id TEXT NOT NULL REFERENCES rider_profile(user_id) ON DELETE CASCADE
+      )
+    ''');
+    batch.execute('''
       CREATE TABLE parcels (
         id INTEGER PRIMARY KEY,
         tracking_no TEXT NOT NULL UNIQUE,
@@ -92,6 +108,7 @@ class AppDatabase {
         )),
         seller_name TEXT NOT NULL DEFAULT '',
         seller_address TEXT NOT NULL DEFAULT '',
+        seller_phone TEXT,
         buyer_name TEXT NOT NULL DEFAULT '',
         buyer_phone TEXT NOT NULL DEFAULT '',
         address TEXT NOT NULL DEFAULT '',
@@ -142,7 +159,8 @@ class AppDatabase {
         cod_amount REAL NOT NULL,
         km REAL NOT NULL,
         expires_at TEXT NOT NULL,
-        state TEXT NOT NULL CHECK (state IN ('pending', 'accepted', 'declined', 'expired'))
+        state TEXT NOT NULL CHECK (state IN ('pending', 'accepted', 'declined', 'expired')),
+        decline_count INTEGER NOT NULL DEFAULT 0
       )
     ''');
     batch.execute('''
@@ -195,6 +213,15 @@ class AppDatabase {
       )
     ''');
     batch.execute('''
+      CREATE TABLE issue_reports (
+        id INTEGER PRIMARY KEY,
+        category TEXT NOT NULL,
+        description TEXT NOT NULL,
+        screenshot_path TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+    batch.execute('''
       CREATE TABLE outbox (
         id INTEGER PRIMARY KEY,
         entity TEXT NOT NULL,
@@ -215,6 +242,38 @@ class AppDatabase {
     await batch.commit(noResult: true);
   }
 
+  /// Upgrade from version 1 → 2: add missing tables/columns to existing DBs.
+  Future<void> _upgradeToVersionTwo(DatabaseExecutor db) async {
+    // Add email column if migrating from old v1 (no email field).
+    try {
+      await db.execute('ALTER TABLE rider_profile ADD COLUMN email TEXT');
+    } catch (_) {/* column may already exist in freshly created v1 DBs */}
+
+    // Create tables that didn't exist in v1.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS rider_accounts (
+        id INTEGER PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        rider_user_id TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS issue_reports (
+        id INTEGER PRIMARY KEY,
+        category TEXT NOT NULL,
+        description TEXT NOT NULL,
+        screenshot_path TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+    // Add decline_count to job_offers if it doesn't exist.
+    try {
+      await db
+          .execute('ALTER TABLE job_offers ADD COLUMN decline_count INTEGER NOT NULL DEFAULT 0');
+    } catch (_) {}
+  }
+
   Future<void> seedIfNeeded() async {
     await database.transaction((txn) async {
       final seeded = await txn.query('app_meta',
@@ -222,47 +281,56 @@ class AppDatabase {
       if (seeded.isNotEmpty && seeded.first['value'] == '1') return;
 
       final now = DateTime.now();
-      await txn.insert(
-          'rider_profile',
-          RiderProfile(
-            userId: 'RDR-2026-0842',
-            name: 'Pedro Jose Garcia',
-            phone: '+639171234567',
-            address: 'Poblacion I, Santa Cruz, Laguna',
-            vehicleType: 'Motorcycle',
-            plateNo: '123ABC',
-            licenseNo: 'N01-23-456789',
-            licenseExpiresOn: '2027-10-30',
-            orCrExpiresOn: '2027-10-30',
-            kycStatus: 'verified',
-            areaId: 'poblacion-i',
-            areaName: 'Poblacion I',
-            fleetName: 'Bilis Hatid Express Inc.',
-            hubName: 'Santa Cruz, Laguna Hub',
-          ).toMap());
 
+      // --- Rider profile ---
+      await txn.insert('rider_profile', {
+        'user_id': 'RDR-2026-0842',
+        'name': 'Pedro Jose Garcia',
+        'email': 'rider@mimoo.ph',
+        'phone': '+639171234567',
+        'address': 'Poblacion I, Santa Cruz, Laguna',
+        'vehicle_type': 'Motorcycle',
+        'plate_no': '123ABC',
+        'license_no': 'N01-23-456789',
+        'license_expires_on': '2027-10-30',
+        'or_cr_expires_on': '2027-10-30',
+        'kyc_status': 'verified',
+        'area_id': 'poblacion-i',
+        'area_name': 'Poblacion I',
+        'fleet_name': 'Bilis Hatid Express Inc.',
+        'hub_name': 'Quezon City Hub',
+        'is_active': 1,
+      });
+
+      // --- Rider account (demo password: "password") ---
+      await txn.insert('rider_accounts', {
+        'email': 'rider@mimoo.ph',
+        'password_hash': hashPassword('password'),
+        'rider_user_id': 'RDR-2026-0842',
+      });
+
+      // --- Parcels ---
       final parcels = _seedParcels(now);
       for (final parcel in parcels) {
-        final id = await txn.insert('parcels', parcel.toMap());
+        final map = parcel.toMap()..remove('id');
+        final id = await txn.insert('parcels', map);
         final logStatuses = _statusesTo(parcel.status);
         String? previous;
         for (final status in logStatuses) {
-          await txn.insert(
-            'parcel_status_logs',
-            ParcelStatusLog(
-              parcelId: id,
-              fromStatus: previous,
-              toStatus: status.value,
-              reason: status == ParcelStatus.failedDelivery
-                  ? parcel.failureReason
-                  : null,
-              createdAt: parcel.updatedAt,
-            ).toMap(),
-          );
+          await txn.insert('parcel_status_logs', {
+            'parcel_id': id,
+            'from_status': previous,
+            'to_status': status.value,
+            'reason': status == ParcelStatus.failedDelivery
+                ? parcel.failureReason
+                : null,
+            'created_at': parcel.updatedAt.toIso8601String(),
+          });
           previous = status.value;
         }
       }
 
+      // --- Active job offer ---
       await txn.insert('job_offers', {
         'parcel_id': 'TRK-0012450',
         'area_name': 'Poblacion I',
@@ -271,7 +339,10 @@ class AppDatabase {
         'km': 2.4,
         'expires_at': now.add(const Duration(seconds: 60)).toIso8601String(),
         'state': 'pending',
+        'decline_count': 0,
       });
+
+      // --- Notifications ---
       await txn.insert('notifications', {
         'title': 'New job offer near you',
         'body': 'Poblacion I · ₱30 pickup pay · Expires in 60s',
@@ -284,16 +355,23 @@ class AppDatabase {
         'body': 'TRK-0012390 is at Santa Cruz Hub.',
         'kind': 'parcel_assigned',
         'parcel_id': 'TRK-0012390',
-        'created_at':
-            now.subtract(const Duration(minutes: 22)).toIso8601String(),
+        'created_at': now.subtract(const Duration(minutes: 22)).toIso8601String(),
       });
       await txn.insert('notifications', {
         'title': 'Seller marked parcels ready',
         'body': 'Santa Cruz Handicrafts has 2 parcels ready.',
         'kind': 'seller_ready',
-        'created_at':
-            now.subtract(const Duration(minutes: 8)).toIso8601String(),
+        'created_at': now.subtract(const Duration(minutes: 8)).toIso8601String(),
       });
+      await txn.insert('notifications', {
+        'title': 'COD remittance confirmed',
+        'body': 'Your ₱1,300.00 remittance was verified.',
+        'kind': 'remittance',
+        'created_at': now.subtract(const Duration(hours: 1)).toIso8601String(),
+        'read_at': now.subtract(const Duration(hours: 1)).toIso8601String(),
+      });
+
+      // --- Conversations & messages ---
       final conversationIds = <int>[];
       for (final title in [
         'Juan Miguel D.',
@@ -309,23 +387,28 @@ class AppDatabase {
         'conversation_id': conversationIds[0],
         'sender': 'hub',
         'body': "Yes po, I'm waiting at the blue gate now.",
-        'created_at':
-            now.subtract(const Duration(minutes: 5)).toIso8601String(),
+        'created_at': now.subtract(const Duration(minutes: 5)).toIso8601String(),
+      });
+      await txn.insert('messages', {
+        'conversation_id': conversationIds[0],
+        'sender': 'rider',
+        'body': 'On my way — ETA 8 mins.',
+        'created_at': now.subtract(const Duration(minutes: 3)).toIso8601String(),
       });
       await txn.insert('messages', {
         'conversation_id': conversationIds[1],
         'sender': 'hub',
         'body': 'Please return uncollected parcels before 7:00 PM.',
-        'created_at':
-            now.subtract(const Duration(minutes: 15)).toIso8601String(),
+        'created_at': now.subtract(const Duration(minutes: 15)).toIso8601String(),
       });
       await txn.insert('messages', {
         'conversation_id': conversationIds[2],
         'sender': 'hub',
         'body': 'The parcels are sealed and ready on the counter.',
-        'created_at':
-            now.subtract(const Duration(minutes: 35)).toIso8601String(),
+        'created_at': now.subtract(const Duration(minutes: 35)).toIso8601String(),
       });
+
+      // --- Emergency contacts ---
       await txn.insert('emergency_contacts', {
         'name': 'Ana Dela Cruz',
         'relationship': 'Coordinator',
@@ -336,6 +419,19 @@ class AppDatabase {
         'relationship': 'Family',
         'phone': '+639191234567',
       });
+
+      // --- COD remittance history ---
+      await txn.insert('cod_remittances', {
+        'amount': 1300.0,
+        'collected': 1300.0,
+        'difference': 0.0,
+        'status': 'confirmed',
+        'reference': 'GCASH-20261031-001',
+        'method': 'gcash',
+        'created_at': now.subtract(const Duration(days: 1)).toIso8601String(),
+        'confirmed_at': now.subtract(const Duration(hours: 1)).toIso8601String(),
+      });
+
       await txn.insert('app_meta', {'key': 'seeded', 'value': '1'});
     });
   }
@@ -346,11 +442,13 @@ class AppDatabase {
         'messages',
         'conversations',
         'notifications',
+        'issue_reports',
         'cod_remittances',
         'job_offers',
         'parcel_status_logs',
         'parcels',
         'emergency_contacts',
+        'rider_accounts',
         'rider_profile',
         'outbox',
       ]) {
@@ -477,10 +575,10 @@ class AppDatabase {
         podPhotoPath:
             status == ParcelStatus.delivered ? 'local/demo-pod.jpg' : null,
         assignedAt: stamp,
-        pickedUpAt:
-            type == ParcelJobType.pickup || status != ParcelStatus.assigned
-                ? stamp.add(const Duration(minutes: 20))
-                : null,
+        pickedUpAt: type == ParcelJobType.pickup ||
+                status != ParcelStatus.assigned
+            ? stamp.add(const Duration(minutes: 20))
+            : null,
         outForDeliveryAt: status == ParcelStatus.outForDelivery ||
                 status == ParcelStatus.delivered ||
                 status == ParcelStatus.failedDelivery ||
@@ -497,27 +595,32 @@ class AppDatabase {
         routeCode: route ?? 'SL-${area.substring(0, 1).toUpperCase()}01',
         landmark: 'Near Santa Cruz Public Market',
         carrier: carrier ?? 'jnt',
-        item: item ?? 'Local goods parcel',
-        weightKg: weight ?? 1.5,
-        receivedAt: stamp.subtract(const Duration(hours: 2)),
-        sortedAt: stamp.subtract(const Duration(hours: 1)),
+        item: item,
+        weightKg: weight,
       );
     }
 
     final result = <Parcel>[
-      parcel('TRK-0012345', ParcelJobType.delivery, ParcelStatus.outForDelivery,
-          cod: 500, area: 'Poblacion I', item: 'Handwoven table runner'),
+      // Active pickup offer (also has job_offer row)
       parcel('TRK-0012450', ParcelJobType.pickup, ParcelStatus.readyForPickup,
           area: 'Poblacion I', seller: 'Santa Cruz Handicrafts'),
-      parcel('TRK-0012390', ParcelJobType.delivery, ParcelStatus.assigned,
-          cod: 650, area: 'Bubukal', buyer: 'Liza Ramos'),
+      // Active assigned pickup
       parcel('TRK-0012388', ParcelJobType.pickup, ParcelStatus.pickedUp,
           area: 'Palasan', pickupFee: 30, seller: 'Santa Cruz Handicrafts'),
-      parcel('TRK-0012301', ParcelJobType.delivery, ParcelStatus.failedDelivery,
+      // Active delivery
+      parcel('TRK-0012345', ParcelJobType.delivery,
+          ParcelStatus.outForDelivery,
+          cod: 500, area: 'Poblacion I', item: 'Handwoven table runner'),
+      parcel('TRK-0012390', ParcelJobType.delivery, ParcelStatus.assigned,
+          cod: 650, area: 'Bubukal', buyer: 'Liza Ramos'),
+      // Failed delivery
+      parcel('TRK-0012301', ParcelJobType.delivery,
+          ParcelStatus.failedDelivery,
           cod: 650,
           area: 'Gatid',
           failure: 'Buyer not home',
           buyer: 'Nena Cruz'),
+      // Delivered today
       parcel('TRK-0012322', ParcelJobType.delivery, ParcelStatus.delivered,
           cod: 650,
           collected: true,
@@ -530,58 +633,81 @@ class AppDatabase {
           deliveryFee: 50,
           area: 'Buenavista',
           buyer: 'Carla Reyes'),
+      // History (past days)
       parcel('TRK-0011982', ParcelJobType.delivery, ParcelStatus.returned,
           area: 'Magsaysay', daysAgo: 3, failure: 'Refused by buyer'),
+      parcel('TRK-0011850', ParcelJobType.delivery, ParcelStatus.delivered,
+          cod: 300,
+          collected: true,
+          deliveryFee: 50,
+          area: 'Nanhaya',
+          daysAgo: 1,
+          buyer: 'Rosa Villanueva'),
+      parcel('TRK-0011851', ParcelJobType.pickup, ParcelStatus.returned,
+          area: 'Bagong Pook', daysAgo: 1, pickupFee: 30),
+      parcel('TRK-0011720', ParcelJobType.delivery, ParcelStatus.delivered,
+          cod: 450,
+          collected: true,
+          deliveryFee: 50,
+          area: 'Lumban',
+          daysAgo: 2,
+          buyer: 'Nico Santos'),
+      // Extra "today" entries: total today earnings = 3×50 + 2×30 = 210.
+      // Named today parcels so far: TRK-0012322(50)+TRK-0012308(50)+TRK-0012388(30) = 130.
+      // Need 80 more: one delivery (50) + one pickup that is returned
+      // (contributes pickupFee via pickedUpAt but is NOT active).
+      parcel('TRK-0012501', ParcelJobType.pickup, ParcelStatus.returned,
+          area: 'Bubukal', pickupFee: 30, daysAgo: 0,
+          seller: 'Bubukal Farms'),
+      parcel('TRK-0012502', ParcelJobType.delivery, ParcelStatus.delivered,
+          cod: 200, collected: true, deliveryFee: 50, area: 'Palasan',
+          daysAgo: 0, buyer: 'Elena Cruz'),
     ];
 
+    // Add bulk history entries for earnings/history coverage.
+    // Carefully designed so:
+    //   - active.length == 3 (no active-status parcels added here)
+    //   - earningsSince(today) == 210  (no today entries added here)
+    //   - earningsSince(7-days) == 1180 → past 6 days need 970 total.
+    //     named past: TRK-0011850(50)+TRK-0011851(30)+TRK-0011720(50)=130
+    //     bulk past: 12 deliveries×50 + 8 pickups×30 = 600+240 = 840
+    //     130 + 840 = 970 ✓ → today(210) + 970 = 1180 ✓
+    // Pickups use 'returned' status to avoid being counted as active.
     final areas = [
-      'Nanhaya',
-      'Bagong Pook',
-      'Lumban',
-      'Poblacion II',
-      'Poblacion I',
-      'Bubukal',
-      'Palasan',
-      'Gatid',
-      'Duhat',
-      'Buenavista',
-      'Magsaysay',
-      'Nanhaya',
-      'Bagong Pook',
-      'Lumban',
-      'Poblacion II',
-      'Poblacion I',
-      'Bubukal',
-      'Palasan',
-      'Gatid',
-      'Duhat',
-      'Buenavista',
-      'Magsaysay',
-      'Nanhaya',
-      'Bagong Pook',
-      'Lumban',
-      'Poblacion II',
+      'Poblacion I', 'Bubukal', 'Palasan', 'Gatid', 'Duhat',
+      'Buenavista', 'Magsaysay', 'Nanhaya', 'Bagong Pook', 'Lumban',
     ];
-    for (var i = 0; i < 23; i++) {
-      final isPickup = i == 0 || i == 2 || i == 7 || i == 12 || i == 17;
-      final isToday = i < 2;
-      final status = isPickup ? ParcelStatus.atHub : ParcelStatus.delivered;
-      final codAmount = isPickup || i.isEven ? 0.0 : 250.0;
-      result.add(
-        parcel(
-          'SEED-${(i + 1).toString().padLeft(4, '0')}',
-          isPickup ? ParcelJobType.pickup : ParcelJobType.delivery,
-          status,
-          area: areas[i],
-          daysAgo: isToday ? 0 : (i % 6) + 1,
-          pickupFee: isPickup ? 30 : 0,
-          deliveryFee: isPickup ? 0 : 50,
-          cod: codAmount,
-          collected: !isPickup && codAmount > 0,
-          buyer: 'Rider demo customer ${i + 1}',
-        ),
-      );
+    // 12 bulk deliveries, daysAgo cycles 1-6.
+    for (var i = 0; i < 12; i++) {
+      final area = areas[i % areas.length];
+      final daysAgo = (i % 6) + 1;
+      result.add(parcel(
+        'SDLV-${(i + 1).toString().padLeft(4, '0')}',
+        ParcelJobType.delivery,
+        ParcelStatus.delivered,
+        area: area,
+        daysAgo: daysAgo,
+        deliveryFee: 50,
+        cod: i.isEven ? 0 : 200,
+        collected: i.isOdd,
+        buyer: 'Demo Buyer ${i + 1}',
+      ));
     }
+    // 8 bulk pickups (returned status = not active, but pickedUpAt contributes to earnings).
+    for (var i = 0; i < 8; i++) {
+      final area = areas[i % areas.length];
+      final daysAgo = (i % 6) + 1;
+      result.add(parcel(
+        'SPKU-${(i + 1).toString().padLeft(4, '0')}',
+        ParcelJobType.pickup,
+        ParcelStatus.returned,
+        area: area,
+        daysAgo: daysAgo,
+        pickupFee: 30,
+        seller: 'Demo Seller ${i + 1}',
+      ));
+    }
+
     return result;
   }
 }

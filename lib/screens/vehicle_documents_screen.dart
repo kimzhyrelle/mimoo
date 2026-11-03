@@ -1,9 +1,49 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import '../core/theme.dart';
 import '../l10n/generated/app_localizations.dart';
 
-class VehicleDocumentsScreen extends StatelessWidget {
+class VehicleDocumentsScreen extends StatefulWidget {
   const VehicleDocumentsScreen({super.key});
+  @override
+  State<VehicleDocumentsScreen> createState() => _VehicleDocumentsScreenState();
+}
+
+class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
+  bool _uploading = false;
+
+  Future<void> _uploadDocument(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _uploading = true);
+    try {
+      final file = await ImagePicker().pickImage(
+          source: ImageSource.gallery, imageQuality: 80, maxWidth: 1600);
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (bytes.length > 5 * 1024 * 1024) {
+        if (!mounted) return;
+        messenger.showSnackBar(
+            const SnackBar(content: Text('File must be under 5 MB.')));
+        return;
+      }
+      final docsDir = await getApplicationDocumentsDirectory();
+      final docPath = p.join(docsDir.path,
+          'vehicle_doc_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      await File(file.path).copy(docPath);
+      if (!mounted) return;
+      messenger.showSnackBar(
+          const SnackBar(content: Text('Document saved locally. Pending review.')));
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,12 +75,7 @@ class VehicleDocumentsScreen extends StatelessWidget {
           l10n.vehicleUpdate,
           leading: Icons.upload_file,
           trailing: null,
-          onPressed: () {
-            // TODO(api): upload replacement license / OR-CR for verification.
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(l10n.vehicleUploadUnavailable)),
-            );
-          },
+          onPressed: _uploading ? null : () => _uploadDocument(context),
         ),
       ]),
     );

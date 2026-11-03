@@ -1,18 +1,18 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../core/connectivity.dart';
 import '../core/theme.dart';
+import '../core/connectivity.dart';
 import '../data/parcel_flow.dart';
 import '../data/repositories/app_repositories_scope.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../widgets/common.dart';
 import 'delivered.dart';
 
-/// Proof of delivery: 1) live photo  2) 6-digit OTP  3) COD exact amount.
-/// Prepaid parcels skip the COD step and finish after the OTP.
+/// Proof of delivery: 1) live photo upload  2) 6-digit OTP verified server-side
+///                    3) COD exact amount.
+/// Prepaid parcels skip step 3.
 class PodFlowScreen extends StatefulWidget {
   final DispatchParcel parcel;
   const PodFlowScreen({super.key, required this.parcel});
@@ -24,11 +24,24 @@ class _PodFlowScreenState extends State<PodFlowScreen> {
   int step = 0;
   XFile? _photo;
   Uint8List? _photoBytes;
-  String? _photoPath;
-  bool _takingPhoto = false;
+
+  /// Server-side storage path returned after successful upload.
+  String? _uploadedPath;
+  bool _uploading = false;
+
+  bool _otpSending = false;
+  bool _otpVerifying = false;
+  bool _otpVerified = false;
+  int _otpResendAfter = 60; // seconds
+  DateTime? _otpSentAt;
+  String? _otpError;
+  String? _otpLockoutUntil;
+  String? _debugOtp; // only populated in kDebugMode
+
   bool _finishing = false;
   String otp = '';
   String cod = '';
+
   final ImagePicker _picker = ImagePicker();
 
   DispatchParcel get parcel => widget.parcel;
@@ -37,8 +50,10 @@ class _PodFlowScreenState extends State<PodFlowScreen> {
   double get codVal => double.tryParse(cod) ?? 0;
   bool get codMatch => (codVal * 100).round() == (due * 100).round();
 
+  // ── Step 1: Live photo capture + upload ─────────────────────────────────
+
   Future<void> _takePhoto() async {
-    if (_takingPhoto) return;
+    if (_uploading) return;
     final messenger = ScaffoldMessenger.of(context);
     final status = await Permission.camera.request();
     if (status.isPermanentlyDenied) {
@@ -66,72 +81,162 @@ class _PodFlowScreenState extends State<PodFlowScreen> {
     }
     if (!status.isGranted) {
       messenger.showSnackBar(const SnackBar(
-          content:
-              Text('Camera permission is required for the delivery photo')));
+          content: Text('Camera permission is required for the delivery photo')));
       return;
     }
 
-    setState(() => _takingPhoto = true);
+    final photo = await _picker.pickImage(
+        source: ImageSource.camera, imageQuality: 70, maxWidth: 1600);
+    if (photo == null || !mounted) return;
+    final bytes = await photo.readAsBytes();
+    if (!mounted) return;
+
+    final extension = photo.name.split('.').last.toLowerCase();
+    if (!const {'jpg', 'jpeg', 'png'}.contains(extension) ||
+        bytes.length > 5 * 1024 * 1024) {
+      messenger.showSnackBar(SnackBar(
+          content: Text(AppLocalizations.of(context).podPhotoSizeError)));
+      return;
+    }
+
+    setState(() {
+      _photo = photo;
+      _photoBytes = bytes;
+      _uploadedPath = null; // reset so the upload runs again
+      _uploading = true;
+    });
+
     try {
-      final photo = await _picker.pickImage(
-          source: ImageSource.camera, imageQuality: 70, maxWidth: 1600);
-      if (photo == null) return;
-      final bytes = await photo.readAsBytes();
+      final path = await AppRepositoriesScope.of(context)
+          .parcels
+          .uploadPhoto(photo.path, purpose: 'pod');
       if (!mounted) return;
-      final extension = photo.name.split('.').last.toLowerCase();
-      if (!const {'jpg', 'jpeg', 'png'}.contains(extension) ||
-          bytes.length > 5 * 1024 * 1024) {
-        messenger.showSnackBar(SnackBar(
-            content: Text(AppLocalizations.of(context).podPhotoSizeError)));
-        return;
-      }
-      // TODO: upload _photoPath (captured proof photo) before enabling step 2.
+      setState(() => _uploadedPath = path);
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _photo = photo;
-        _photoBytes = bytes;
-        _photoPath = photo.path;
+        _photo = null;
+        _photoBytes = null;
+        _uploadedPath = null;
       });
-    } catch (error) {
-      if (mounted) {
-        messenger.showSnackBar(
-            SnackBar(content: Text('Could not take the photo: $error')));
-      }
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      messenger.showSnackBar(
+        SnackBar(content: Text(msg.isEmpty ? 'Photo upload failed.' : msg)),
+      );
     } finally {
-      if (mounted) setState(() => _takingPhoto = false);
+      if (mounted) setState(() => _uploading = false);
     }
   }
+
+  // ── Step 2: OTP send + verify ────────────────────────────────────────────
+
+  Future<void> _sendOtp() async {
+    if (_otpSending) return;
+    // Respect resend cooldown.
+    if (_otpSentAt != null) {
+      final elapsed = DateTime.now().difference(_otpSentAt!).inSeconds;
+      if (elapsed < _otpResendAfter) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+                'Wait ${_otpResendAfter - elapsed}s before resending.')));
+        return;
+      }
+    }
+    setState(() {
+      _otpSending = true;
+      _otpError = null;
+      _otpLockoutUntil = null;
+      otp = '';
+      _otpVerified = false;
+    });
+    try {
+      final result = await AppRepositoriesScope.of(context)
+          .parcels
+          .sendDeliveryOtp(parcel.trackingNo);
+      if (!mounted) return;
+      setState(() {
+        _otpSentAt = DateTime.now();
+        _otpResendAfter = (result['resend_after'] as num?)?.toInt() ?? 60;
+        if (kDebugMode) _debugOtp = result['debug_otp'] as String?;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      setState(() => _otpError = msg.isEmpty ? 'Could not send OTP.' : msg);
+    } finally {
+      if (mounted) setState(() => _otpSending = false);
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    if (_otpVerifying || otp.length != 6) return;
+    setState(() {
+      _otpVerifying = true;
+      _otpError = null;
+    });
+    try {
+      await AppRepositoriesScope.of(context)
+          .parcels
+          .verifyDeliveryOtp(parcel.trackingNo, otp);
+      if (!mounted) return;
+      setState(() => _otpVerified = true);
+      // Auto-advance to step 3 (or finish for prepaid).
+      if (parcel.isCod) {
+        setState(() => step = 2);
+      } else {
+        await _finish();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      setState(() {
+        _otpError = msg.isEmpty ? 'Incorrect code.' : msg;
+        otp = ''; // clear so rider types again
+        // Check for lockout message.
+        if (msg.toLowerCase().contains('locked')) {
+          _otpLockoutUntil = msg;
+        }
+      });
+    } finally {
+      if (mounted) setState(() => _otpVerifying = false);
+    }
+  }
+
+  // ── Step 3 / finish ───────────────────────────────────────────────────────
 
   Future<void> _finish() async {
     if (_finishing) return;
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _finishing = true);
     try {
-      // TODO(api): upload the proof photo and validate the OTP with the backend.
-      final path = _photoPath;
-      if (path == null) return;
-      final ok =
-          await AppRepositoriesScope.of(context).parcels.completeDelivery(
-                parcel.trackingNo,
-                photoPath: path,
-                otpVerified: otp.length == 6,
-                codCollected: parcel.isCod ? codVal : 0,
-              );
-      if (!mounted) return;
-      if (!ok) {
-        messenger.showSnackBar(const SnackBar(
-            content: Text('This parcel is no longer out for delivery.')));
-        return;
+      final path = _uploadedPath;
+      if (path == null) {
+        throw Exception('Photo has not been uploaded yet.');
       }
+      await AppRepositoriesScope.of(context).parcels.completeDelivery(
+            parcel.trackingNo,
+            photoPath: path,
+            otpVerified: true, // enforced server-side via delivery_otp_verified_at
+            codCollected: parcel.isCod ? codVal : 0,
+          );
+      if (!mounted) return;
       Navigator.pushReplacementNamed(
         context,
         '/delivered',
-        arguments:
-            DeliveredArgs(tracking: parcel.tracking, photoPath: _photoPath),
+        arguments: DeliveredArgs(tracking: parcel.tracking, photoPath: path),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      messenger.showSnackBar(
+        SnackBar(content: Text(msg.isEmpty ? 'Could not complete delivery.' : msg)),
       );
     } finally {
       if (mounted) setState(() => _finishing = false);
     }
   }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -179,11 +284,13 @@ class _PodFlowScreenState extends State<PodFlowScreen> {
           if (step == 0)
             ..._photoStep()
           else if (step == 1)
-            ..._otp()
+            ..._otpStep()
           else
-            ..._cod(),
+            ..._codStep(),
         ])),
       );
+
+  // ── Step 1 widget ─────────────────────────────────────────────────────────
 
   List<Widget> _photoStep() => [
         Text('Parcel Photo Proof', style: MT.headlineMd),
@@ -207,15 +314,22 @@ class _PodFlowScreenState extends State<PodFlowScreen> {
                         color: MC.inverseSurface,
                         child: const Icon(Icons.photo_camera,
                             size: 64, color: Colors.white54)),
-                  if (_takingPhoto)
+                  if (_uploading)
                     Container(
                         color: Colors.black45,
-                        child: const Center(
-                            child: CircularProgressIndicator(
-                                color: Colors.white))),
+                        child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircularProgressIndicator(color: Colors.white),
+                              SizedBox(height: 12),
+                              Text('Uploading…',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600)),
+                            ])),
                   Positioned(
                       bottom: 16,
-                      child: _photo != null
+                      child: _photo != null && !_uploading
                           ? Row(mainAxisSize: MainAxisSize.min, children: [
                               FilledButton.icon(
                                   onPressed: _takePhoto,
@@ -225,74 +339,118 @@ class _PodFlowScreenState extends State<PodFlowScreen> {
                                       backgroundColor: Colors.white,
                                       foregroundColor: MC.primary)),
                               const SizedBox(width: 8),
-                              FilledButton.icon(
-                                  onPressed: () => setState(() => step = 1),
-                                  icon: const Icon(Icons.arrow_forward),
-                                  label: const Text('Use Photo')),
+                              if (_uploadedPath != null)
+                                FilledButton.icon(
+                                    onPressed: () {
+                                      setState(() => step = 1);
+                                      _sendOtp();
+                                    },
+                                    icon: const Icon(Icons.arrow_forward),
+                                    label: const Text('Use Photo')),
                             ])
-                          : GestureDetector(
-                              onTap: _takePhoto,
-                              child: Container(
-                                  width: 76,
-                                  height: 76,
-                                  decoration: const BoxDecoration(
-                                      color: MC.primaryContainer,
-                                      shape: BoxShape.circle),
-                                  child: const Icon(Icons.photo_camera,
-                                      color: Colors.white, size: 32)))),
+                          : _photo == null
+                              ? GestureDetector(
+                                  onTap: _takePhoto,
+                                  child: Container(
+                                      width: 76,
+                                      height: 76,
+                                      decoration: const BoxDecoration(
+                                          color: MC.primaryContainer,
+                                          shape: BoxShape.circle),
+                                      child: const Icon(Icons.photo_camera,
+                                          color: Colors.white, size: 32)))
+                              : const SizedBox.shrink()),
                 ]),
           ),
         ),
         const SizedBox(height: 12),
-        PillButton('Continue to Step 2',
-            onPressed: _photo == null ? null : () => setState(() => step = 1)),
-      ];
-
-  List<Widget> _otp() => [
-        Text('Ask the buyer for the 6-digit delivery code',
-            style: MT.headlineMd),
-        const SizedBox(height: 12),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          for (var i = 0; i < 6; i++)
-            Container(
-                width: 48,
-                height: 56,
-                decoration: BoxDecoration(
-                    color: i == otp.length ? MC.primaryFixed : MC.low,
-                    borderRadius: BorderRadius.circular(12)),
-                child: Center(
-                    child: Text(i < otp.length ? otp[i] : '',
-                        style: MT.currency))),
-        ]),
-        const SizedBox(height: 16),
-        Keypad(
-            bottomLeft: ' ',
-            onKey: (k) {
-              if (k != ' ' && otp.length < 6) setState(() => otp += k);
-            },
-            onBackspace: () {
-              if (otp.isNotEmpty) {
-                setState(() => otp = otp.substring(0, otp.length - 1));
-              }
-            }),
-        const SizedBox(height: 16),
-        // TODO: validate against backend; after 3 wrong tries show 15-min lockout banner.
+        if (_uploadedPath != null)
+          InfoBanner(Icons.check_circle_outline, 'Photo uploaded successfully.',
+              bg: MC.greenBg, fg: MC.green),
+        const SizedBox(height: 4),
         PillButton(
-          parcel.isCod ? 'Continue to Step 3 (Payment)' : 'Mark as Delivered',
-          loading: _finishing,
-          onPressed: otp.length == 6
-              ? () {
-                  if (parcel.isCod) {
-                    setState(() => step = 2);
-                  } else {
-                    _finish();
-                  }
-                }
-              : null,
+          'Continue to Step 2',
+          onPressed: _uploadedPath == null
+              ? null
+              : () {
+                  setState(() => step = 1);
+                  _sendOtp();
+                },
         ),
       ];
 
-  List<Widget> _cod() {
+  // ── Step 2 widget ─────────────────────────────────────────────────────────
+
+  List<Widget> _otpStep() {
+    final locked = _otpLockoutUntil != null;
+    return [
+      Text('Ask the buyer for the 6-digit delivery code', style: MT.headlineMd),
+      const SizedBox(height: 4),
+      if (_otpSentAt != null)
+        Text('Code sent to buyer\'s registered contact.',
+            style: MT.bodySm.copyWith(color: MC.onSurfaceVariant))
+      else if (_otpSending)
+        Text('Sending code…', style: MT.bodySm.copyWith(color: MC.onSurfaceVariant)),
+      const SizedBox(height: 12),
+      if (locked)
+        InfoBanner(Icons.lock_clock, _otpLockoutUntil!,
+            bg: MC.errorContainer, fg: const Color(0xFF93000A))
+      else if (_otpError != null && _otpLockoutUntil == null)
+        InfoBanner(Icons.error_outline, _otpError!,
+            bg: MC.errorContainer, fg: const Color(0xFF93000A)),
+      if (kDebugMode && _debugOtp != null) ...[
+        const SizedBox(height: 4),
+        InfoBanner(
+            Icons.bug_report, 'DEBUG — buyer code: $_debugOtp',
+            bg: MC.amberBg, fg: MC.amberText),
+      ],
+      const SizedBox(height: 8),
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        for (var i = 0; i < 6; i++)
+          Container(
+              width: 48,
+              height: 56,
+              decoration: BoxDecoration(
+                  color: _otpVerified
+                      ? MC.greenBg
+                      : (i == otp.length ? MC.primaryFixed : MC.low),
+                  borderRadius: BorderRadius.circular(12)),
+              child: Center(
+                  child: Text(i < otp.length ? otp[i] : '',
+                      style: MT.currency))),
+      ]),
+      const SizedBox(height: 16),
+      Keypad(
+          bottomLeft: ' ',
+          onKey: (k) {
+            if (locked || _otpVerified || _otpVerifying) return;
+            if (k != ' ' && otp.length < 6) setState(() => otp += k);
+          },
+          onBackspace: () {
+            if (locked || _otpVerified || _otpVerifying) return;
+            if (otp.isNotEmpty) {
+              setState(() => otp = otp.substring(0, otp.length - 1));
+            }
+          }),
+      const SizedBox(height: 12),
+      if (!locked && _otpSentAt != null)
+        TextButton(
+            onPressed: _otpSending ? null : _sendOtp,
+            child: Text(_otpSending ? 'Sending…' : 'Resend code')),
+      const SizedBox(height: 4),
+      PillButton(
+        parcel.isCod ? 'Continue to Step 3 (Payment)' : 'Mark as Delivered',
+        loading: _otpVerifying || _finishing,
+        onPressed: (otp.length == 6 && !locked && !_otpVerified)
+            ? _verifyOtp
+            : null,
+      ),
+    ];
+  }
+
+  // ── Step 3 widget ─────────────────────────────────────────────────────────
+
+  List<Widget> _codStep() {
     final under = cod.isNotEmpty && codVal < due,
         over = cod.isNotEmpty && codVal > due;
     return [

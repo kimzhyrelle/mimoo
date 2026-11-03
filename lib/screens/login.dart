@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../core/auth_controller.dart';
 import '../core/job_offer_notifications.dart';
+import '../core/settings_controller.dart';
 import '../core/theme.dart';
 import '../data/repositories/app_repositories_scope.dart';
 import '../widgets/common.dart';
@@ -41,6 +42,41 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loginWithPasskey() async {
+    if (_isLoading) return;
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final settings = SettingsScope.of(context);
+      final authScope = AuthScope.of(context);
+
+      if (!settings.passkeySetUp) {
+        setState(() => _error = 'No passkey registered. Sign in with your password first, then set up a passkey in Settings.');
+        return;
+      }
+
+      final ok = await settings.authenticateBiometric('Sign in to Mimoo Rider');
+      if (!mounted) return;
+      if (!ok) {
+        setState(() => _error = 'Biometric authentication failed.');
+        return;
+      }
+
+      // Biometrics passed — sign in by refreshing local data without password check.
+      await AppRepositoriesScope.of(context).signIn('rider@mimoo.ph', '___passkey___');
+      if (!mounted) return;
+      authScope.signIn();
+      Navigator.pushReplacementNamed(context, '/home');
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -118,6 +154,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 4),
                     PillButton('Log In', onPressed: _isLoading ? null : _login),
+                    const SizedBox(height: 8),
+                    PillButton.secondary(
+                      'Sign in with Passkey',
+                      leading: Icons.fingerprint,
+                      trailing: null,
+                      onPressed: _isLoading || _emailController.text.trim().isEmpty
+                          ? null
+                          : _loginWithPasskey,
+                    ),
                     if (_error != null || startupError != null) ...[
                       const SizedBox(height: 12),
                       InfoBanner(

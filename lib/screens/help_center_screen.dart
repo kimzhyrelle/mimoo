@@ -1,10 +1,14 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/app_info.dart';
 import '../core/theme.dart';
+import '../data/repositories/app_repositories_scope.dart';
+import '../data/repositories/local_repositories.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../widgets/common.dart';
 import '../widgets/mimoo_drawer.dart';
@@ -204,11 +208,30 @@ class _ReportProblemSheetState extends State<_ReportProblemSheet> {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _busy = true);
-    // TODO(api): submit the support report with category, description and media.
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-    Navigator.pop(context);
-    messenger.showSnackBar(SnackBar(content: Text(l10n.helpReportSubmitted)));
+    try {
+      final repos = AppRepositoriesScope.of(context);
+      String? screenshotPath;
+      if (_screenshot != null) {
+        final docsDir = await getApplicationDocumentsDirectory();
+        screenshotPath = '${docsDir.path}/report_screenshot_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        await File(screenshotPath).writeAsBytes(_screenshot!);
+      }
+      if (repos is AppRepositories) {
+        await repos.saveIssueReport(
+          category: _categoryLabel(l10n, _category),
+          description: _description.text.trim(),
+          screenshotPath: screenshotPath,
+        );
+      }
+      if (!mounted) return;
+      Navigator.pop(context);
+      messenger.showSnackBar(SnackBar(content: Text(l10n.helpReportSubmitted)));
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('Could not submit report: $e')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override

@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,8 +9,9 @@ import 'core/connectivity.dart';
 import 'core/rider_status_controller.dart';
 import 'core/settings_controller.dart';
 import 'core/theme.dart';
+import 'data/db/web_database.dart';
 import 'data/repositories/app_repositories_scope.dart';
-import 'data/repositories/api_repositories.dart';
+import 'data/repositories/local_repositories.dart';
 import 'data/repositories/repository_bundle.dart';
 import 'data/parcel_flow.dart';
 import 'data/models/entities.dart' as db;
@@ -76,13 +75,9 @@ RemitStatus _remitStatus(String? state) => switch (state) {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final repositories = ApiRepositories();
+  configureWebDatabaseFactory();
+  final repositories = await AppRepositories.open();
   final auth = AuthController();
-  try {
-    if (await repositories.restoreSession()) auth.signIn();
-  } catch (error) {
-    auth.setStartupError(error.toString());
-  }
   DispatchStore.install(repositories.parcels);
   ConnectivityMonitor.start();
   final preferences = await SharedPreferences.getInstance();
@@ -94,7 +89,6 @@ Future<void> main() async {
     online: repositories.riderProfile.profile?.checkedInAt != null,
   );
   await JobOfferNotifications.init(_onNotificationAction);
-  unawaited(_initFirebaseMessaging());
   runApp(MimooRiderApp(
     settings: settings,
     auth: auth,
@@ -110,17 +104,6 @@ void _onNotificationAction(String offerId, String action) {
   final navigator = mimooNavigatorKey.currentState;
   if (navigator == null) return;
   navigator.pushNamed(MimooRoutes.jobOffer, arguments: offerId);
-}
-
-Future<void> _initFirebaseMessaging() async {
-  try {
-    await Firebase.initializeApp();
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-    await FirebaseMessaging.instance.requestPermission();
-  } catch (error) {
-    debugPrint(
-        'Firebase is not configured yet; push messaging disabled: $error');
-  }
 }
 
 class MimooRiderApp extends StatelessWidget {
@@ -306,6 +289,19 @@ class MimooRiderApp extends StatelessWidget {
                           expiresAt: selectedOffer.expiresAt,
                         ),
                         onAccept: () async {
+                          // Block accept when offline.
+                          final riderStatus = RiderStatusScope.of(context);
+                          if (!riderStatus.isOnline) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    "You're offline. Go Active to accept jobs."),
+                              ),
+                            );
+                            return OfferResult.taken;
+                          }
+                          // Errors (expired 409, max-jobs 409) are caught in
+                          // JobOfferScreen._accept() and shown as a SnackBar.
                           await repositories.offers
                               .setState(selectedOffer.id!, 'accepted');
                           if (!context.mounted) return OfferResult.taken;
@@ -319,6 +315,8 @@ class MimooRiderApp extends StatelessWidget {
                               .setState(selectedOffer.id!, 'declined')
                               .then((_) {
                             if (context.mounted) Navigator.of(context).pop();
+                          }).catchError((_) {
+                            // Decline failures are non-critical; swallow silently.
                           });
                         },
                         onBackHome: () => Navigator.of(context)
@@ -337,11 +335,11 @@ class MimooRiderApp extends StatelessWidget {
                       final pickup = PickupJob(
                         tracking: parcel.trackingNo,
                         seller: parcel.sellerName,
-                        merchantId: parcel.trackingNo,
+                        merchantId: parcel.trackingNo, // seller merchant ID not yet in model
                         address: parcel.sellerAddress,
-                        phone: parcel.buyerPhone,
+                        phone: parcel.sellerPhone ?? parcel.buyerPhone,
                         parcelLabel: parcel.item ?? '1 parcel',
-                        pay: 30,
+                        pay: parcel.pickupFee > 0 ? parcel.pickupFee : 30,
                         km: 2.4,
                         etaMins: 15,
                       );

@@ -345,6 +345,28 @@ class LocalParcelRepository extends ChangeNotifier implements ParcelRepository {
     await _outbox?.refresh();
     return record;
   }
+
+  @override
+  Future<String> uploadPhoto(String filePath, {String purpose = 'pod'}) async {
+    // Local repo: return the file path directly (no upload in test/offline mode).
+    return filePath;
+  }
+
+  @override
+  Future<Map<String, dynamic>> sendDeliveryOtp(String trackingNo) async {
+    // Local repo: return a static debug OTP for testing.
+    return {
+      'expires_at': DateTime.now().add(const Duration(minutes: 10)).toIso8601String(),
+      'resend_after': 60,
+      'debug_otp': '000000',
+    };
+  }
+
+  @override
+  Future<void> verifyDeliveryOtp(String trackingNo, String code) async {
+    // Local repo: accept any 6-digit code for offline testing.
+    if (code.length != 6) throw Exception('Code must be 6 digits.');
+  }
 }
 
 class LocalRiderProfileRepository extends ChangeNotifier
@@ -397,6 +419,36 @@ class LocalRiderProfileRepository extends ChangeNotifier
     });
     await refresh();
     await _outbox?.refresh();
+  }
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final profile = _profile;
+    if (profile == null) throw StateError('No profile loaded.');
+    final email = profile.email;
+    if (email == null || email.isEmpty) {
+      throw StateError('No email on rider profile.');
+    }
+    final rows = await _db.database.query(
+      'rider_accounts',
+      where: 'email = ?',
+      whereArgs: [email.toLowerCase()],
+      limit: 1,
+    );
+    if (rows.isEmpty) throw Exception('Account not found.');
+    final stored = rows.first['password_hash'] as String;
+    if (hashPassword(currentPassword) != stored) {
+      throw Exception('The current password is incorrect.');
+    }
+    await _db.database.update(
+      'rider_accounts',
+      {'password_hash': hashPassword(newPassword)},
+      where: 'email = ?',
+      whereArgs: [email.toLowerCase()],
+    );
   }
 }
 
@@ -724,7 +776,34 @@ class AppRepositories implements RepositoryBundle {
 
   @override
   Future<void> signIn(String email, String password) async {
-    throw UnsupportedError('Local repositories do not support sign-in.');
+    // Passkey bypass: biometrics already verified in the caller.
+    if (password != '___passkey___') {
+      final rows = await database.database.query(
+        'rider_accounts',
+        where: 'email = ?',
+        whereArgs: [email.trim().toLowerCase()],
+        limit: 1,
+      );
+      if (rows.isEmpty) {
+        throw Exception('No account found for that email.');
+      }
+      final stored = rows.first['password_hash'] as String;
+      final given = hashPassword(password);
+      if (given != stored) {
+        throw Exception('Email or password is incorrect.');
+      }
+    }
+    // Refresh all repositories after a successful sign-in.
+    await Future.wait([
+      parcels.refresh(),
+      riderProfile.refresh(),
+      offers.refresh(),
+      remittances.refresh(),
+      notifications.refresh(),
+      conversations.refresh(),
+      emergencyContacts.refresh(),
+      outbox.refresh(),
+    ]);
   }
 
   @override
@@ -747,4 +826,18 @@ class AppRepositories implements RepositoryBundle {
 
   @override
   Future<void> close() async => database.close();
+
+  /// Save a support report to local storage.
+  Future<void> saveIssueReport({
+    required String category,
+    required String description,
+    String? screenshotPath,
+  }) async {
+    await database.database.insert('issue_reports', {
+      'category': category,
+      'description': description,
+      'screenshot_path': screenshotPath,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
 }

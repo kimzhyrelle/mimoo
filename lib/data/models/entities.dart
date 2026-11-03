@@ -63,6 +63,7 @@ class CustodyEvent {
 class RiderProfile {
   final int? id;
   final String userId, name, phone, address, vehicleType, plateNo, licenseNo;
+  final String? email;
   final String? licenseExpiresOn, orCrExpiresOn, areaId, areaName, fleetName;
   final String? hubName, suspensionReason, photoPath;
   final String kycStatus;
@@ -73,6 +74,7 @@ class RiderProfile {
     this.id,
     required this.userId,
     required this.name,
+    this.email,
     required this.phone,
     required this.address,
     required this.vehicleType,
@@ -96,6 +98,7 @@ class RiderProfile {
         id: map['id'] as int?,
         userId: map['user_id'] as String,
         name: map['name'] as String,
+        email: map['email'] as String?,
         phone: map['phone'] as String,
         address: map['address'] as String,
         vehicleType: map['vehicle_type'] as String,
@@ -119,6 +122,7 @@ class RiderProfile {
         'id': id,
         'user_id': userId,
         'name': name,
+        'email': email,
         'phone': phone,
         'address': address,
         'vehicle_type': vehicleType,
@@ -145,6 +149,7 @@ class Parcel {
   final ParcelJobType jobType;
   final ParcelStatus status;
   final String sellerName, sellerAddress, buyerName, buyerPhone, address;
+  final String? sellerPhone;
   final String? areaId, areaName, failureReason, podPhotoPath;
   final double codAmount, pickupFee, deliveryFee;
   final bool isPrepaid, codCollected, codRemitted, deliveryOtpVerified, synced;
@@ -163,6 +168,7 @@ class Parcel {
     required this.status,
     required this.sellerName,
     required this.sellerAddress,
+    this.sellerPhone,
     required this.buyerName,
     required this.buyerPhone,
     required this.address,
@@ -201,6 +207,7 @@ class Parcel {
         status: ParcelStatus.fromValue(map['status'] as String),
         sellerName: map['seller_name'] as String,
         sellerAddress: map['seller_address'] as String,
+        sellerPhone: map['seller_phone'] as String?,
         buyerName: map['buyer_name'] as String,
         buyerPhone: map['buyer_phone'] as String,
         address: map['address'] as String,
@@ -239,6 +246,7 @@ class Parcel {
         'status': status.value,
         'seller_name': sellerName,
         'seller_address': sellerAddress,
+        'seller_phone': sellerPhone,
         'buyer_name': buyerName,
         'buyer_phone': buyerPhone,
         'address': address,

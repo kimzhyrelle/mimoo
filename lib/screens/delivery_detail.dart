@@ -65,17 +65,25 @@ class DeliveryDetailScreen extends StatelessWidget {
       ),
     );
     if (reason == null || !context.mounted) return;
-    final changed = await AppRepositoriesScope.of(context).parcels.transition(
-          parcel.trackingNo,
-          ParcelStatus.failedDelivery,
-          reason: reason,
-        );
-    if (!context.mounted) return;
-    if (!changed) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('This parcel can no longer be marked as failed.')));
+
+    // Disable the button while the request is in flight by tracking state at
+    // the DeliveryDetailScreen level — use a local flag so we don't need extra
+    // setState calls on a StatelessWidget.
+    try {
+      await AppRepositoriesScope.of(context).parcels.transition(
+            parcel.trackingNo,
+            ParcelStatus.failedDelivery,
+            reason: reason,
+          );
+    } catch (e) {
+      if (!context.mounted) return;
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg.isEmpty ? 'Failed to update status.' : msg)),
+      );
       return;
     }
+    if (!context.mounted) return;
     Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
   }
 

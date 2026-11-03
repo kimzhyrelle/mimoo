@@ -26,11 +26,13 @@ class RiderStatusController extends ChangeNotifier {
   final RiderProfileRepository _profile;
   bool _online;
   bool _suspended;
+  bool _updatingStatus = false;
   bool _locationOn = true;
   bool _pendingGoOnline = false;
 
   bool get isOnline => _online;
   bool get isSuspended => _suspended;
+  bool get isUpdatingStatus => _updatingStatus;
   bool get locationOn => _locationOn;
 
   int get heldParcels => _parcels.parcels
@@ -45,7 +47,11 @@ class RiderStatusController extends ChangeNotifier {
     final profile = _profile.profile;
     if (profile != null) {
       _suspended = profile.kycStatus == 'suspended';
-      _online = profile.checkedInAt != null && !_suspended;
+      if (_suspended) {
+        _online = false;
+      } else if (!_updatingStatus) {
+        _online = profile.checkedInAt != null;
+      }
       riderOnline.value = _online;
     }
     notifyListeners();
@@ -111,23 +117,40 @@ class RiderStatusController extends ChangeNotifier {
   }
 
   Future<void> goOnline() async {
-    if (_suspended || _online) return;
-    // TODO(api): check in with the dispatch server before accepting offers.
-    await Future<void>.delayed(const Duration(milliseconds: 250));
-    await _profile.setCheckedIn(true);
+    if (_suspended || _online || _updatingStatus) return;
+    _updatingStatus = true;
     _online = true;
     riderOnline.value = true;
     notifyListeners();
+    try {
+      await _profile.setCheckedIn(true);
+    } catch (error) {
+      _online = false;
+      riderOnline.value = false;
+      rethrow;
+    } finally {
+      _updatingStatus = false;
+      notifyListeners();
+    }
   }
 
   Future<void> goOffline() async {
     _pendingGoOnline = false;
-    if (!_online) return;
-    // TODO(api): persist the rider's check-out with the dispatch server.
-    await _profile.setCheckedIn(false);
+    if (!_online || _updatingStatus) return;
+    _updatingStatus = true;
     _online = false;
     riderOnline.value = false;
     notifyListeners();
+    try {
+      await _profile.setCheckedIn(false);
+    } catch (error) {
+      _online = !_suspended;
+      riderOnline.value = _online;
+      rethrow;
+    } finally {
+      _updatingStatus = false;
+      notifyListeners();
+    }
   }
 
   void _setLocation(bool value) {

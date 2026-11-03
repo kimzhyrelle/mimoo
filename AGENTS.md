@@ -74,14 +74,15 @@ Known inconsistency: the code TODO says OTP lockout after **3** wrong tries for 
 
 ## 6. Mock data and backend
 
-- All fake data lives in `data/mock_data.dart`. Do not scatter literals across screens, and do not duplicate the same number in two places (earnings, job counts and COD must come from one source).
-- Backend does not exist. Every unimplemented call gets a `// TODO(api): …` comment and a mock `Future` with a small delay. Do not add HTTP clients, Firebase calls, or real endpoints.
+- The app uses a **Laravel API** (Sanctum + MySQL) hosted in the Sorting Center project (`c:\Project\mimoo\SortingCenter`). The data layer (`lib/data/repositories/`) uses `package:http` + `flutter_secure_storage` for authenticated calls. Do not add a second HTTP client.
+- All fake data lives in `data/mock_data.dart`. It is currently **dead code** (no file imports it) and kept only as a reference. Do not scatter literals across screens.
+- Flows not yet connected to the API still use a `// TODO(api): …` comment and a mock `Future` with a small delay. Replace these with real repository calls when wiring them up.
 - Do not commit secrets or config: `google-services.json`, `GoogleService-Info.plist`, keys, tokens. Do not create them.
 - Debug-only widgets must stay behind `kDebugMode`.
 
 ## 7. Dependencies and platform
 
-- Allowed already: `shared_preferences`, `flutter_localizations`/`intl`, `local_auth`, `image_picker`, `mobile_scanner`, `permission_handler`, `url_launcher`, `connectivity_plus`, `firebase_core`, `firebase_messaging`, `flutter_local_notifications`.
+- Allowed already: `shared_preferences`, `flutter_localizations`/`intl`, `local_auth`, `image_picker`, `mobile_scanner`, `permission_handler`, `url_launcher`, `connectivity_plus`, `firebase_core`, `firebase_messaging`, `flutter_local_notifications`, `http`, `flutter_secure_storage`, `sqflite`, `google_fonts`.
 - **Do not add, upgrade or remove packages** (`pubspec.yaml`) without asking. Never run `flutter pub upgrade` or `flutter pub add` on your own.
 - Do not edit `android/`, `ios/`, Gradle, Podfile or manifests unless the task is about a permission or platform setting, and then explain exactly what and why.
 - Request permissions only when first needed, and handle the denied and permanently-denied states with an "Open Settings" action (follow the existing camera/location pattern).

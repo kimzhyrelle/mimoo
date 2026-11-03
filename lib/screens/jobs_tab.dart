@@ -218,7 +218,8 @@ class _JobsTabState extends State<JobsTab> {
           _pill('All', count(null),
               selected: _filter == null,
               onTap: () => setState(() => _filter = null)),
-          for (final status in ParcelStatus.values)
+          for (final status in ParcelStatus.values.where(
+              (status) => status != ParcelStatus.atHub || count(status) > 0))
             _pill(
               status.label,
               count(status),
@@ -298,7 +299,16 @@ class _JobsTabState extends State<JobsTab> {
               _segment(pendingOffers.length, deliveryJobs.length),
               const SizedBox(height: MS.xl),
               if (seg == 0) ...[
-                if (pendingOffers.isEmpty)
+                if (!status.isOnline) ...[
+                  InfoBanner(
+                    Icons.wifi_off_rounded,
+                    "You're offline. Go Active to see and accept new job offers.",
+                    bg: MC.amberSoft,
+                    fg: MC.amberText,
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (pendingOffers.isEmpty || !status.isOnline)
                   const MCard(
                       child: Center(child: Text('No pickup offers right now')))
                 else

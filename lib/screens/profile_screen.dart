@@ -1,8 +1,13 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import '../core/theme.dart';
+import '../data/models/entities.dart';
+import '../data/repositories/app_repositories_scope.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../widgets/common.dart';
 
@@ -15,23 +20,41 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  static const _initialPhone = '09189876543';
-  static const _initialAddress = '45 Kalayaan Ave., Brgy. Central, Quezon City';
-  late final _phone = TextEditingController(text: _initialPhone);
-  late final _address = TextEditingController(text: _initialAddress);
-  String _savedPhone = _initialPhone;
-  String _savedAddress = _initialAddress;
+  late final TextEditingController _phone;
+  late final TextEditingController _address;
+  String _savedPhone = '';
+  String _savedAddress = '';
   Uint8List? _photo;
+  String? _savedPhotoPath;
   bool _photoChanged = false;
   bool _saving = false;
 
-  bool get _dirty => _phone.text != _savedPhone || _address.text != _savedAddress || _photoChanged;
+  bool get _dirty =>
+      _phone.text != _savedPhone ||
+      _address.text != _savedAddress ||
+      _photoChanged;
 
   @override
   void initState() {
     super.initState();
+    // Initialise from repo profile once we have a BuildContext in didChangeDependencies.
+    _phone = TextEditingController();
+    _address = TextEditingController();
     _phone.addListener(_rebuild);
     _address.addListener(_rebuild);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final profile = AppRepositoriesScope.of(context).riderProfile.profile;
+    if (profile != null && _savedPhone.isEmpty) {
+      _savedPhone = profile.phone;
+      _savedAddress = profile.address;
+      _phone.text = _savedPhone;
+      _address.text = _savedAddress;
+      _savedPhotoPath = profile.photoPath;
+    }
   }
 
   void _rebuild() => setState(() {});
@@ -83,9 +106,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (file == null) return;
       final bytes = await file.readAsBytes();
       if (!mounted) return;
-      // TODO(api): upload the new avatar and persist it on the rider profile.
+      // Save avatar to app documents directory so the path survives restarts.
+      final docsDir = await getApplicationDocumentsDirectory();
+      final avatarPath = p.join(docsDir.path, 'avatar.jpg');
+      await File(avatarPath).writeAsBytes(bytes);
       setState(() {
         _photo = bytes;
+        _savedPhotoPath = avatarPath;
         _photoChanged = true;
       });
     } catch (error) {
@@ -95,17 +122,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _save() async {
     if (!_dirty || _saving) return;
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _saving = true);
-    // TODO(api): PATCH the rider contact number and residential address.
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-    setState(() {
-      _saving = false;
-      _savedPhone = _phone.text;
-      _savedAddress = _address.text;
-      _photoChanged = false;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).profileUpdated)));
+    try {
+      final repos = AppRepositoriesScope.of(context);
+      final current = repos.riderProfile.profile;
+      if (current == null) {
+        throw Exception('Rider profile not loaded.');
+      }
+      // Build updated profile — avatar path persisted locally.
+      final updated = RiderProfile(
+        id: current.id,
+        userId: current.userId,
+        name: current.name,
+        email: current.email,
+        phone: _phone.text.trim(),
+        address: _address.text.trim(),
+        vehicleType: current.vehicleType,
+        plateNo: current.plateNo,
+        licenseNo: current.licenseNo,
+        kycStatus: current.kycStatus,
+        areaId: current.areaId,
+        areaName: current.areaName,
+        fleetName: current.fleetName,
+        hubName: current.hubName,
+        isActive: current.isActive,
+        checkedInAt: current.checkedInAt,
+        suspendedAt: current.suspendedAt,
+        suspensionReason: current.suspensionReason,
+        photoPath: _savedPhotoPath ?? current.photoPath,
+      );
+      await repos.riderProfile.saveProfile(updated);
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _savedPhone = _phone.text;
+        _savedAddress = _address.text;
+        _photoChanged = false;
+      });
+      messenger.showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).profileUpdated)),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      final msg = error.toString().replaceFirst('Exception: ', '');
+      messenger.showSnackBar(
+        SnackBar(content: Text(msg.isEmpty ? 'Could not save profile.' : msg)),
+      );
+    }
   }
 
   Future<void> _confirmDiscard() async {
@@ -153,8 +218,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   CircleAvatar(
                     radius: 44,
                     backgroundColor: c.highest,
-                    backgroundImage: _photo == null ? null : MemoryImage(_photo!),
-                    child: _photo == null ? Icon(Icons.person, size: 44, color: c.primary) : null,
+                    backgroundImage: _photo != null
+                        ? MemoryImage(_photo!) as ImageProvider
+                        : (_savedPhotoPath != null &&
+                                File(_savedPhotoPath!).existsSync())
+                            ? FileImage(File(_savedPhotoPath!))
+                            : null,
+                    child: (_photo == null &&
+                            (_savedPhotoPath == null ||
+                                !File(_savedPhotoPath!).existsSync()))
+                        ? Icon(Icons.person, size: 44, color: c.primary)
+                        : null,
                   ),
                   Positioned(
                     right: 0,
@@ -172,8 +246,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ]),
                 const SizedBox(height: 10),
-                Text('Pedro Jose Garcia', style: MT.headlineMd.copyWith(color: c.text)),
-                Text('Bilis Hatid Express Inc. · Quezon City Hub', style: ts(12, c: c.muted), textAlign: TextAlign.center),
+                ListenableBuilder(
+                  listenable: AppRepositoriesScope.of(context).riderProfile,
+                  builder: (context, _) {
+                    final profile = AppRepositoriesScope.of(context)
+                        .riderProfile
+                        .profile;
+                    final name =
+                        (profile?.name ?? '').trim().isEmpty
+                            ? 'Rider'
+                            : profile!.name;
+                    final fleet = profile?.fleetName ?? '';
+                    final hub = profile?.hubName ?? '';
+                    final subtitle = [fleet, hub]
+                        .where((s) => s.isNotEmpty)
+                        .join(' · ');
+                    return Column(children: [
+                      Text(name,
+                          style: MT.headlineMd.copyWith(color: c.text)),
+                      if (subtitle.isNotEmpty)
+                        Text(subtitle,
+                            style: ts(12, c: c.muted),
+                            textAlign: TextAlign.center),
+                    ]);
+                  },
+                ),
                 const SizedBox(height: 8),
                 TextButton.icon(
                   onPressed: _changePhoto,

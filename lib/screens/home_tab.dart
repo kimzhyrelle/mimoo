@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../core/job_offer_notifications.dart';
@@ -33,22 +35,62 @@ class _HomeTabState extends State<HomeTab> {
             color: MC.primary,
             padding: const EdgeInsets.fromLTRB(MS.lg, MS.lg, MS.lg, 20),
             child: Column(children: [
-              Row(children: [
-                Expanded(
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                      Text('Pedro Jose Garcia',
-                          style: MT.headlineLg.copyWith(color: Colors.white)),
-                      Text('Bilis Hatid Express Inc. • Quezon City Hub',
-                          style: MT.bodySm
-                              .copyWith(color: const Color(0xFFE4D9FF))),
-                    ])),
-                const CircleAvatar(
-                    radius: 24,
-                    backgroundColor: MC.highest,
-                    child: Icon(Icons.person, color: MC.primary)),
-              ]),
+              // ── Profile header card — tappable → Edit Personal Info ──
+              ListenableBuilder(
+                listenable: repositories.riderProfile,
+                builder: (context, _) {
+                  final profile = repositories.riderProfile.profile;
+                  final name = (profile?.name ?? '').trim().isEmpty
+                      ? 'Rider'
+                      : profile!.name;
+                  final fleet = profile?.fleetName ?? '';
+                  final hub = profile?.hubName ?? '';
+                  final subtitle = [fleet, hub]
+                      .where((s) => s.isNotEmpty)
+                      .join(' • ');
+                  final photoPath = profile?.photoPath;
+                  final hasPhoto =
+                      photoPath != null && File(photoPath).existsSync();
+
+                  return InkWell(
+                    onTap: () =>
+                        Navigator.pushNamed(context, '/profile'),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Row(children: [
+                      Expanded(
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                            Text(name,
+                                style: MT.headlineLg
+                                    .copyWith(color: Colors.white),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1),
+                            if (subtitle.isNotEmpty)
+                              Text(subtitle,
+                                  style: MT.bodySm.copyWith(
+                                      color: const Color(0xFFE4D9FF)),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1),
+                          ])),
+                      const SizedBox(width: 12),
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor: MC.highest,
+                        backgroundImage:
+                            hasPhoto ? FileImage(File(photoPath)) : null,
+                        child: hasPhoto
+                            ? null
+                            : const Icon(Icons.person,
+                                color: MC.primary),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.chevron_right,
+                          color: Colors.white54, size: 18),
+                    ]),
+                  );
+                },
+              ),
               const SizedBox(height: 16),
               if (!status.locationOn) ...[
                 LocationOffBanner(

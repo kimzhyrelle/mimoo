@@ -29,6 +29,14 @@ abstract interface class ParcelRepository implements Listenable {
     required bool otpVerified,
     required double codCollected,
   });
+  /// Upload a photo file and return the server-side storage path.
+  Future<String> uploadPhoto(String filePath, {String purpose = 'pod'});
+  /// Send the delivery OTP to the buyer. Returns expiry ISO string and
+  /// resend cooldown (seconds). In debug mode also returns `debugOtp`.
+  Future<Map<String, dynamic>> sendDeliveryOtp(String trackingNo);
+  /// Verify the buyer's 6-digit delivery OTP. Throws [ApiException] on
+  /// wrong code (422) or lockout (429).
+  Future<void> verifyDeliveryOtp(String trackingNo, String code);
   Future<CodRemittance> submitRemittance({
     required double amount,
     required String method,
@@ -41,6 +49,10 @@ abstract interface class RiderProfileRepository implements Listenable {
   Future<void> refresh();
   Future<void> saveProfile(RiderProfile profile);
   Future<void> setCheckedIn(bool checkedIn);
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
 }
 
 abstract interface class JobOfferRepository implements Listenable {

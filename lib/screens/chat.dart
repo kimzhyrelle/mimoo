@@ -6,8 +6,27 @@ import '../data/repositories/app_repositories_scope.dart';
 import '../data/repositories/repository_interfaces.dart';
 import '../widgets/common.dart';
 
-class ChatListScreen extends StatelessWidget {
+class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
+  @override
+  State<ChatListScreen> createState() => _ChatListScreenState();
+}
+
+class _ChatListScreenState extends State<ChatListScreen> {
+  final _search = TextEditingController();
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _search.addListener(() => setState(() => _query = _search.text.trim().toLowerCase()));
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
   @override
   Widget build(BuildContext context) {
     final conversations = AppRepositoriesScope.of(context).conversations;
@@ -68,13 +87,24 @@ class ChatListScreen extends StatelessWidget {
         );
     return ListenableBuilder(
       listenable: conversations,
-      builder: (context, _) => Scaffold(
+      builder: (context, _) {
+        final filtered = _query.isEmpty
+            ? conversations.conversations
+            : conversations.conversations
+                .where((c) =>
+                    c.title.toLowerCase().contains(_query) ||
+                    conversations
+                        .messagesFor(c.id ?? 0)
+                        .any((m) => m.body.toLowerCase().contains(_query)))
+                .toList(growable: false);
+        return Scaffold(
         appBar: MSubAppBar(
             title: Text('Messages',
                 style: MT.headlineMd.copyWith(color: Colors.white))),
         body: MPageBody(
           child: ListView(padding: MS.pagePadding, children: [
             TextField(
+                controller: _search,
                 decoration: InputDecoration(
                     hintText: 'Search messages, orders, or contacts...',
                     prefixIcon: const Icon(Icons.search),
@@ -84,7 +114,7 @@ class ChatListScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(99),
                         borderSide: BorderSide.none))),
             const SizedBox(height: 12),
-            for (final conversation in conversations.conversations)
+            for (final conversation in filtered)
               if (conversation.id case final id?)
                 Builder(builder: (context) {
                   final messages = conversations.messagesFor(id);
@@ -110,8 +140,8 @@ class ChatListScreen extends StatelessWidget {
                 }),
           ]),
         ),
-      ),
-    );
+      );
+    });
   }
 }
 
@@ -131,6 +161,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   final ctrl = TextEditingController();
   ConversationRepository? _conversationRepository;
   int? _conversationId;
+  String? _conversationTitle;
 
   @override
   void didChangeDependencies() {
@@ -144,6 +175,13 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
         : repositories.conversations.conversations.isEmpty
             ? null
             : repositories.conversations.conversations.first.id;
+    // Set header title from the conversation.
+    if (_conversationId != null) {
+      final conv = repositories.conversations.conversations
+          .where((c) => c.id == _conversationId)
+          .fold<dynamic>(null, (_, c) => c);
+      _conversationTitle = conv?.title;
+    }
   }
 
   Future<void> send(String text) async {
@@ -210,12 +248,19 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                   backgroundColor: MC.highest,
                   child: Icon(Icons.person, color: MC.primary)),
               const SizedBox(width: 8),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Juan Miguel D.',
-                    style: MT.labelLg.copyWith(color: Colors.white)),
-                Text('Online · In transit',
-                    style: MT.bodySm.copyWith(color: Colors.white70))
-              ])
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text(
+                    _conversationTitle ?? 'Hub Support',
+                    style: MT.labelLg.copyWith(color: Colors.white),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text('Logistics Support',
+                      style: MT.bodySm.copyWith(color: Colors.white70))
+                ]),
+              ),
             ]),
             actions: [
               IconButton(onPressed: _callBuyer, icon: const Icon(Icons.call))
@@ -223,22 +268,43 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
           ),
           body: MPageBody(
               child: Column(children: [
-            Container(
-              width: double.infinity,
-              color: MC.container,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(children: [
-                const Icon(Icons.inventory_2, size: 18, color: MC.primary),
-                const SizedBox(width: 8),
-                Text('TRK-0012345',
-                    style: MT.labelLg.copyWith(color: MC.primary)),
-                const SizedBox(width: 6),
-                Expanded(
-                    child: Text('· 45 Kalayaan Ave.',
-                        style: MT.bodySm, overflow: TextOverflow.ellipsis)),
-                const MChip('COD ₱500.00', bg: MC.amberBg, fg: MC.amberText)
-              ]),
-            ),
+            // Parcel reference banner — only shown when the conversation is linked to a parcel.
+            Builder(builder: (ctx) {
+              final conv = _conversationId == null
+                  ? null
+                  : AppRepositoriesScope.of(ctx)
+                      .conversations
+                      .conversations
+                      .where((c) => c.id == _conversationId)
+                      .fold<dynamic>(null, (_, c) => c);
+              if (conv == null) return const SizedBox.shrink();
+              final tracking = AppRepositoriesScope.of(ctx)
+                  .parcels
+                  .byTracking(conv.title.replaceFirst('RE: ', ''));
+              final label = conv.title.startsWith('RE:') ? conv.title : null;
+              if (label == null) return const SizedBox.shrink();
+              return Container(
+                width: double.infinity,
+                color: MC.container,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(children: [
+                  const Icon(Icons.inventory_2, size: 18, color: MC.primary),
+                  const SizedBox(width: 8),
+                  Text(label.replaceFirst('RE: ', ''),
+                      style: MT.labelLg.copyWith(color: MC.primary)),
+                  if (tracking != null) ...[
+                    const SizedBox(width: 6),
+                    Expanded(
+                        child: Text('· ${tracking.address}',
+                            style: MT.bodySm, overflow: TextOverflow.ellipsis)),
+                    if (tracking.isCod)
+                      MChip('COD ₱${tracking.codAmount.toStringAsFixed(2)}',
+                          bg: MC.amberBg, fg: MC.amberText),
+                  ],
+                ]),
+              );
+            }),
             Expanded(
                 child: ListView(padding: MS.pagePadding, children: [
               for (final m in msgs)

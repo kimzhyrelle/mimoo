@@ -37,10 +37,29 @@ class _JobOfferState extends State<JobOfferScreen> {
   @override void dispose() { _t.cancel(); super.dispose(); }
 
   Future<void> _accept() async {
+    if (_busy) return;
     setState(() => _busy = true);
-    final r = await widget.onAccept();
-    if (!mounted) return;
-    setState(() { _busy = false; if (r == OfferResult.taken) _status = OfferStatus.taken; if (r == OfferResult.expired) _status = OfferStatus.expired; });
+    try {
+      final r = await widget.onAccept();
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        if (r == OfferResult.taken) _status = OfferStatus.taken;
+        if (r == OfferResult.expired) _status = OfferStatus.expired;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: MC.coral),
+      );
+      // If the server says the offer is expired or already taken, update UI.
+      if (msg.contains('expired')) setState(() => _status = OfferStatus.expired);
+      if (msg.contains('taken') || msg.contains('no longer pending')) {
+        setState(() => _status = OfferStatus.taken);
+      }
+    }
   }
 
   @override

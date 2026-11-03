@@ -98,12 +98,12 @@ class _RiderStatusSwitch extends StatelessWidget {
     return Semantics(
       button: true,
       toggled: online,
-      enabled: !status.isSuspended,
+      enabled: !status.isSuspended && !status.isUpdatingStatus,
       label: label,
       child: Tooltip(
         message: label,
         child: InkWell(
-          onTap: status.isSuspended
+          onTap: status.isSuspended || status.isUpdatingStatus
               ? null
               : () => toggleRiderStatus(context, status, !online),
           borderRadius: BorderRadius.circular(24),
@@ -159,10 +159,18 @@ Future<void> toggleRiderStatus(
 
   if (value) {
     if (status.isSuspended) {
-      messenger.showSnackBar(SnackBar(content: Text(l10n.riderStatusSuspended)));
+      messenger
+          .showSnackBar(SnackBar(content: Text(l10n.riderStatusSuspended)));
       return;
     }
-    final ok = await status.requestOnline(context);
+    bool ok;
+    try {
+      ok = await status.requestOnline(context);
+    } on Exception catch (error) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('$error')));
+      return;
+    }
     if (!context.mounted || !ok) return;
     unawaited(JobOfferNotifications.requestPermission());
     messenger.showSnackBar(SnackBar(
@@ -173,7 +181,14 @@ Future<void> toggleRiderStatus(
   }
 
   if (status.heldParcels == 0) {
-    await status.goOffline();
+    try {
+      await status.goOffline();
+    } on Exception catch (error) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('$error')));
+      return;
+    }
+    if (!context.mounted) return;
     messenger.showSnackBar(SnackBar(
       content: Text(l10n.riderStatusOffline),
       duration: const Duration(seconds: 2),
@@ -216,7 +231,14 @@ Future<void> toggleRiderStatus(
     ),
   );
   if (!context.mounted || stay == true || stay == null) return;
-  await status.goOffline();
+  try {
+    await status.goOffline();
+  } on Exception catch (error) {
+    if (!context.mounted) return;
+    messenger.showSnackBar(SnackBar(content: Text('$error')));
+    return;
+  }
+  if (!context.mounted) return;
   messenger.showSnackBar(SnackBar(
     content: Text(l10n.riderStatusOffline),
     duration: const Duration(seconds: 2),
