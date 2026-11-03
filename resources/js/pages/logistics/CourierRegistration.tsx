@@ -21,10 +21,10 @@ const NCR_DISTRICTS = [
 ];
 
 const SIDEBAR_STEPS = [
-    'Personal information and contact details',
-    'Residential address',
-    'Vehicle information and documents',
-    'Upload ID and set password',
+    'Company information and contact details',
+    'Authorized representative information',
+    'Business verification documents',
+    'Service coverage and operations',
 ];
 
 const VEHICLE_TYPES = [
@@ -43,29 +43,40 @@ interface CityMunicipality { code: string; name: string; provinceCode: string }
 interface Barangay { code: string; name: string; cityCode: string }
 
 type FormShape = {
-    // Step 1: Personal Info
-    first_name: string;
-    last_name: string;
-    middle_initial: string;
-    sex: string;
-    birthday: string;
-    email: string;
-    contact_number: string;
-    // Step 2: Address
-    region: string;
-    province: string;
-    district: string; // NCR only
-    municipality_city: string;
-    barangay: string;
-    street_address: string;
-    // Step 3: Vehicle Info
-    vehicle_type: string;
-    plate_number: string;
-    or_cr_document: File | null;
-    // Step 4: Documents & Password
-    drivers_license: File | null;
+    // Step 1: Company Information
+    company_name: string;
+    trade_name: string;
+    business_registration_number: string;
+    business_address: string;
+    business_email: string;
+    company_contact_number: string;
+    company_website: string;
+    company_logo: File | null;
+    
+    // Step 2: Authorized Representative
+    rep_full_name: string;
+    rep_position: string;
+    rep_email: string;
+    rep_contact_number: string;
+    username: string;
     password: string;
     password_confirmation: string;
+    
+    // Step 3: Business Documents
+    dti_sec_certificate: File | null;
+    mayors_permit: File | null;
+    operating_permits: File | null;
+    rep_valid_id: File | null;
+    proof_of_address: File | null;
+    
+    // Step 4: Service Coverage
+    regions_served: string;
+    provinces_served: string;
+    cities_served: string;
+    delivery_services: string;
+    pickup_available: string;
+    estimated_delivery_time: string;
+    
     privacy_policy_accepted: boolean;
     account_type: string;
 };
@@ -74,32 +85,42 @@ type FieldName = keyof FormShape;
 type Errs = Partial<Record<FieldName, string>>;
 
 const FIELD_STEP: Partial<Record<FieldName, number>> = {
-    first_name: 1, last_name: 1, middle_initial: 1, sex: 1, birthday: 1, email: 1, contact_number: 1,
-    region: 2, province: 2, district: 2, municipality_city: 2, barangay: 2, street_address: 2,
-    vehicle_type: 3, plate_number: 3, or_cr_document: 3,
-    drivers_license: 4, password: 4, password_confirmation: 4,
+    company_name: 1, trade_name: 1, business_registration_number: 1, business_address: 1,
+    business_email: 1, company_contact_number: 1, company_website: 1, company_logo: 1,
+    rep_full_name: 2, rep_position: 2, rep_email: 2, rep_contact_number: 2,
+    username: 2, password: 2, password_confirmation: 2,
+    dti_sec_certificate: 3, mayors_permit: 3, operating_permits: 3, rep_valid_id: 3, proof_of_address: 3,
+    regions_served: 4, provinces_served: 4, cities_served: 4, delivery_services: 4,
+    pickup_available: 4, estimated_delivery_time: 4,
 };
 
 const FIELD_LABEL: Partial<Record<FieldName, string>> = {
-    first_name: 'First Name',
-    last_name: 'Last Name',
-    middle_initial: 'Middle Initial',
-    sex: 'Sex',
-    birthday: 'Birthday',
-    email: 'Email',
-    contact_number: 'Contact Number',
-    region: 'Region',
-    province: 'Province',
-    district: 'District',
-    municipality_city: 'City / Municipality',
-    barangay: 'Barangay',
-    street_address: 'Street Address (House number, street name, etc.)',
-    vehicle_type: 'Vehicle Type',
-    plate_number: 'Plate Number',
-    or_cr_document: 'OR/CR Document',
-    drivers_license: 'ID / Driver\'s License',
+    company_name: 'Company Name',
+    trade_name: 'Trade Name',
+    business_registration_number: 'Registration Number',
+    business_address: 'Business Address',
+    business_email: 'Business Email',
+    company_contact_number: 'Contact Number',
+    company_website: 'Website',
+    company_logo: 'Company Logo',
+    rep_full_name: 'Full Name',
+    rep_position: 'Position',
+    rep_email: 'Email Address',
+    rep_contact_number: 'Contact Number',
+    username: 'Username',
     password: 'Password',
     password_confirmation: 'Confirm Password',
+    dti_sec_certificate: 'DTI/SEC Certificate',
+    mayors_permit: "Mayor's Permit",
+    operating_permits: 'Operating Permits',
+    rep_valid_id: 'Valid ID',
+    proof_of_address: 'Proof of Address',
+    regions_served: 'Regions Served',
+    provinces_served: 'Provinces Served',
+    cities_served: 'Cities Served',
+    delivery_services: 'Delivery Services',
+    pickup_available: 'Pickup Available',
+    estimated_delivery_time: 'Estimated Delivery Time',
     privacy_policy_accepted: 'Privacy Policy',
 };
 
@@ -115,6 +136,13 @@ function calculateAge(birthday: string): number {
     return age;
 }
 
+function optionalFileError(f: File | null): string | undefined {
+    if (!f) return undefined;
+    if (!/\.(pdf|jpe?g|png)$/i.test(f.name)) return 'Use a PDF, JPG or PNG file.';
+    if (f.size > MAX_FILE_MB * 1024 * 1024) return `File is too large. Max ${MAX_FILE_MB}MB.`;
+    return undefined;
+}
+
 function requiredFileError(f: File | null): string | undefined {
     if (!f) return 'This file is required.';
     if (!/\.(pdf|jpe?g|png)$/i.test(f.name)) return 'Use a PDF, JPG or PNG file.';
@@ -125,35 +153,22 @@ function requiredFileError(f: File | null): string | undefined {
 function validate(step: number, d: FormShape): Errs {
     const e: Errs = {};
     if (step === 1) {
-        if (!d.first_name.trim()) e.first_name = 'Enter first name.';
-        if (!d.last_name.trim()) e.last_name = 'Enter last name.';
-        if (!d.sex) e.sex = 'Select sex.';
-        if (!d.birthday) e.birthday = 'Enter birthday.';
-        else {
-            const age = calculateAge(d.birthday);
-            if (age < 18) e.birthday = 'You must be at least 18 years old.';
-        }
-        if (!EMAIL_RE.test(d.email.trim())) e.email = 'Enter a valid email address.';
-        if (!PH_MOBILE_RE.test(d.contact_number.trim())) e.contact_number = 'Enter a valid PH mobile number (09XXXXXXXXX).';
+        if (!d.company_name.trim()) e.company_name = 'Enter company name.';
+        if (!d.trade_name.trim()) e.trade_name = 'Enter trade name.';
+        if (!d.business_registration_number.trim()) e.business_registration_number = 'Enter registration number.';
+        if (!d.business_address.trim()) e.business_address = 'Enter business address.';
+        if (!EMAIL_RE.test(d.business_email.trim())) e.business_email = 'Enter a valid email address.';
+        if (!PH_MOBILE_RE.test(d.company_contact_number.trim())) e.company_contact_number = 'Enter a valid PH mobile number (09XXXXXXXXX).';
+        const logoErr = optionalFileError(d.company_logo);
+        if (logoErr) e.company_logo = logoErr;
     }
     if (step === 2) {
-        const isNCR = d.region === NCR_NAME;
-        if (!d.region) e.region = 'Select a region.';
-        if (!isNCR && !d.province) e.province = 'Select a province.';
-        if (isNCR && !d.district) e.district = 'Select a district.';
-        if (!d.municipality_city) e.municipality_city = 'Select a city or municipality.';
-        if (!d.barangay) e.barangay = 'Select a barangay.';
-        if (!d.street_address.trim()) e.street_address = 'Enter street address.';
-    }
-    if (step === 3) {
-        if (!d.vehicle_type) e.vehicle_type = 'Select a vehicle type.';
-        if (!d.plate_number.trim()) e.plate_number = 'Enter plate number.';
-        const orErr = requiredFileError(d.or_cr_document);
-        if (orErr) e.or_cr_document = orErr;
-    }
-    if (step === 4) {
-        const idErr = requiredFileError(d.drivers_license);
-        if (idErr) e.drivers_license = idErr;
+        if (!d.rep_full_name.trim()) e.rep_full_name = 'Enter full name.';
+        if (!d.rep_position.trim()) e.rep_position = 'Enter position/designation.';
+        if (!EMAIL_RE.test(d.rep_email.trim())) e.rep_email = 'Enter a valid email address.';
+        if (!PH_MOBILE_RE.test(d.rep_contact_number.trim())) e.rep_contact_number = 'Enter a valid PH mobile number (09XXXXXXXXX).';
+        if (!d.username.trim()) e.username = 'Enter username.';
+        else if (d.username.length < 4) e.username = 'Username must be at least 4 characters.';
         if (d.password.length < 8) e.password = 'Use at least 8 characters.';
         const hasUpper = /[A-Z]/.test(d.password);
         const hasLower = /[a-z]/.test(d.password);
@@ -164,6 +179,25 @@ function validate(step: number, d: FormShape): Errs {
         }
         if (!d.password_confirmation || d.password_confirmation !== d.password)
             e.password_confirmation = "Passwords don't match.";
+    }
+    if (step === 3) {
+        const dtiErr = requiredFileError(d.dti_sec_certificate);
+        if (dtiErr) e.dti_sec_certificate = dtiErr;
+        const mayorErr = requiredFileError(d.mayors_permit);
+        if (mayorErr) e.mayors_permit = mayorErr;
+        const operatingErr = optionalFileError(d.operating_permits);
+        if (operatingErr) e.operating_permits = operatingErr;
+        const idErr = requiredFileError(d.rep_valid_id);
+        if (idErr) e.rep_valid_id = idErr;
+        const proofErr = requiredFileError(d.proof_of_address);
+        if (proofErr) e.proof_of_address = proofErr;
+    }
+    if (step === 4) {
+        if (!d.regions_served.trim()) e.regions_served = 'Enter regions served.';
+        if (!d.provinces_served.trim()) e.provinces_served = 'Enter provinces served.';
+        if (!d.cities_served.trim()) e.cities_served = 'Enter cities/municipalities served.';
+        if (!d.delivery_services.trim()) e.delivery_services = 'Enter available delivery services.';
+        if (!d.pickup_available) e.pickup_available = 'Select pickup availability.';
         if (!d.privacy_policy_accepted) e.privacy_policy_accepted = 'You must accept the Privacy Policy.';
     }
     return e;
@@ -291,142 +325,73 @@ export default function CourierRegistration() {
     const [clientErrors, setClientErrors] = useState<Errs>({});
     const headingRef = useRef<HTMLHeadingElement>(null);
 
-    // PSGC API states
-    const [regions, setRegions] = useState<Region[]>([]);
-    const [provinces, setProvinces] = useState<Province[]>([]);
-    const [cities, setCities] = useState<CityMunicipality[]>([]);
-    const [barangays, setBarangays] = useState<Barangay[]>([]);
-    const [loading, setLoading] = useState({ regions: false, provinces: false, cities: false, barangays: false });
-
     const { data, setData, post, processing, errors } = useForm<FormShape>({
-        first_name: '',
-        last_name: '',
-        middle_initial: '',
-        sex: '',
-        birthday: '',
-        email: '',
-        contact_number: '',
-        region: '',
-        province: '',
-        district: '',
-        municipality_city: '',
-        barangay: '',
-        street_address: '',
-        vehicle_type: '',
-        plate_number: '',
-        or_cr_document: null,
-        drivers_license: null,
+        company_name: '',
+        trade_name: '',
+        business_registration_number: '',
+        business_address: '',
+        business_email: '',
+        company_contact_number: '',
+        company_website: '',
+        company_logo: null,
+        rep_full_name: '',
+        rep_position: '',
+        rep_email: '',
+        rep_contact_number: '',
+        username: '',
         password: '',
         password_confirmation: '',
+        dti_sec_certificate: null,
+        mayors_permit: null,
+        operating_permits: null,
+        rep_valid_id: null,
+        proof_of_address: null,
+        regions_served: '',
+        provinces_served: '',
+        cities_served: '',
+        delivery_services: '',
+        pickup_available: '',
+        estimated_delivery_time: '',
         privacy_policy_accepted: false,
-        account_type: 'courier',
+        account_type: 'courier_company',
     });
 
     const allErrors: Errs = { ...(errors as Errs), ...clientErrors };
     const err = (f: FieldName) => allErrors[f];
     const summary = (Object.keys(clientErrors) as FieldName[]).filter((f) => clientErrors[f]);
 
-    // Calculate age from birthday
-    const age = calculateAge(data.birthday);
-
-    // Check if selected region is NCR
-    const isNCR = data.region.toUpperCase().includes('NCR') || data.region === NCR_NAME;
-
-    // Load regions on mount
-    useEffect(() => {
-        setLoading((prev) => ({ ...prev, regions: true }));
-        fetch('https://psgc.gitlab.io/api/regions/')
-            .then((res) => res.json())
-            .then((list: Region[]) => {
-                setRegions(list.sort((a, b) => a.name.localeCompare(b.name)));
-                setLoading((prev) => ({ ...prev, regions: false }));
-            })
-            .catch(() => setLoading((prev) => ({ ...prev, regions: false })));
-    }, []);
-
-    // Load provinces when region changes (skip for NCR)
-    useEffect(() => {
-        if (!data.region) {
-            setProvinces([]);
-            setCities([]);
-            setBarangays([]);
-            return;
-        }
-
-        const selected = regions.find((r) => r.name === data.region);
-        if (!selected) return;
-
-        if (isNCR) {
-            // For NCR, load cities directly from region
-            setProvinces([]);
-            setData('province', 'N/A');
-            setLoading((prev) => ({ ...prev, cities: true }));
-            fetch(`https://psgc.gitlab.io/api/regions/${selected.code}/cities-municipalities/`)
-                .then((res) => res.json())
-                .then((list: CityMunicipality[]) => {
-                    setCities(list.sort((a, b) => a.name.localeCompare(b.name)));
-                    setLoading((prev) => ({ ...prev, cities: false }));
-                })
-                .catch(() => setLoading((prev) => ({ ...prev, cities: false })));
-        } else {
-            // For non-NCR, load provinces first
-            setCities([]);
-            setLoading((prev) => ({ ...prev, provinces: true }));
-            fetch(`https://psgc.gitlab.io/api/regions/${selected.code}/provinces/`)
-                .then((res) => res.json())
-                .then((list: Province[]) => {
-                    setProvinces(list.sort((a, b) => a.name.localeCompare(b.name)));
-                    setLoading((prev) => ({ ...prev, provinces: false }));
-                })
-                .catch(() => setLoading((prev) => ({ ...prev, provinces: false })));
-        }
-    }, [data.region, regions]);
-
-    // Load cities/municipalities when province changes (only for non-NCR)
-    useEffect(() => {
-        if (isNCR) return;
-
-        if (data.province && data.province !== 'N/A') {
-            const selected = provinces.find((p) => p.name === data.province);
-            if (selected) {
-                setLoading((prev) => ({ ...prev, cities: true }));
-                fetch(`https://psgc.gitlab.io/api/provinces/${selected.code}/cities-municipalities/`)
-                    .then((res) => res.json())
-                    .then((list: CityMunicipality[]) => {
-                        setCities(list.sort((a, b) => a.name.localeCompare(b.name)));
-                        setLoading((prev) => ({ ...prev, cities: false }));
-                    })
-                    .catch(() => setLoading((prev) => ({ ...prev, cities: false })));
-            }
-        } else {
-            setCities([]);
-        }
-    }, [data.province, provinces, isNCR]);
-
-    // Load barangays when city/municipality changes
-    useEffect(() => {
-        if (data.municipality_city) {
-            const selected = cities.find((c) => c.name === data.municipality_city);
-            if (selected) {
-                setLoading((prev) => ({ ...prev, barangays: true }));
-                fetch(`https://psgc.gitlab.io/api/cities-municipalities/${selected.code}/barangays/`)
-                    .then((res) => res.json())
-                    .then((list: Barangay[]) => {
-                        setBarangays(list.sort((a, b) => a.name.localeCompare(b.name)));
-                        setLoading((prev) => ({ ...prev, barangays: false }));
-                    })
-                    .catch(() => setLoading((prev) => ({ ...prev, barangays: false })));
-            }
-        } else {
-            setBarangays([]);
-        }
-    }, [data.municipality_city, cities]);
-
     // Return to step with first error
     useEffect(() => {
         const steps = (Object.keys(errors) as FieldName[]).map((f) => FIELD_STEP[f]).filter(Boolean) as number[];
         if (steps.length) setStep(Math.min(...steps));
     }, [errors]);
+
+    // Auto-fill for testing
+    const autoFill = () => {
+        setData({
+            ...data,
+            company_name: 'Mimoo Express Courier Services Inc.',
+            trade_name: 'Mimoo Express',
+            business_registration_number: 'SEC-2024-0000123',
+            business_address: '123 Courier Street, Barangay San Miguel, Makati City, Metro Manila',
+            business_email: 'info@mimooexpress.ph',
+            company_contact_number: '09171234567',
+            company_website: 'https://www.mimooexpress.ph',
+            rep_full_name: 'Juan Dela Cruz',
+            rep_position: 'Operations Manager',
+            rep_email: 'juan.delacruz@mimooexpress.ph',
+            rep_contact_number: '09178765432',
+            username: 'jdelacruz_mimoo',
+            password: 'TestPass123!',
+            password_confirmation: 'TestPass123!',
+            regions_served: 'NCR, Region III, Region IV-A',
+            provinces_served: 'Metro Manila, Bulacan, Cavite, Laguna',
+            cities_served: 'Manila, Quezon City, Makati, Taguig, Pasig, San Jose Del Monte, Bacoor, Santa Rosa',
+            delivery_services: 'Same-Day Delivery, Next-Day Delivery, Standard Delivery, Express Delivery, COD Service',
+            pickup_available: 'yes',
+            estimated_delivery_time: '1-3 business days (Standard), Same day (Express)',
+        });
+    };
 
     const set = <K extends FieldName>(key: K, value: FormShape[K]) => {
         setData(key, value as any);
@@ -447,10 +412,10 @@ export default function CourierRegistration() {
         setClientErrors({});
         if (step < TOTAL_STEPS) goTo(step + 1);
         else {
-            const email = data.email.trim();
+            const email = data.rep_email.trim();
             
             setTimeout(() => {
-                post('/register', {
+                post('/register/courier-company', {
                     forceFormData: true,
                     onSuccess: () => {
                         window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
@@ -477,7 +442,7 @@ export default function CourierRegistration() {
 
     const focusField = (f: FieldName) => document.getElementById(f)?.focus();
 
-    const stepTitles = ['Personal Information', 'Residential Address', 'Vehicle Information', 'Documents & Account'];
+    const stepTitles = ['Company Information', 'Authorized Representative', 'Business Documents', 'Service Coverage'];
 
     return (
         <div className="flex flex-col lg:flex-row min-h-screen overflow-hidden" style={fontPoppins}>
@@ -515,10 +480,10 @@ export default function CourierRegistration() {
 
                 <div className="relative z-10">
                     <h2 className="text-[1.7rem] leading-tight font-black mb-2.5" style={fontCalibri}>
-                        Register as a Courier
+                        Register as Courier Company
                     </h2>
                     <p className="text-[0.95rem] text-[#CEC6E6] max-w-[34ch]">
-                        Join our courier network. Your application will be reviewed by the logistics/sorting center.
+                        Register your courier company. Your application will be reviewed by the admin.
                     </p>
                 </div>
 
@@ -547,19 +512,30 @@ export default function CourierRegistration() {
                 </div>
 
                 <p className="relative z-10 border-t border-white/10 pt-4 text-[0.78rem] text-[#B4A7D6]">
-                    After submitting, wait for the Logistic/Sorting Center's approval via email.
+                    After submitting, wait for admin approval, which will be sent to your email.
                 </p>
             </aside>
 
             {/* Main content */}
             <div className="flex-1 min-h-screen lg:h-screen overflow-y-auto bg-[#F8F6FC] p-4 sm:p-6 md:p-8 lg:p-12 xl:p-16">
                 <div className="max-w-3xl mx-auto lg:mx-0">
-                    <h2 className="text-xl md:text-2xl font-bold text-gray-900" style={fontSyncopate}>
-                        courier registration
-                    </h2>
-                    <p className="text-gray-500 mt-1 text-sm">
-                        For delivery riders and drivers.
-                    </p>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="text-xl md:text-2xl font-bold text-gray-900" style={fontSyncopate}>
+                                courier company registration
+                            </h2>
+                            <p className="text-gray-500 mt-1 text-sm">
+                                Register your courier/logistics company.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={autoFill}
+                            className="shrink-0 px-4 py-2 bg-yellow-400 text-gray-900 text-xs font-semibold rounded-lg hover:bg-yellow-500 transition"
+                        >
+                            Auto-fill (Test)
+                        </button>
+                    </div>
                     <p className="text-gray-500 mt-1 text-xs">
                         Fields marked <span className="text-red-600">*</span> are required.
                     </p>
@@ -592,277 +568,174 @@ export default function CourierRegistration() {
                             Step {step} · {stepTitles[step - 1]}
                         </h3>
 
-                        {/* STEP 1: Personal Information */}
+                        {/* STEP 1: Company Information */}
                         {step === 1 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <Field label="First name" htmlFor="first_name" required error={err('first_name')}>
+                            <div className="space-y-5">
+                                <Field label="Courier Company Name" htmlFor="company_name" required error={err('company_name')}>
                                     <input
-                                        id="first_name"
+                                        id="company_name"
                                         type="text"
-                                        value={data.first_name}
-                                        onChange={(e) => set('first_name', e.target.value)}
-                                        autoComplete="given-name"
-                                        className={inputCls(err('first_name'))}
+                                        value={data.company_name}
+                                        onChange={(e) => set('company_name', e.target.value)}
+                                        autoComplete="organization"
+                                        placeholder="e.g., ABC Logistics Inc."
+                                        className={inputCls(err('company_name'))}
                                     />
                                 </Field>
 
-                                <Field label="Last name" htmlFor="last_name" required error={err('last_name')}>
+                                <Field label="Business / Trade Name" htmlFor="trade_name" required error={err('trade_name')}>
                                     <input
-                                        id="last_name"
+                                        id="trade_name"
                                         type="text"
-                                        value={data.last_name}
-                                        onChange={(e) => set('last_name', e.target.value)}
-                                        autoComplete="family-name"
-                                        className={inputCls(err('last_name'))}
+                                        value={data.trade_name}
+                                        onChange={(e) => set('trade_name', e.target.value)}
+                                        placeholder="e.g., ABC Express"
+                                        className={inputCls(err('trade_name'))}
                                     />
                                 </Field>
 
-                                <Field label="Middle initial" htmlFor="middle_initial">
+                                <FileField
+                                    id="company_logo"
+                                    label="Company Logo"
+                                    hint="PDF, JPG, or PNG (Max 5MB) - Optional"
+                                    file={data.company_logo}
+                                    error={err('company_logo')}
+                                    onPick={(f) => set('company_logo', f)}
+                                />
+
+                                <Field label="Business Registration Number" htmlFor="business_registration_number" required error={err('business_registration_number')}>
                                     <input
-                                        id="middle_initial"
+                                        id="business_registration_number"
                                         type="text"
-                                        maxLength={2}
-                                        placeholder="e.g. D"
-                                        value={data.middle_initial}
-                                        onChange={(e) => set('middle_initial', e.target.value.toUpperCase())}
+                                        value={data.business_registration_number}
+                                        onChange={(e) => set('business_registration_number', e.target.value)}
+                                        placeholder="e.g., SEC-2024-0000123 or DTI-12345678"
+                                        className={inputCls(err('business_registration_number'))}
+                                    />
+                                </Field>
+
+                                <Field label="Business Address" htmlFor="business_address" required error={err('business_address')} hint="Complete business address including barangay, city, and province">
+                                    <textarea
+                                        id="business_address"
+                                        rows={3}
+                                        value={data.business_address}
+                                        onChange={(e) => set('business_address', e.target.value)}
+                                        placeholder="e.g., 123 Main Street, Barangay Centro, Makati City, Metro Manila"
+                                        className={inputCls(err('business_address'))}
+                                    />
+                                </Field>
+
+                                <Field label="Business Email Address" htmlFor="business_email" required error={err('business_email')}>
+                                    <input
+                                        id="business_email"
+                                        type="email"
+                                        value={data.business_email}
+                                        onChange={(e) => set('business_email', e.target.value)}
+                                        autoComplete="email"
+                                        placeholder="info@yourcompany.ph"
+                                        className={inputCls(err('business_email'))}
+                                    />
+                                </Field>
+
+                                <Field label="Official Contact Number" htmlFor="company_contact_number" required error={err('company_contact_number')} hint="09XXXXXXXXX or +639XXXXXXXXX">
+                                    <input
+                                        id="company_contact_number"
+                                        type="tel"
+                                        inputMode="numeric"
+                                        maxLength={13}
+                                        value={data.company_contact_number}
+                                        onChange={(e) => set('company_contact_number', e.target.value.replace(/[^\d+]/g, ''))}
+                                        autoComplete="tel"
+                                        placeholder="09XXXXXXXXX"
+                                        className={inputCls(err('company_contact_number'))}
+                                    />
+                                </Field>
+
+                                <Field label="Company Website" htmlFor="company_website" hint="Optional">
+                                    <input
+                                        id="company_website"
+                                        type="url"
+                                        value={data.company_website}
+                                        onChange={(e) => set('company_website', e.target.value)}
+                                        placeholder="https://www.yourcompany.ph"
                                         className={inputCls()}
                                     />
                                 </Field>
-
-                                <div className="flex flex-col gap-1.5">
-                                    <span id="sex-label" className="text-sm font-medium text-gray-800">
-                                        Sex <span className="text-red-600" aria-hidden="true">*</span>
-                                    </span>
-                                    <div role="radiogroup" aria-labelledby="sex-label" className="flex gap-5 py-2.5">
-                                        {['male', 'female'].map((v, i) => (
-                                            <label key={v} className="flex items-center gap-2 text-sm capitalize text-gray-800 cursor-pointer">
-                                                <input
-                                                    type="radio"
-                                                    id={i === 0 ? 'sex' : undefined}
-                                                    name="sex"
-                                                    value={v}
-                                                    checked={data.sex === v}
-                                                    onChange={() => set('sex', v)}
-                                                    className="w-4 h-4 accent-[#3B1F6B] cursor-pointer"
-                                                />
-                                                {v}
-                                            </label>
-                                        ))}
-                                    </div>
-                                    {err('sex') && <span className="text-xs font-medium text-red-600" role="alert">{err('sex')}</span>}
-                                </div>
-
-                                <Field label="Email address" htmlFor="email" required error={err('email')} className="sm:col-span-2">
-                                    <input
-                                        id="email"
-                                        type="email"
-                                        placeholder="you@example.com"
-                                        value={data.email}
-                                        onChange={(e) => set('email', e.target.value)}
-                                        autoComplete="email"
-                                        className={inputCls(err('email'))}
-                                    />
-                                </Field>
-
-                                <Field label="Contact number" htmlFor="contact_number" required error={err('contact_number')} hint="09XXXXXXXXX or +639XXXXXXXXX">
-                                    <input
-                                        id="contact_number"
-                                        type="tel"
-                                        inputMode="numeric"
-                                        placeholder="09XXXXXXXXX"
-                                        maxLength={13}
-                                        value={data.contact_number}
-                                        onChange={(e) => set('contact_number', e.target.value.replace(/[^\d+]/g, ''))}
-                                        autoComplete="tel"
-                                        className={inputCls(err('contact_number'))}
-                                    />
-                                </Field>
-
-                                <Field label="Birthday" htmlFor="birthday" required error={err('birthday')}>
-                                    <input
-                                        id="birthday"
-                                        type="date"
-                                        max={new Date().toISOString().split('T')[0]}
-                                        value={data.birthday}
-                                        onChange={(e) => set('birthday', e.target.value)}
-                                        autoComplete="bday"
-                                        className={inputCls(err('birthday'))}
-                                    />
-                                </Field>
-
-                                <Field label="Age" htmlFor="age" hint="Calculated from your birthday">
-                                    <input
-                                        id="age"
-                                        readOnly
-                                        placeholder="Auto-filled"
-                                        value={age ? `${age} years old` : ''}
-                                        className={`${inputCls()} bg-[#F1EDFB] text-gray-500`}
-                                    />
-                                </Field>
                             </div>
                         )}
 
-                        {/* STEP 2: Address */}
+                        {/* STEP 2: Authorized Representative */}
                         {step === 2 && (
                             <div className="space-y-5">
-                                <Field label="Region" htmlFor="region" required error={err('region')}>
-                                    <select
-                                        id="region"
-                                        value={data.region}
-                                        onChange={(e) => {
-                                            set('region', e.target.value);
-                                            set('province', '');
-                                            set('district', '');
-                                            set('municipality_city', '');
-                                            set('barangay', '');
-                                        }}
-                                        disabled={loading.regions}
-                                        className={inputCls(err('region'))}
-                                    >
-                                        <option value="">Select region</option>
-                                        {regions.map((r) => (
-                                            <option key={r.code} value={r.name}>{r.name}</option>
-                                        ))}
-                                    </select>
-                                </Field>
+                                <div className="rounded-xl bg-blue-50 border border-blue-200 p-4 text-sm text-blue-900">
+                                    <p className="font-semibold mb-1">ℹ️ Important Note:</p>
+                                    <p>This person will be responsible for the courier account. Each authorized representative should have their own login credentials.</p>
+                                </div>
 
-                                {isNCR ? (
-                                    <Field label="District" htmlFor="district" required error={err('district')}>
-                                        <select
-                                            id="district"
-                                            value={data.district}
-                                            onChange={(e) => {
-                                                set('district', e.target.value);
-                                                set('municipality_city', '');
-                                                set('barangay', '');
-                                            }}
-                                            className={inputCls(err('district'))}
-                                        >
-                                            <option value="">Select district</option>
-                                            {NCR_DISTRICTS.map((d) => (
-                                                <option key={d} value={d}>{d}</option>
-                                            ))}
-                                        </select>
-                                    </Field>
-                                ) : (
-                                    <Field label="Province" htmlFor="province" required error={err('province')}>
-                                        <select
-                                            id="province"
-                                            value={data.province}
-                                            onChange={(e) => {
-                                                set('province', e.target.value);
-                                                set('municipality_city', '');
-                                                set('barangay', '');
-                                            }}
-                                            disabled={loading.provinces || !data.region}
-                                            className={inputCls(err('province'))}
-                                        >
-                                            <option value="">Select province</option>
-                                            {provinces.map((p) => (
-                                                <option key={p.code} value={p.name}>{p.name}</option>
-                                            ))}
-                                        </select>
-                                    </Field>
-                                )}
-
-                                <Field label="City / Municipality" htmlFor="municipality_city" required error={err('municipality_city')}>
-                                    <select
-                                        id="municipality_city"
-                                        value={data.municipality_city}
-                                        onChange={(e) => {
-                                            set('municipality_city', e.target.value);
-                                            set('barangay', '');
-                                        }}
-                                        disabled={loading.cities || (!isNCR && !data.province) || (isNCR && !data.district)}
-                                        className={inputCls(err('municipality_city'))}
-                                    >
-                                        <option value="">Select city/municipality</option>
-                                        {cities.map((c) => (
-                                            <option key={c.code} value={c.name}>{c.name}</option>
-                                        ))}
-                                    </select>
-                                </Field>
-
-                                <Field label="Barangay" htmlFor="barangay" required error={err('barangay')}>
-                                    <select
-                                        id="barangay"
-                                        value={data.barangay}
-                                        onChange={(e) => set('barangay', e.target.value)}
-                                        disabled={loading.barangays || !data.municipality_city}
-                                        className={inputCls(err('barangay'))}
-                                    >
-                                        <option value="">Select barangay</option>
-                                        {barangays.map((b) => (
-                                            <option key={b.code} value={b.name}>{b.name}</option>
-                                        ))}
-                                    </select>
-                                </Field>
-
-                                <Field label="Street Address" htmlFor="street_address" required error={err('street_address')} hint="House number, street name, subdivision, etc.">
+                                <Field label="Full Name" htmlFor="rep_full_name" required error={err('rep_full_name')}>
                                     <input
-                                        id="street_address"
+                                        id="rep_full_name"
                                         type="text"
-                                        value={data.street_address}
-                                        onChange={(e) => set('street_address', e.target.value)}
-                                        className={inputCls(err('street_address'))}
-                                        placeholder="e.g., 123 Main Street, Greenfield Subdivision"
-                                    />
-                                </Field>
-                            </div>
-                        )}
-
-                        {/* STEP 3: Vehicle Information */}
-                        {step === 3 && (
-                            <div className="space-y-5">
-                                <Field label="Choose Vehicle" htmlFor="vehicle_type" required error={err('vehicle_type')}>
-                                    <select
-                                        id="vehicle_type"
-                                        value={data.vehicle_type}
-                                        onChange={(e) => set('vehicle_type', e.target.value)}
-                                        className={inputCls(err('vehicle_type'))}
-                                    >
-                                        <option value="">Select vehicle type</option>
-                                        {VEHICLE_TYPES.map((v) => (
-                                            <option key={v} value={v}>{v}</option>
-                                        ))}
-                                    </select>
-                                </Field>
-
-                                <Field label="Enter Plate Number" htmlFor="plate_number" required error={err('plate_number')}>
-                                    <input
-                                        id="plate_number"
-                                        type="text"
-                                        value={data.plate_number}
-                                        onChange={(e) => set('plate_number', e.target.value.toUpperCase())}
-                                        className={inputCls(err('plate_number'))}
-                                        placeholder="e.g., ABC 1234"
+                                        value={data.rep_full_name}
+                                        onChange={(e) => set('rep_full_name', e.target.value)}
+                                        autoComplete="name"
+                                        placeholder="e.g., Juan Dela Cruz"
+                                        className={inputCls(err('rep_full_name'))}
                                     />
                                 </Field>
 
-                                <FileField
-                                    id="or_cr_document"
-                                    label="Upload OR/CR"
-                                    hint="PDF, JPG, or PNG (Max 5MB)"
-                                    file={data.or_cr_document}
-                                    error={err('or_cr_document')}
-                                    onPick={(f) => set('or_cr_document', f)}
-                                    required
-                                />
-                            </div>
-                        )}
+                                <Field label="Position / Designation" htmlFor="rep_position" required error={err('rep_position')}>
+                                    <input
+                                        id="rep_position"
+                                        type="text"
+                                        value={data.rep_position}
+                                        onChange={(e) => set('rep_position', e.target.value)}
+                                        placeholder="e.g., Operations Manager, CEO"
+                                        className={inputCls(err('rep_position'))}
+                                    />
+                                </Field>
 
-                        {/* STEP 4: Documents & Password */}
-                        {step === 4 && (
-                            <div className="space-y-5">
-                                <FileField
-                                    id="drivers_license"
-                                    label="Upload ID / Driver's License"
-                                    hint="PDF, JPG, or PNG (Max 5MB)"
-                                    file={data.drivers_license}
-                                    error={err('drivers_license')}
-                                    onPick={(f) => set('drivers_license', f)}
-                                    required
-                                />
+                                <Field label="Email Address" htmlFor="rep_email" required error={err('rep_email')}>
+                                    <input
+                                        id="rep_email"
+                                        type="email"
+                                        value={data.rep_email}
+                                        onChange={(e) => set('rep_email', e.target.value)}
+                                        autoComplete="email"
+                                        placeholder="representative@yourcompany.ph"
+                                        className={inputCls(err('rep_email'))}
+                                    />
+                                </Field>
+
+                                <Field label="Contact Number" htmlFor="rep_contact_number" required error={err('rep_contact_number')} hint="09XXXXXXXXX or +639XXXXXXXXX">
+                                    <input
+                                        id="rep_contact_number"
+                                        type="tel"
+                                        inputMode="numeric"
+                                        maxLength={13}
+                                        value={data.rep_contact_number}
+                                        onChange={(e) => set('rep_contact_number', e.target.value.replace(/[^\d+]/g, ''))}
+                                        autoComplete="tel"
+                                        placeholder="09XXXXXXXXX"
+                                        className={inputCls(err('rep_contact_number'))}
+                                    />
+                                </Field>
+
+                                <div className="border-t border-gray-200 pt-4 mt-6">
+                                    <h4 className="text-sm font-semibold text-gray-800 mb-3">Account Credentials</h4>
+                                </div>
+
+                                <Field label="Username" htmlFor="username" required error={err('username')} hint="Minimum 4 characters">
+                                    <input
+                                        id="username"
+                                        type="text"
+                                        value={data.username}
+                                        onChange={(e) => set('username', e.target.value)}
+                                        autoComplete="username"
+                                        placeholder="e.g., jdelacruz_courier"
+                                        className={inputCls(err('username'))}
+                                    />
+                                </Field>
 
                                 <Field label="Password" htmlFor="password" required error={err('password')}>
                                     <PasswordInput
@@ -883,8 +756,146 @@ export default function CourierRegistration() {
                                         autoComplete="new-password"
                                     />
                                 </Field>
+                            </div>
+                        )}
 
-                                <div className="rounded-xl bg-[#F1EDFB] border border-[#DDD5EE] p-4">
+                        {/* STEP 3: Business Documents */}
+                        {step === 3 && (
+                            <div className="space-y-5">
+                                <div className="rounded-xl bg-yellow-50 border border-yellow-200 p-4 text-sm text-yellow-900">
+                                    <p className="font-semibold mb-1">📋 Required for approval</p>
+                                    <p>Admin will review uploaded documents and approve or reject the application.</p>
+                                </div>
+
+                                <FileField
+                                    id="dti_sec_certificate"
+                                    label="DTI or SEC Registration Certificate"
+                                    hint="PDF, JPG, or PNG (Max 5MB)"
+                                    file={data.dti_sec_certificate}
+                                    error={err('dti_sec_certificate')}
+                                    onPick={(f) => set('dti_sec_certificate', f)}
+                                    required
+                                />
+
+                                <FileField
+                                    id="mayors_permit"
+                                    label="Mayor's / Business Permit"
+                                    hint="PDF, JPG, or PNG (Max 5MB)"
+                                    file={data.mayors_permit}
+                                    error={err('mayors_permit')}
+                                    onPick={(f) => set('mayors_permit', f)}
+                                    required
+                                />
+
+                                <FileField
+                                    id="operating_permits"
+                                    label="Other Applicable Operating Permits or Licenses"
+                                    hint="PDF, JPG, or PNG (Max 5MB) - Optional"
+                                    file={data.operating_permits}
+                                    error={err('operating_permits')}
+                                    onPick={(f) => set('operating_permits', f)}
+                                />
+
+                                <FileField
+                                    id="rep_valid_id"
+                                    label="Valid ID of Authorized Representative"
+                                    hint="PDF, JPG, or PNG (Max 5MB)"
+                                    file={data.rep_valid_id}
+                                    error={err('rep_valid_id')}
+                                    onPick={(f) => set('rep_valid_id', f)}
+                                    required
+                                />
+
+                                <FileField
+                                    id="proof_of_address"
+                                    label="Proof of Business Address"
+                                    hint="PDF, JPG, or PNG (Max 5MB)"
+                                    file={data.proof_of_address}
+                                    error={err('proof_of_address')}
+                                    onPick={(f) => set('proof_of_address', f)}
+                                    required
+                                />
+                            </div>
+                        )}
+
+                        {/* STEP 4: Service Coverage */}
+                        {step === 4 && (
+                            <div className="space-y-5">
+                                <div className="rounded-xl bg-purple-50 border border-purple-200 p-4 text-sm text-purple-900">
+                                    <p className="font-semibold mb-1">📍 Operational Details</p>
+                                    <p>Tell us about your service coverage and delivery capabilities.</p>
+                                </div>
+
+                                <Field label="Regions Served" htmlFor="regions_served" required error={err('regions_served')} hint="e.g., NCR, Region III, Region IV-A">
+                                    <textarea
+                                        id="regions_served"
+                                        rows={2}
+                                        value={data.regions_served}
+                                        onChange={(e) => set('regions_served', e.target.value)}
+                                        placeholder="List the regions where you operate"
+                                        className={inputCls(err('regions_served'))}
+                                    />
+                                </Field>
+
+                                <Field label="Provinces Served" htmlFor="provinces_served" required error={err('provinces_served')} hint="e.g., Metro Manila, Bulacan, Cavite">
+                                    <textarea
+                                        id="provinces_served"
+                                        rows={2}
+                                        value={data.provinces_served}
+                                        onChange={(e) => set('provinces_served', e.target.value)}
+                                        placeholder="List the provinces where you operate"
+                                        className={inputCls(err('provinces_served'))}
+                                    />
+                                </Field>
+
+                                <Field label="Cities / Municipalities Served" htmlFor="cities_served" required error={err('cities_served')} hint="e.g., Manila, Quezon City, Makati">
+                                    <textarea
+                                        id="cities_served"
+                                        rows={3}
+                                        value={data.cities_served}
+                                        onChange={(e) => set('cities_served', e.target.value)}
+                                        placeholder="List the cities/municipalities where you operate"
+                                        className={inputCls(err('cities_served'))}
+                                    />
+                                </Field>
+
+                                <Field label="Available Delivery Services" htmlFor="delivery_services" required error={err('delivery_services')} hint="e.g., Same-Day, Next-Day, Standard, COD">
+                                    <textarea
+                                        id="delivery_services"
+                                        rows={2}
+                                        value={data.delivery_services}
+                                        onChange={(e) => set('delivery_services', e.target.value)}
+                                        placeholder="List the delivery services you offer"
+                                        className={inputCls(err('delivery_services'))}
+                                    />
+                                </Field>
+
+                                <Field label="Pickup Availability" htmlFor="pickup_available" required error={err('pickup_available')}>
+                                    <select
+                                        id="pickup_available"
+                                        value={data.pickup_available}
+                                        onChange={(e) => set('pickup_available', e.target.value)}
+                                        className={inputCls(err('pickup_available'))}
+                                    >
+                                        <option value="">Select pickup availability</option>
+                                        <option value="yes">Yes, we offer pickup service</option>
+                                        <option value="no">No, drop-off only</option>
+                                        <option value="selected_areas">Available in selected areas only</option>
+                                    </select>
+                                </Field>
+
+                                <Field label="Estimated Delivery Time" htmlFor="estimated_delivery_time" hint="Optional">
+                                    <input
+                                        id="estimated_delivery_time"
+                                        type="text"
+                                        value={data.estimated_delivery_time}
+                                        onChange={(e) => set('estimated_delivery_time', e.target.value)}
+                                        placeholder="e.g., 1-3 business days, Same day for Metro Manila"
+                                        className={inputCls()}
+                                    />
+                                </Field>
+
+                                <div className="rounded-xl bg-[#F1EDFB] border border-[#DDD5EE] p-4 mt-6">
                                     <label className="flex items-start gap-3 cursor-pointer">
                                         <input
                                             type="checkbox"
@@ -897,7 +908,7 @@ export default function CourierRegistration() {
                                             <Link href="/privacy-policy" target="_blank" className="text-[#3B1F6B] font-semibold hover:underline">
                                                 Privacy Policy
                                             </Link>
-                                            {' '}and understand that my application will be reviewed by the logistics/sorting center.
+                                            {' '}and understand that my application will be reviewed by the admin.
                                         </span>
                                     </label>
                                     {err('privacy_policy_accepted') && (
@@ -907,7 +918,7 @@ export default function CourierRegistration() {
 
                                 <div className="rounded-xl bg-blue-50 border border-blue-200 p-4 text-sm text-blue-900">
                                     <p className="font-semibold mb-1">📧 After submission:</p>
-                                    <p>Please wait for the Logistic/Sorting Center's approval, which will be sent to your email.</p>
+                                    <p>Please wait for admin approval, which will be sent to your representative's email address.</p>
                                 </div>
                             </div>
                         )}

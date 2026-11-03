@@ -79,6 +79,29 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::get('/logistics/incoming-parcels', function () {
         $user = auth()->user();
         
+        // Fetch real orders with status "in_transit" from database
+        $incomingOrders = \App\Models\Order::where('status', 'in_transit')
+            ->with(['items.product', 'user'])
+            ->orderBy('updated_at', 'desc')
+            ->get()
+            ->map(function ($order) {
+                return [
+                    'id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'waybill_number' => $order->waybill_number,
+                    'buyer_name' => $order->user->name ?? 'N/A',
+                    'buyer_phone' => $order->contact_number,
+                    'buyer_address' => $order->shipping_address,
+                    'seller_name' => $order->items->first()->product->user->name ?? 'N/A',
+                    'total_amount' => $order->total_amount,
+                    'payment_method' => $order->payment_method,
+                    'items_count' => $order->items->count(),
+                    'weight' => $order->weight ?? 0,
+                    'shipped_at' => $order->updated_at->format('M d, Y H:i'),
+                    'status' => 'awaiting_sort',
+                ];
+            });
+        
         return Inertia::render('logistics/IncomingParcels', [
             'auth' => [
                 'user' => [
@@ -92,8 +115,50 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
                 'name' => $user->company_name ?? $user->business_name,
                 'contact_person' => trim($user->contact_first_name . ' ' . $user->contact_last_name),
             ],
+            'incomingParcels' => $incomingOrders,
         ]);
     })->name('logistics.incoming-parcels');
+    
+    // Logistics Courier Applications
+    Route::get('/logistics/courier-applications', function () {
+        $user = auth()->user();
+        
+        // Mock data for now - replace with real data later
+        $applications = [
+            [
+                'id' => 1,
+                'company_name' => 'Mimoo Express Courier Services Inc.',
+                'trade_name' => 'Mimoo Express',
+                'business_email' => 'info@mimooexpress.ph',
+                'rep_full_name' => 'Juan Dela Cruz',
+                'rep_position' => 'Operations Manager',
+                'status' => 'pending',
+                'submitted_at' => 'Nov 3, 2026',
+            ],
+            [
+                'id' => 2,
+                'company_name' => 'Swift Logistics Corporation',
+                'trade_name' => 'Swift Delivery',
+                'business_email' => 'contact@swiftlogistics.ph',
+                'rep_full_name' => 'Maria Santos',
+                'rep_position' => 'CEO',
+                'status' => 'approved',
+                'submitted_at' => 'Nov 1, 2026',
+            ],
+        ];
+        
+        return Inertia::render('logistics/CourierApplications', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'applications' => $applications,
+        ]);
+    })->name('logistics.courier-applications');
     
     // Logistics Sort & Assign
     Route::get('/logistics/sort-assign', function () {

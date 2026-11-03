@@ -74,13 +74,11 @@ const LABEL: Record<Stage, string> = {
   cancelled: "Cancelled",
 };
 const PILL: Record<Stage, string> = { new: "gold", to_prepare: "gold", awaiting_pickup: "logi", in_transit: "accent", delivered: "ok", cancelled: "bad" };
-const NEXT: Record<string, Stage | undefined> = { accept: "to_prepare", pack: "awaiting_pickup", pickup: "in_transit" };
+const NEXT: Record<string, Stage | undefined> = { accept: "to_prepare", pack: "in_transit" };
 const DONE_MSG: Record<string, string> = {
   accept: "Order accepted. Now preparing.",
-  pack: "Order packed. Ready for courier pickup.",
-  pickup: "Handed to courier. Tracking started.",
+  pack: "Order packed and shipped. Now in transit to buyer.",
 };
-const COURIERS = ["Sunrise Sorting Hub", "Golden Arrow Logistics"];
 
 const peso = (n: number) => "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const subtotal = (o: SellerOrder) => o.items.reduce((s, i) => s + i.qty * i.price, 0);
@@ -188,8 +186,6 @@ function OrderModal({
 }) {
   const [packed, setPacked] = useState<boolean[]>(() => order.items.map(() => false));
   const [weight, setWeight] = useState<string>(String(defaultWeight(order)));
-  const [courier, setCourier] = useState(COURIERS[0]);
-  const [pickupDate, setPickupDate] = useState(() => new Date(Date.now() + 86400000).toISOString().slice(0, 10));
 
   const packedCount = packed.filter(Boolean).length;
   const w = parseFloat(weight) > 0 ? parseFloat(weight) : defaultWeight(order);
@@ -216,10 +212,7 @@ function OrderModal({
           <div className="stage-note gold"><IWarn /><span>New order. Review the details, then accept it to start preparing.</span></div>
         )}
         {order.stage === "to_prepare" && (
-          <div className="stage-note gold"><IBox /><span>Pack every item, confirm the parcel weight, then print the waybill before courier pickup.</span></div>
-        )}
-        {order.stage === "awaiting_pickup" && (
-          <div className="stage-note logi">{TAB_ICON.awaiting_pickup}<span>Packed and ready. Schedule a courier pickup to hand this order over.</span></div>
+          <div className="stage-note gold"><IBox /><span>Pack every item, confirm the parcel weight, then print the waybill. Once packed, mark as shipped.</span></div>
         )}
         {order.stage === "in_transit" && (
           <div className="stage-note accent">{TAB_ICON.in_transit}<span>In transit. You'll be notified once the buyer receives this order.</span></div>
@@ -322,22 +315,6 @@ function OrderModal({
           </>
         )}
 
-        {order.stage === "awaiting_pickup" && (
-          <div className="detail-section">
-            <h4>Schedule courier pickup</h4>
-            <div className="pickup-form">
-              <div className="field">
-                <label htmlFor="cr">Courier</label>
-                <select id="cr" value={courier} onChange={(e) => setCourier(e.target.value)}>{COURIERS.map((c) => (<option key={c}>{c}</option>))}</select>
-              </div>
-              <div className="field">
-                <label htmlFor="pd">Pickup date</label>
-                <input id="pd" type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} />
-              </div>
-            </div>
-          </div>
-        )}
-
         {order.stage === "in_transit" && order.tracking && (
           <div className="detail-section">
             <h4>Shipment status</h4>
@@ -358,11 +335,8 @@ function OrderModal({
           {order.stage === "to_prepare" && (
             <>
               <button type="button" className="btn btn-ghost" onClick={() => onOpenWaybill(w)}><IPrint />{order.waybill_printed ? "View / reprint waybill" : "Print waybill"}</button>
-              <button type="button" className="btn btn-primary" disabled={busy} onClick={markPacked}><ICheck />Mark as packed</button>
+              <button type="button" className="btn btn-primary" disabled={busy} onClick={markPacked}><ICheck />Mark as packed & ship</button>
             </>
-          )}
-          {order.stage === "awaiting_pickup" && (
-            <button type="button" className="btn btn-primary" disabled={busy} onClick={() => onAct("pickup", { courier, pickup_date: pickupDate })}><ICheck />Confirm pickup</button>
           )}
           {(order.stage === "in_transit" || order.stage === "delivered" || order.stage === "cancelled") && (
             <button type="button" className="btn btn-ghost" onClick={onClose}>Close</button>

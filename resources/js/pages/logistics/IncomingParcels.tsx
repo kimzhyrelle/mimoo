@@ -4,6 +4,22 @@ import { ReactNode, useState, useRef, useEffect } from 'react';
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
 const fontSyne = { fontFamily: 'Syne, sans-serif' };
 
+interface IncomingParcel {
+    id: number;
+    order_number: string;
+    waybill_number: string;
+    buyer_name: string;
+    buyer_phone: string;
+    buyer_address: string;
+    seller_name: string;
+    total_amount: number;
+    payment_method: string;
+    items_count: number;
+    weight: number;
+    shipped_at: string;
+    status: string;
+}
+
 interface Props {
     auth: {
         user: {
@@ -17,9 +33,10 @@ interface Props {
         name: string;
         contact_person: string;
     };
+    incomingParcels: IncomingParcel[];
 }
 
-export default function IncomingParcels({ auth, company }: Props) {
+export default function IncomingParcels({ auth, company, incomingParcels = [] }: Props) {
     const [activeTab, setActiveTab] = useState('incoming-parcels');
     const [viewMode, setViewMode] = useState<'scanner' | 'pickup'>('scanner');
     const [selectedParcel, setSelectedParcel] = useState('#1013');
@@ -79,31 +96,6 @@ export default function IncomingParcels({ auth, company }: Props) {
             stopCamera();
         };
     }, [viewMode]);
-
-
-    const pickupSchedule = [
-        { route: 'Poblacion I', color: 'purple', rider: { initial: 'JR', name: 'J. Ramos' }, window: '9:10 AM - 11:00 AM', ready: '10:30 AM' },
-        { route: 'Bubukal', color: 'purple', rider: { initial: 'MC', name: 'M. Cruz' }, window: '9:10 AM - 11:30 AM', ready: '11:00 AM' },
-        { route: 'Palasan', color: 'green', rider: { initial: 'AS', name: 'A. Santos' }, window: '10:00 AM - 12:30 PM', ready: '11:30 AM' },
-        { route: 'Bagong Pook', color: 'teal', rider: { initial: 'CD', name: 'C. Delos Santos' }, window: '1:30 PM - 3:00 PM', ready: '2:30 PM' },
-        { route: 'Lumban', color: 'purple', rider: null, window: '1:30 PM - 3:30 PM', ready: '3:00 PM' }
-    ];
-
-    const dropOffParcels = [
-        { id: '#1011', seller: 'Min\'s Sari-Sari', dropped: 'JR "¢ J. Ramos', arrived: '07:21 AM' },
-        { id: '#1038', seller: 'TechZone Laguna', dropped: 'KV "¢ K. Villar', arrived: '07:24 AM' },
-        { id: '#1012', seller: 'CraftsbyLex', dropped: 'MC "¢ M. Cruz', arrived: '07:27 AM' },
-        { id: '#1026', seller: 'Ph Clothing Co.', dropped: 'FD "¢ F. Dela Cruz', arrived: '07:29 AM' },
-        { id: '#1013', seller: 'Barkly Kubo Snacks', dropped: 'AS "¢ A. Santos', arrived: '07:55 AM' }
-    ];
-
-    const lastScanned = [
-        { id: '#1046', name: 'Amorlan Tienda', tracking: '# 416-980', location: 'Northrop', time: '10:42 PM' },
-        { id: '#1072', name: 'Jose Rizal Mercado', tracking: '# 416-980', location: 'Northrop', time: '10:42 PM' },
-        { id: '#1006', name: 'Maria Clara Santos', tracking: '# 416-980', location: 'Palasan', time: '09:35 PM' },
-        { id: '#1037', name: 'Jose Rizal Mercado', tracking: '# 416-JKYJK2', location: 'Unserved', time: '09:19 PM' },
-        { id: '#1047', name: 'Maria Clara Santos', tracking: '# 416-980', location: 'Bagong Pook', time: '07:49 AM' }
-    ];
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: 'grid', href: '/logistics/dashboard' },
@@ -359,7 +351,7 @@ export default function IncomingParcels({ auth, company }: Props) {
                                                             : 'bg-[#E8E3F0] text-[#5B4B6E] hover:bg-[#D4CEE0]'
                                                     }`}
                                                 >
-                                                    {cameraActive ? '● Camera Active' : 'Start Camera'}
+                                                    {cameraActive ? '? Camera Active' : 'Start Camera'}
                                                 </button>
                                             </div>
                                             <div className="bg-[#1a1f3a] rounded-xl overflow-hidden relative w-full" style={{ minHeight: '500px', aspectRatio: '16/9' }}>
@@ -470,7 +462,7 @@ export default function IncomingParcels({ auth, company }: Props) {
                                                 <div className="col-span-2 space-y-3">
                                                     <div className="flex justify-between">
                                                         <span className="text-xs font-semibold text-gray-500">Arrival Time</span>
-                                                        <span className="text-sm font-medium">Oct 26, 2026 "” 07:21 AM</span>
+                                                        <span className="text-sm font-medium">Oct 26, 2026 "� 07:21 AM</span>
                                                     </div>
                                                     <div className="flex justify-between">
                                                         <span className="text-xs font-semibold text-gray-500">Contact Number</span>
@@ -499,7 +491,7 @@ export default function IncomingParcels({ auth, company }: Props) {
                                                         <div>
                                                             <div className="text-xs font-semibold text-gray-500 mb-1">ASSIGNMENT</div>
                                                             <div className="text-base font-bold text-gray-900">Target Bin: BIN-RO1</div>
-                                                            <div className="text-xs text-gray-600">Palasan "¢ Station Zone Sector 801</div>
+                                                            <div className="text-xs text-gray-600">Palasan "� Station Zone Sector 801</div>
                                                         </div>
                                                     </div>
                                                     <button className="px-3 py-1.5 bg-[#D4CEE0] text-[#5B4B6E] rounded-lg text-xs font-semibold">
@@ -526,60 +518,6 @@ export default function IncomingParcels({ auth, company }: Props) {
                                                 </button>
                                             </div>
                                         </div>
-
-                                        {/* Today's Pickup Schedule */}
-                                        <div className="border-t border-gray-200 pt-6 mt-6">
-                                            <div className="mb-4">
-                                                <h3 className="text-lg font-bold text-gray-900 mb-1" style={fontSyncopate}>Today's Pickup Schedule</h3>
-                                                <p className="text-sm text-gray-500">Sorted by cutoff time "” earliest first. Sellers must be ready before cutoff</p>
-                                            </div>
-                                            <div className="space-y-3">
-                                                {/* Table Header */}
-                                                <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 rounded-lg">
-                                                    <div className="col-span-3 text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>ROUTE / BARANGAY</div>
-                                                    <div className="col-span-2 text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>RIDER</div>
-                                                    <div className="col-span-4 text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>PICKUP WINDOW</div>
-                                                    <div className="col-span-2 text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>READY BY CUTOFF</div>
-                                                    <div className="col-span-1 text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>ACTION</div>
-                                                </div>
-                                                {/* Table Rows */}
-                                                {pickupSchedule.map((pickup, idx) => (
-                                                    <div key={idx} className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50 rounded-lg border border-gray-100">
-                                                        <div className="col-span-3 flex items-center gap-2">
-                                                            <div className={`w-2 h-2 rounded-full ${
-                                                                pickup.color === 'purple' ? 'bg-[#E8E3F0]' :
-                                                                pickup.color === 'green' ? 'bg-green-500' :
-                                                                'bg-teal-500'
-                                                            }`}></div>
-                                                            <span className="text-sm font-medium text-gray-900">{pickup.route}</span>
-                                                        </div>
-                                                        <div className="col-span-2 flex items-center">
-                                                            {pickup.rider ? (
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className="w-6 h-6 rounded-full bg-[#D4CEE0] text-[#5B4B6E] flex items-center justify-center text-xs font-bold">
-                                                                        {pickup.rider.initial}
-                                                                    </div>
-                                                                    <span className="text-sm text-gray-900">{pickup.rider.name}</span>
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-sm text-gray-400">"”</span>
-                                                            )}
-                                                        </div>
-                                                        <div className="col-span-4 flex items-center text-sm text-gray-600">
-                                                            {pickup.window}
-                                                        </div>
-                                                        <div className="col-span-2 flex items-center text-sm font-medium text-gray-900">
-                                                            {pickup.ready}
-                                                        </div>
-                                                        <div className="col-span-1 flex items-center justify-end">
-                                                            <button className="text-sm font-semibold text-[#5B4B6E] hover:underline">
-                                                                View
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -596,53 +534,25 @@ export default function IncomingParcels({ auth, company }: Props) {
                                             </svg>
                                         </button>
                                     </div>
-                                    <p className="text-sm text-gray-500 mb-6">Real-time incoming (last 1 hour)</p>
+                                    <p className="text-sm text-gray-500 mb-6">Orders in transit from sellers ({incomingParcels.length} parcels)</p>
                                     <div className="space-y-3">
-                                        {lastScanned.map((parcel, idx) => (
-                                            <div key={idx} className="bg-gray-50 rounded-lg p-4 hover:bg-[#E8E3F0] cursor-pointer transition">
-                                                <div className="flex items-start justify-between mb-2">
-                                                    <div className="font-bold text-gray-900">{parcel.id}</div>
-                                                    <div className="text-xs text-gray-500">{parcel.time}</div>
-                                                </div>
-                                                <div className="text-sm text-gray-900 mb-1">{parcel.name}</div>
-                                                <div className="text-xs text-gray-500">{parcel.tracking}</div>
-                                                <div className="text-xs text-gray-600 mt-2">{parcel.location}</div>
+                                        {incomingParcels.length === 0 ? (
+                                            <div className="text-center py-8">
+                                                <p className="text-sm text-gray-500">No incoming parcels yet</p>
                                             </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Drop-off Queue */}
-                                <div className="bg-white rounded-xl border border-gray-200 p-6 mt-6">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div>
-                                            <h3 className="text-lg font-bold text-gray-900" style={fontSyncopate}>Drop-off queue</h3>
-                                            <p className="text-sm text-gray-500">Parcels handed over by pickup riders at the hub door</p>
-                                        </div>
-                                    </div>
-                                    <button className="w-full px-4 py-3 bg-[#2B2249] text-white rounded-lg font-semibold hover:bg-[#2E2240] transition mb-6">
-                                        Show all arrived
-                                    </button>
-                                    <div className="space-y-3">
-                                        {dropOffParcels.map((parcel, idx) => (
-                                            <div key={idx} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-                                                <div>
-                                                    <div className="font-bold text-gray-900 mb-1">{parcel.id}</div>
-                                                    <div className="text-sm text-gray-600">{parcel.seller}</div>
-                                                    <div className="text-xs text-gray-500 mt-1">{parcel.dropped}</div>
+                                        ) : (
+                                            incomingParcels.slice(0, 5).map((parcel) => (
+                                                <div key={parcel.id} className="bg-gray-50 rounded-lg p-4 hover:bg-[#E8E3F0] cursor-pointer transition">
+                                                    <div className="flex items-start justify-between mb-2">
+                                                        <div className="font-bold text-gray-900">{parcel.order_number}</div>
+                                                        <div className="text-xs text-gray-500">{parcel.shipped_at.split(' ')[2]}</div>
+                                                    </div>
+                                                    <div className="text-sm text-gray-900 mb-1">{parcel.buyer_name}</div>
+                                                    <div className="text-xs text-gray-500">{parcel.waybill_number}</div>
+                                                    <div className="text-xs text-gray-600 mt-2">{parcel.buyer_address.substring(0, 30)}...</div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <div className="text-xs text-gray-500 mb-2">{parcel.arrived}</div>
-                                                    <button className="text-sm font-semibold text-[#5B4B6E] hover:underline">
-                                                        Scan
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-                                        <span>5 waiting</span>
-                                        <span>Sorting hub "” Bay 2</span>
+                                            ))
+                                        )}
                                     </div>
                                 </div>
                             </div>
