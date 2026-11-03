@@ -128,6 +128,7 @@ interface HomepageProps {
     search?: string;
     category?: string;
   };
+  vouchers?: any[];
 }
 
 // ---------------------------------------------------------------------------
@@ -304,18 +305,22 @@ function SuperSeratusBanner() {
   );
 }
 
-function VoucherCard({ code, title, discount, minPurchase, validUntil }: {
+function VoucherCard({ code, title, discount, minPurchase, validUntil, isClaimed, isUsed, onClaim }: {
   code: string;
   title: string;
   discount: string;
   minPurchase: number;
   validUntil: string;
+  isClaimed?: boolean;
+  isUsed?: boolean;
+  onClaim?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
 
   const copyCode = () => {
     navigator.clipboard.writeText(code);
     setCopied(true);
+    toast.success(`Voucher ${code} copied!`);
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -329,8 +334,24 @@ function VoucherCard({ code, title, discount, minPurchase, validUntil }: {
           </div>
         </div>
 
+        {/* Status Badge */}
+        {isUsed && (
+          <div className="absolute top-2 left-2">
+            <div className="bg-gray-400 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
+              Used
+            </div>
+          </div>
+        )}
+        {isClaimed && !isUsed && (
+          <div className="absolute top-2 left-2">
+            <div className="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
+              Claimed
+            </div>
+          </div>
+        )}
+
         {/* Title */}
-        <div className="mb-3">
+        <div className="mb-3 mt-6">
           <h3 className="font-bold text-violet-900 text-base">{title}</h3>
           <p className="text-xs text-violet-700 mt-0.5">
             Min. purchase: ₱{minPurchase.toLocaleString()}
@@ -343,12 +364,21 @@ function VoucherCard({ code, title, discount, minPurchase, validUntil }: {
             <span className="font-mono font-bold text-violet-900 text-lg tracking-wider">
               {code}
             </span>
-            <button
-              onClick={copyCode}
-              className="ml-2 px-3 py-1 bg-violet-600 text-white text-xs font-semibold rounded-md hover:bg-violet-700 transition-colors"
-            >
-              {copied ? '✓ Copied' : 'Copy'}
-            </button>
+            {isClaimed && !isUsed ? (
+              <button
+                onClick={copyCode}
+                className="ml-2 px-3 py-1 bg-violet-600 text-white text-xs font-semibold rounded-md hover:bg-violet-700 transition-colors"
+              >
+                {copied ? '✓ Copied' : 'Copy'}
+              </button>
+            ) : !isUsed && onClaim ? (
+              <button
+                onClick={onClaim}
+                className="ml-2 px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Claim
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -965,7 +995,7 @@ function Header({
 // Page
 // ---------------------------------------------------------------------------
 
-export default function Homepage({ auth, initialProducts = [], filters = {} }: HomepageProps) {
+export default function Homepage({ auth, initialProducts = [], filters = {}, vouchers = [] }: HomepageProps) {
   const user = auth?.user;
   
   const role: UserRole = user ? (user.account_type as UserRole) : "guest";
@@ -974,6 +1004,50 @@ export default function Homepage({ auth, initialProducts = [], filters = {} }: H
   const [cartCount, setCartCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [activeFilters, setActiveFilters] = useState(filters);
+  const [voucherList, setVoucherList] = useState(vouchers);
+
+  // Update products when initialProducts change (from server-side filtering)
+  useEffect(() => {
+    setProducts(initialProducts);
+  }, [initialProducts]);
+  
+  // Update vouchers when vouchers prop changes
+  useEffect(() => {
+    setVoucherList(vouchers);
+  }, [vouchers]);
+  
+  async function handleClaimVoucher(voucherId: number) {
+    if (!user) {
+      toast.error('Please login to claim vouchers');
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/vouchers/claim', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+        body: JSON.stringify({ voucher_id: voucherId }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast.success(data.message || 'Voucher claimed successfully!');
+        // Refresh vouchers
+        const voucherResponse = await fetch('/api/vouchers/available');
+        const voucherData = await voucherResponse.json();
+        setVoucherList(voucherData.vouchers || []);
+      } else {
+        toast.error(data.message || 'Failed to claim voucher');
+      }
+    } catch (error) {
+      console.error('Claim voucher error:', error);
+      toast.error('Failed to claim voucher');
+    }
+  }
 
   // Update products when initialProducts change (from server-side filtering)
   useEffect(() => {
@@ -1211,35 +1285,25 @@ export default function Homepage({ auth, initialProducts = [], filters = {} }: H
           <div className="relative -mx-2">
             <div className="flex gap-3 overflow-x-auto px-2 pb-2 snap-x snap-mandatory" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
               <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
-              {/* Sample Vouchers - Replace with real data */}
-              <VoucherCard
-                code="WELCOME10"
-                title="Welcome Discount"
-                discount="10% OFF"
-                minPurchase={500}
-                validUntil="Dec 31, 2026"
-              />
-              <VoucherCard
-                code="FREESHIP"
-                title="Free Shipping"
-                discount="₱0 Shipping"
-                minPurchase={1000}
-                validUntil="Nov 30, 2026"
-              />
-              <VoucherCard
-                code="SAVE100"
-                title="Save ₱100"
-                discount="₱100 OFF"
-                minPurchase={2000}
-                validUntil="Dec 15, 2026"
-              />
-              <VoucherCard
-                code="FLASH20"
-                title="Flash Sale"
-                discount="20% OFF"
-                minPurchase={1500}
-                validUntil="Nov 15, 2026"
-              />
+              {voucherList.length > 0 ? (
+                voucherList.map((voucher) => (
+                  <VoucherCard
+                    key={voucher.id}
+                    code={voucher.code}
+                    title={voucher.name}
+                    discount={voucher.type === 'percentage' ? `${voucher.value}% OFF` : `₱${voucher.value} OFF`}
+                    minPurchase={voucher.min_purchase}
+                    validUntil={voucher.valid_until_formatted}
+                    isClaimed={voucher.is_claimed}
+                    isUsed={voucher.is_used}
+                    onClaim={() => handleClaimVoucher(voucher.id)}
+                  />
+                ))
+              ) : (
+                <div className="w-full py-8 text-center text-sm text-neutral-500">
+                  No vouchers available at the moment
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -1322,11 +1386,19 @@ export default function Homepage({ auth, initialProducts = [], filters = {} }: H
 
         {/* Secondary banners */}
         <section className="mt-6 grid grid-cols-1 gap-2 sm:mt-8 sm:grid-cols-2 sm:gap-3">
-          <div className="flex min-h-24 items-center justify-center rounded-xl bg-neutral-200 text-xs font-medium text-neutral-400">
-            Promo banner
+          <div className="relative h-32 overflow-hidden rounded-xl bg-neutral-200">
+            <img
+              src="/images/pb 1.jpg"
+              alt="Promo Banner 1"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
           </div>
-          <div className="flex min-h-24 items-center justify-center rounded-xl bg-neutral-200 text-xs font-medium text-neutral-400">
-            Promo banner
+          <div className="relative h-32 overflow-hidden rounded-xl bg-neutral-200">
+            <img
+              src="/images/pb 2.jpg"
+              alt="Promo Banner 2"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
           </div>
         </section>
 

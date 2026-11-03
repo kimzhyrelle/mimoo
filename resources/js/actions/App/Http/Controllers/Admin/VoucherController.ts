@@ -55,6 +55,139 @@ validate.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     
     validate.form = validateForm
 /**
+* @see \App\Http\Controllers\Admin\VoucherController::available
+ * @see app/Http/Controllers/Admin/VoucherController.php:168
+ * @route '/api/vouchers/available'
+ */
+export const available = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: available.url(options),
+    method: 'get',
+})
+
+available.definition = {
+    methods: ["get","head"],
+    url: '/api/vouchers/available',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+* @see \App\Http\Controllers\Admin\VoucherController::available
+ * @see app/Http/Controllers/Admin/VoucherController.php:168
+ * @route '/api/vouchers/available'
+ */
+available.url = (options?: RouteQueryOptions) => {
+    return available.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Admin\VoucherController::available
+ * @see app/Http/Controllers/Admin/VoucherController.php:168
+ * @route '/api/vouchers/available'
+ */
+available.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: available.url(options),
+    method: 'get',
+})
+/**
+* @see \App\Http\Controllers\Admin\VoucherController::available
+ * @see app/Http/Controllers/Admin/VoucherController.php:168
+ * @route '/api/vouchers/available'
+ */
+available.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: available.url(options),
+    method: 'head',
+})
+
+    /**
+* @see \App\Http\Controllers\Admin\VoucherController::available
+ * @see app/Http/Controllers/Admin/VoucherController.php:168
+ * @route '/api/vouchers/available'
+ */
+    const availableForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: available.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\Admin\VoucherController::available
+ * @see app/Http/Controllers/Admin/VoucherController.php:168
+ * @route '/api/vouchers/available'
+ */
+        availableForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: available.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\Admin\VoucherController::available
+ * @see app/Http/Controllers/Admin/VoucherController.php:168
+ * @route '/api/vouchers/available'
+ */
+        availableForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: available.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    available.form = availableForm
+/**
+* @see \App\Http\Controllers\Admin\VoucherController::claim
+ * @see app/Http/Controllers/Admin/VoucherController.php:205
+ * @route '/api/vouchers/claim'
+ */
+export const claim = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: claim.url(options),
+    method: 'post',
+})
+
+claim.definition = {
+    methods: ["post"],
+    url: '/api/vouchers/claim',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\Admin\VoucherController::claim
+ * @see app/Http/Controllers/Admin/VoucherController.php:205
+ * @route '/api/vouchers/claim'
+ */
+claim.url = (options?: RouteQueryOptions) => {
+    return claim.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Admin\VoucherController::claim
+ * @see app/Http/Controllers/Admin/VoucherController.php:205
+ * @route '/api/vouchers/claim'
+ */
+claim.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: claim.url(options),
+    method: 'post',
+})
+
+    /**
+* @see \App\Http\Controllers\Admin\VoucherController::claim
+ * @see app/Http/Controllers/Admin/VoucherController.php:205
+ * @route '/api/vouchers/claim'
+ */
+    const claimForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: claim.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\Admin\VoucherController::claim
+ * @see app/Http/Controllers/Admin/VoucherController.php:205
+ * @route '/api/vouchers/claim'
+ */
+        claimForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: claim.url(options),
+            method: 'post',
+        })
+    
+    claim.form = claimForm
+/**
 * @see \App\Http\Controllers\Admin\VoucherController::index
  * @see app/Http/Controllers/Admin/VoucherController.php:12
  * @route '/admin/vouchers'
@@ -454,6 +587,6 @@ toggleStatus.patch = (args: { voucher: number | { id: number } } | [voucher: num
         })
     
     toggleStatus.form = toggleStatusForm
-const VoucherController = { validate, index, store, update, destroy, toggleStatus }
+const VoucherController = { validate, available, claim, index, store, update, destroy, toggleStatus }
 
 export default VoucherController

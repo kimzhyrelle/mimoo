@@ -163,4 +163,95 @@ class VoucherController extends Controller
             'message' => 'Voucher applied successfully!',
         ]);
     }
+
+    // Get available vouchers for current user
+    public function available()
+    {
+        $user = auth()->user();
+        
+        $vouchers = Voucher::where('status', 'active')
+            ->where('valid_from', '<=', now())
+            ->where('valid_until', '>=', now())
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($voucher) use ($user) {
+                // Check if user has already claimed this voucher
+                $userClaim = \App\Models\VoucherUsage::where('voucher_id', $voucher->id)
+                    ->where('user_id', $user->id)
+                    ->first();
+                
+                return [
+                    'id' => $voucher->id,
+                    'code' => $voucher->code,
+                    'name' => $voucher->name,
+                    'description' => $voucher->description,
+                    'type' => $voucher->type,
+                    'value' => $voucher->value,
+                    'min_purchase' => $voucher->min_purchase,
+                    'max_discount' => $voucher->max_discount,
+                    'is_claimed' => $userClaim !== null,
+                    'is_used' => $userClaim && $userClaim->used_at !== null,
+                    'claimed_at' => $userClaim?->claimed_at?->format('M d, Y'),
+                    'used_at' => $userClaim?->used_at?->format('M d, Y'),
+                ];
+            });
+
+        return response()->json([
+            'vouchers' => $vouchers,
+        ]);
+    }
+    
+    // Claim a voucher
+    public function claim(Request $request)
+    {
+        $request->validate([
+            'voucher_id' => 'required|exists:vouchers,id',
+        ]);
+        
+        $user = auth()->user();
+        $voucher = Voucher::findOrFail($request->voucher_id);
+        
+        // Check if voucher is valid
+        if (!$voucher->isValid()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This voucher has expired or is no longer available',
+            ], 400);
+        }
+        
+        // Check if user already claimed this voucher
+        $existingClaim = \App\Models\VoucherUsage::where('voucher_id', $voucher->id)
+            ->where('user_id', $user->id)
+            ->first();
+            
+        if ($existingClaim) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You have already claimed this voucher',
+            ], 400);
+        }
+        
+        // Check if voucher has reached usage limit
+        if ($voucher->usage_limit && $voucher->usage_count >= $voucher->usage_limit) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This voucher has reached its usage limit',
+            ], 400);
+        }
+        
+        // Create claim record
+        \App\Models\VoucherUsage::create([
+            'voucher_id' => $voucher->id,
+            'user_id' => $user->id,
+            'claimed_at' => now(),
+        ]);
+        
+        // Increment usage count
+        $voucher->increment('usage_count');
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Voucher claimed successfully!',
+        ]);
+    }
 }

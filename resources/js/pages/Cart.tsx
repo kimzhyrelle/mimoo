@@ -57,7 +57,7 @@ interface CartData {
 // ---------------------------------------------------------------------------
 
 export default function Cart() {
-  const { auth } = usePage<{ auth: { user: any } }>().props;
+  const { auth, suggestedProducts = [] } = usePage<{ auth: { user: any }, suggestedProducts: any[] }>().props;
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const user = auth?.user;
   const role: UserRole = user?.account_type ? (user.account_type as UserRole) : "guest";
@@ -67,6 +67,8 @@ export default function Cart() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<number | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+  const [availableVouchers, setAvailableVouchers] = useState<any[]>([]);
+  const [loadingVouchers, setLoadingVouchers] = useState(false);
 
   const peso = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -74,6 +76,52 @@ export default function Cart() {
   useEffect(() => {
     fetchCart();
   }, []);
+  
+  // Fetch available vouchers when modal opens
+  useEffect(() => {
+    if (showVoucherModal) {
+      fetchAvailableVouchers();
+    }
+  }, [showVoucherModal]);
+  
+  async function fetchAvailableVouchers() {
+    setLoadingVouchers(true);
+    try {
+      const response = await fetch('/api/vouchers/available');
+      const data = await response.json();
+      setAvailableVouchers(data.vouchers || []);
+    } catch (error) {
+      console.error('Failed to fetch vouchers:', error);
+      toast.error('Failed to load vouchers');
+    } finally {
+      setLoadingVouchers(false);
+    }
+  }
+  
+  async function handleClaimVoucher(voucherId: number) {
+    try {
+      const response = await fetch('/api/vouchers/claim', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+        body: JSON.stringify({ voucher_id: voucherId }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast.success(data.message || 'Voucher claimed successfully!');
+        fetchAvailableVouchers(); // Refresh voucher list
+      } else {
+        toast.error(data.message || 'Failed to claim voucher');
+      }
+    } catch (error) {
+      console.error('Claim voucher error:', error);
+      toast.error('Failed to claim voucher');
+    }
+  }
 
   async function fetchCart() {
     try {
@@ -429,26 +477,40 @@ export default function Cart() {
             </Link>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="bg-white rounded-[14px] border border-[rgba(185,166,222,0.18)] shadow-sm overflow-hidden cursor-pointer transition hover:shadow-md hover:translate-y-[-2px] flex flex-col">
-                <div className="relative w-full aspect-square bg-[#F9F7FC] flex items-center justify-center text-[#B9A6DE]">
-                  <Package className="w-[34px] h-[34px]" />
+            {suggestedProducts.map((product: any) => (
+              <Link
+                key={product.id}
+                href={`/product/${product.id}`}
+                className="bg-white rounded-[14px] border border-[rgba(185,166,222,0.18)] shadow-sm overflow-hidden cursor-pointer transition hover:shadow-md hover:translate-y-[-2px] flex flex-col"
+              >
+                <div className="relative w-full aspect-square bg-[#F9F7FC] flex items-center justify-center text-[#B9A6DE] overflow-hidden">
+                  {product.main_image ? (
+                    <img src={product.main_image} alt={product.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Package className="w-[34px] h-[34px]" />
+                  )}
                 </div>
                 <div className="p-2.5 flex-1 flex flex-col">
                   <div className="text-[0.78rem] text-[#2A1B4D] leading-snug line-clamp-2 min-h-[2.1em] mb-1.5">
-                    Product Name {i}
+                    {product.name}
                   </div>
-                  <div className="flex items-center gap-1 text-[0.7rem] text-[#6E6570] mb-1">
-                    <span className="text-[#f5a623]">★</span>4.8
+                  <div className="text-[0.7rem] text-[#6E6570] mb-1 truncate">
+                    {product.seller_name}
                   </div>
                   <div className="flex items-baseline justify-between mt-auto gap-2">
-                    <span className="font-extrabold text-[#4B2E7E] text-[0.9rem] whitespace-nowrap" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                      ₱249
-                    </span>
-                    <span className="text-[0.68rem] text-[#6E6570] whitespace-nowrap">1K+ sold</span>
+                    <div className="flex flex-col">
+                      <span className="font-extrabold text-[#4B2E7E] text-[0.9rem] whitespace-nowrap" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        {peso(product.effective_price)}
+                      </span>
+                      {product.is_on_sale && (
+                        <span className="text-[0.68rem] text-[#6E6570] line-through">
+                          {peso(product.price)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -469,63 +531,95 @@ export default function Cart() {
             </div>
 
             <div className="p-4 space-y-3">
-              {/* Sample vouchers */}
-              {[
-                { code: 'WELCOME10', title: '10% Off Welcome', discount: '10%', min: 500, savings: selectedTotal * 0.1 },
-                { code: 'SAVE100', title: 'Save ₱100', discount: '₱100', min: 2000, savings: 100 },
-                { code: 'FREESHIP', title: 'Free Shipping', discount: 'Free Ship', min: 1000, savings: 50 },
-              ].map((voucher) => {
-                const canApply = selectedTotal >= voucher.min;
-                
-                return (
-                  <button
-                    key={voucher.code}
-                    onClick={() => {
-                      if (canApply) {
-                        navigator.clipboard.writeText(voucher.code);
-                        toast.success(`Voucher ${voucher.code} copied! Apply it at checkout.`);
-                        setShowVoucherModal(false);
-                      }
-                    }}
-                    disabled={!canApply}
-                    className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                      canApply 
-                        ? 'border-violet-300 bg-gradient-to-br from-violet-50 to-pink-50 hover:shadow-md cursor-pointer' 
-                        : 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono font-bold text-violet-900">{voucher.code}</span>
-                          {canApply && (
-                            <span className="text-xs px-2 py-0.5 bg-green-500 text-white rounded-full">
-                              Available
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-700 mb-2">{voucher.title}</p>
-                        <p className="text-xs text-gray-600">
-                          Min. purchase: ₱{voucher.min.toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-violet-600">{voucher.discount}</div>
-                        {canApply && (
-                          <div className="text-xs text-green-600 mt-1">
-                            Save ₱{voucher.savings.toFixed(0)}
+              {availableVouchers.length === 0 ? (
+                <div className="py-12 text-center text-sm text-gray-600">
+                  No vouchers available
+                </div>
+              ) : (
+                availableVouchers.map((voucher: any) => {
+                  const canApply = selectedTotal >= voucher.min_purchase;
+                  const isAvailable = !voucher.is_claimed;
+                  const isClaimed = voucher.is_claimed && !voucher.is_used;
+                  const isUsed = voucher.is_used;
+                  
+                  return (
+                    <button
+                      key={voucher.id}
+                      onClick={() => {
+                        if (isUsed) return;
+                        if (!isAvailable) {
+                          // Copy code if already claimed
+                          if (canApply) {
+                            navigator.clipboard.writeText(voucher.code);
+                            toast.success(`Voucher ${voucher.code} copied! Apply it at checkout.`);
+                            setShowVoucherModal(false);
+                          }
+                        } else {
+                          // Claim voucher
+                          handleClaimVoucher(voucher.id);
+                        }
+                      }}
+                      disabled={isUsed || (!isClaimed && !canApply)}
+                      className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                        isUsed
+                          ? 'border-gray-300 bg-gray-100 opacity-50 cursor-not-allowed'
+                          : isClaimed && canApply
+                          ? 'border-green-300 bg-gradient-to-br from-green-50 to-emerald-50 hover:shadow-md cursor-pointer'
+                          : isAvailable && canApply
+                          ? 'border-violet-300 bg-gradient-to-br from-violet-50 to-pink-50 hover:shadow-md cursor-pointer'
+                          : 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="font-mono font-bold text-violet-900 text-sm">{voucher.code}</span>
+                            {isUsed && (
+                              <span className="text-xs px-2 py-0.5 bg-gray-400 text-white rounded-full">
+                                Used
+                              </span>
+                            )}
+                            {isClaimed && !isUsed && (
+                              <span className="text-xs px-2 py-0.5 bg-green-500 text-white rounded-full">
+                                Claimed
+                              </span>
+                            )}
+                            {isAvailable && canApply && (
+                              <span className="text-xs px-2 py-0.5 bg-blue-500 text-white rounded-full">
+                                Available
+                              </span>
+                            )}
                           </div>
-                        )}
+                          <p className="text-sm text-gray-700 mb-2 font-semibold">{voucher.name}</p>
+                          <p className="text-xs text-gray-600">
+                            Min. purchase: ₱{voucher.min_purchase.toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="text-right ml-3">
+                          <div className="text-base font-bold text-violet-600">
+                            {voucher.type === 'percentage' ? `${voucher.value}%` : `₱${voucher.value}`}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    {!canApply && (
-                      <div className="mt-2 text-xs text-red-600">
-                        Add ₱{(voucher.min - selectedTotal).toLocaleString()} more to use
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
+                      {!canApply && !isUsed && (
+                        <div className="mt-2 text-xs text-red-600">
+                          Add ₱{(voucher.min_purchase - selectedTotal).toLocaleString()} more to claim
+                        </div>
+                      )}
+                      {isClaimed && !isUsed && (
+                        <div className="mt-2 text-xs text-green-700 font-semibold">
+                          {canApply ? '✓ Click to copy code for checkout' : 'Add more items to use'}
+                        </div>
+                      )}
+                      {isAvailable && canApply && (
+                        <div className="mt-2 text-xs text-blue-700 font-semibold">
+                          Click to claim this voucher
+                        </div>
+                      )}
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>

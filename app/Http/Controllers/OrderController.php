@@ -101,6 +101,7 @@ class OrderController extends Controller
             'idempotency_key' => ['nullable', 'string', 'max:64'],
             'cart_item_ids' => ['nullable', 'array'], // Selected cart item IDs
             'cart_item_ids.*' => ['integer'],
+            'voucher_code' => ['nullable', 'string', 'max:50'], // Voucher code
         ]);
 
         $user = Auth::user();
@@ -241,6 +242,47 @@ class OrderController extends Controller
                 }
             }
 
+            // 3.5. Validate and apply voucher (if provided)
+            $voucher = null;
+            $voucherDiscount = 0;
+            $voucherUsage = null;
+            
+            if (!empty($validated['voucher_code'])) {
+                $voucher = \App\Models\Voucher::where('code', strtoupper($validated['voucher_code']))->first();
+                
+                if (!$voucher || !$voucher->isValid()) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'Invalid or expired voucher code.'], 400);
+                }
+                
+                // Check if user has CLAIMED this voucher
+                $voucherUsage = \App\Models\VoucherUsage::where('voucher_id', $voucher->id)
+                    ->where('user_id', $user->id)
+                    ->first();
+                
+                if (!$voucherUsage) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'You need to claim this voucher first before using it.'], 400);
+                }
+                
+                // Check if already used
+                if ($voucherUsage->used_at !== null) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'You have already used this voucher.'], 400);
+                }
+                
+                if ($total < $voucher->min_purchase) {
+                    DB::rollBack();
+                    return response()->json(['error' => "Minimum purchase of ₱" . number_format($voucher->min_purchase, 2) . " required for this voucher."], 400);
+                }
+                
+                // Calculate discount
+                $voucherDiscount = $voucher->calculateDiscount($total);
+                
+                // Apply discount to total
+                $total = max(0, $total - $voucherDiscount);
+            }
+
             // 4. Create Order
             $order = Order::create([
                 'buyer_id' => $user->id,
@@ -259,6 +301,16 @@ class OrderController extends Controller
                 $item['order_id'] = $order->id;
             }
             OrderItem::insert($orderItems);
+
+            // Record voucher usage (if voucher was applied)
+            if ($voucher && $voucherUsage) {
+                // Update the existing claim record to mark as used
+                $voucherUsage->update([
+                    'order_id' => $order->id,
+                    'discount_amount' => $voucherDiscount,
+                    'used_at' => now(),
+                ]);
+            }
 
             // Update StockLog reference_id with order ID
             StockLog::where('reference_id', null)

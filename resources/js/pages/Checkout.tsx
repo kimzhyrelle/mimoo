@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
-import { ArrowLeft, Package, CreditCard, MapPin, Phone, User, Loader2 } from "lucide-react";
+import { ArrowLeft, Package, CreditCard, MapPin, Phone, User, Loader2, X } from "lucide-react";
 import { BuyerHeader } from "@/components/buyer-header";
 import { toast } from "sonner";
 
@@ -82,7 +82,9 @@ export default function Checkout() {
   const [voucherCode, setVoucherCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
   const [voucherDiscount, setVoucherDiscount] = useState(0);
-  const [applyingVoucher, setApplyingVoucher] = useState(false);
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
+  const [availableVouchers, setAvailableVouchers] = useState<any[]>([]);
+  const [loadingVouchers, setLoadingVouchers] = useState(false);
 
   // Address fields - pre-fill from user registration
   const [region, setRegion] = useState(user?.region || "");
@@ -205,15 +207,23 @@ export default function Checkout() {
     router.post("/logout");
   }
 
-  // Apply voucher
-  async function applyVoucher() {
-    if (!voucherCode.trim()) {
-      toast.error('Please enter a voucher code');
-      return;
+  // Fetch available vouchers when modal opens
+  async function fetchAvailableVouchers() {
+    setLoadingVouchers(true);
+    try {
+      const response = await fetch('/api/vouchers/available');
+      const data = await response.json();
+      setAvailableVouchers(data.vouchers || []);
+    } catch (error) {
+      console.error('Failed to fetch vouchers:', error);
+      toast.error('Failed to load vouchers');
+    } finally {
+      setLoadingVouchers(false);
     }
+  }
 
-    setApplyingVoucher(true);
-
+  // Apply voucher directly from modal
+  async function applyVoucherFromModal(code: string) {
     try {
       const response = await fetch('/api/vouchers/validate', {
         method: 'POST',
@@ -222,7 +232,7 @@ export default function Checkout() {
           'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
         },
         body: JSON.stringify({
-          code: voucherCode.toUpperCase(),
+          code: code.toUpperCase(),
           order_total: subtotal,
         }),
       });
@@ -232,17 +242,15 @@ export default function Checkout() {
       if (response.ok && data.valid) {
         setAppliedVoucher(data.voucher);
         setVoucherDiscount(data.voucher.discount_amount);
+        setVoucherCode(code);
+        setShowVoucherModal(false);
         toast.success(data.message || 'Voucher applied!');
       } else {
         toast.error(data.message || 'Invalid voucher code');
-        setAppliedVoucher(null);
-        setVoucherDiscount(0);
       }
     } catch (error) {
       console.error('Voucher validation error:', error);
       toast.error('Failed to apply voucher');
-    } finally {
-      setApplyingVoucher(false);
     }
   }
 
@@ -252,6 +260,12 @@ export default function Checkout() {
     setAppliedVoucher(null);
     setVoucherDiscount(0);
     toast.info('Voucher removed');
+  }
+
+  // Open voucher modal and fetch vouchers
+  function openVoucherModal() {
+    setShowVoucherModal(true);
+    fetchAvailableVouchers();
   }
 
   // Calculate final total with voucher
@@ -321,6 +335,7 @@ export default function Checkout() {
           shipping_phone: shippingPhone,
           idempotency_key: idempotencyKeyRef.current,
           cart_item_ids: cartItems.map(item => item.id), // Send selected cart item IDs
+          voucher_code: voucherCode || null, // Send voucher code if applied
         }),
       });
 
@@ -558,27 +573,16 @@ export default function Checkout() {
                   {/* Voucher Section */}
                   <div className="py-3 border-t border-[#E6DFF2]">
                     {!appliedVoucher ? (
-                      <div className="space-y-2">
-                        <label className="text-[0.85rem] font-semibold text-[#2A1B4D]">
-                          Have a voucher?
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={voucherCode}
-                            onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-                            placeholder="Enter code"
-                            className="flex-1 px-3 py-2 text-sm rounded-lg border border-[#E6DFF2] focus:border-[#4B2E7E] focus:ring-2 focus:ring-[#4B2E7E]/20 outline-none uppercase"
-                          />
-                          <button
-                            onClick={applyVoucher}
-                            disabled={applyingVoucher || !voucherCode.trim()}
-                            className="px-4 py-2 text-sm font-semibold text-white bg-[#4B2E7E] rounded-lg hover:bg-[#3B1F6B] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {applyingVoucher ? 'Applying...' : 'Apply'}
-                          </button>
-                        </div>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={openVoucherModal}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-[#4B2E7E] bg-[#F9F7FC] border-2 border-dashed border-[#B9A6DE] rounded-lg hover:bg-[#F3EFFC] transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                        </svg>
+                        Apply Voucher
+                      </button>
                     ) : (
                       <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                         <div className="flex items-start justify-between">
@@ -587,6 +591,7 @@ export default function Checkout() {
                             <p className="text-xs text-green-700">{appliedVoucher.name}</p>
                           </div>
                           <button
+                            type="button"
                             onClick={removeVoucher}
                             className="text-green-700 hover:text-green-900 text-sm font-semibold"
                           >
@@ -701,6 +706,133 @@ export default function Checkout() {
               <button onClick={() => setShowAddressModal(false)} className="w-full bg-[#4B2E7E] text-white font-semibold py-3 rounded-lg hover:bg-[#3a2360] transition">
                 Save Address
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Voucher Modal */}
+      {showVoucherModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div 
+            className="relative w-full max-w-md max-h-[80vh] rounded-xl bg-white shadow-2xl"
+            style={{
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
+              <h2 className="text-lg font-bold text-[#2A1B4D]">Select Voucher</h2>
+              <button
+                onClick={() => setShowVoucherModal(false)}
+                className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div 
+              className="p-4 space-y-3"
+              style={{
+                overflow: 'auto',
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+              }}
+            >
+              <style>{`
+                .voucher-scroll::-webkit-scrollbar {
+                  display: none;
+                }
+              `}</style>
+              
+              {loadingVouchers ? (
+                <div className="py-12 text-center">
+                  <Loader2 className="w-8 h-8 animate-spin text-violet-600 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">Loading vouchers...</p>
+                </div>
+              ) : availableVouchers.filter(v => v.is_claimed && !v.is_used).length === 0 ? (
+                <div className="py-12 text-center">
+                  <svg className="w-16 h-16 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                  </svg>
+                  <p className="text-sm text-gray-600">No claimed vouchers</p>
+                  <p className="text-xs text-gray-500 mt-1">Claim vouchers from Homepage or Cart</p>
+                </div>
+              ) : (
+                availableVouchers.filter(v => v.is_claimed && !v.is_used).map((voucher: any) => {
+                  const canApply = subtotal >= voucher.min_purchase;
+                  const discount = voucher.type === 'percentage' 
+                    ? `${voucher.value}% OFF`
+                    : `₱${voucher.value} OFF`;
+                  
+                  // Calculate potential savings
+                  let savings = 0;
+                  if (voucher.type === 'percentage') {
+                    savings = (subtotal * voucher.value) / 100;
+                    if (voucher.max_discount && savings > voucher.max_discount) {
+                      savings = voucher.max_discount;
+                    }
+                  } else {
+                    savings = voucher.value;
+                  }
+
+                  return (
+                    <button
+                      key={voucher.id}
+                      onClick={() => {
+                        if (canApply) {
+                          applyVoucherFromModal(voucher.code);
+                        }
+                      }}
+                      disabled={!canApply}
+                      className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                        canApply 
+                          ? 'border-violet-300 bg-gradient-to-br from-violet-50 to-pink-50 hover:shadow-md cursor-pointer' 
+                          : 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-mono font-bold text-violet-900 text-sm">{voucher.code}</span>
+                            {canApply && (
+                              <span className="text-xs px-2 py-0.5 bg-green-500 text-white rounded-full">
+                                Available
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-700 mb-2 font-semibold">{voucher.name}</p>
+                          {voucher.description && (
+                            <p className="text-xs text-gray-600 mb-2">{voucher.description}</p>
+                          )}
+                          <p className="text-xs text-gray-600">
+                            Min. purchase: ₱{voucher.min_purchase.toLocaleString()}
+                          </p>
+                          {voucher.max_discount && voucher.type === 'percentage' && (
+                            <p className="text-xs text-gray-600">
+                              Max discount: ₱{voucher.max_discount.toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right ml-3">
+                          <div className="text-base font-bold text-violet-600">{discount}</div>
+                          {canApply && (
+                            <div className="text-xs text-green-600 mt-1">
+                              Save ₱{savings.toFixed(0)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {!canApply && (
+                        <div className="mt-2 text-xs text-red-600">
+                          Add ₱{(voucher.min_purchase - subtotal).toLocaleString()} more to use
+                        </div>
+                      )}
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>

@@ -550,6 +550,36 @@ Route::get('/homepage', function (Illuminate\Http\Request $request) {
             'search' => $request->input('search', ''),
             'category' => $request->input('category', ''),
         ],
+        'vouchers' => \App\Models\Voucher::where('status', 'active')
+            ->where('valid_from', '<=', now())
+            ->where('valid_until', '>=', now())
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($voucher) use ($request) {
+                $user = $request->user();
+                
+                // Check if user has already claimed this voucher
+                $userClaim = $user ? \App\Models\VoucherUsage::where('voucher_id', $voucher->id)
+                    ->where('user_id', $user->id)
+                    ->first() : null;
+                
+                return [
+                    'id' => $voucher->id,
+                    'code' => $voucher->code,
+                    'name' => $voucher->name,
+                    'description' => $voucher->description,
+                    'type' => $voucher->type,
+                    'value' => $voucher->value,
+                    'min_purchase' => $voucher->min_purchase,
+                    'max_discount' => $voucher->max_discount,
+                    'valid_until_formatted' => $voucher->valid_until->format('M d, Y'),
+                    'is_claimed' => $userClaim !== null,
+                    'is_used' => $userClaim && $userClaim->used_at !== null,
+                    'claimed_at' => $userClaim?->claimed_at?->format('M d, Y'),
+                    'used_at' => $userClaim?->used_at?->format('M d, Y'),
+                ];
+            }),
     ]);
 })->name('homepage');
 
@@ -560,7 +590,28 @@ Route::get('/messages', function () {
 // Buyer checkout and order routes
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/cart', function () {
-        return Inertia::render('Cart');
+        // Fetch suggested products (top-selling or random)
+        $suggestedProducts = \App\Models\Product::where('status', 'active')
+            ->where('stock', '>', 0)
+            ->inRandomOrder()
+            ->limit(6)
+            ->get()
+            ->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'price' => (float) $product->price,
+                    'sale_price' => $product->sale_price ? (float) $product->sale_price : null,
+                    'effective_price' => (float) ($product->sale_price ?? $product->price),
+                    'is_on_sale' => $product->sale_price !== null,
+                    'main_image' => $product->main_image,
+                    'seller_name' => $product->seller->business_name ?? $product->seller->name,
+                ];
+            });
+        
+        return Inertia::render('Cart', [
+            'suggestedProducts' => $suggestedProducts,
+        ]);
     })->name('cart');
     
     Route::get('/checkout', [\App\Http\Controllers\OrderController::class, 'checkout'])->name('checkout');
@@ -684,6 +735,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Voucher validation
     Route::post('/api/vouchers/validate', [\App\Http\Controllers\Admin\VoucherController::class, 'validate']);
+    Route::get('/api/vouchers/available', [\App\Http\Controllers\Admin\VoucherController::class, 'available']);
+    Route::post('/api/vouchers/claim', [\App\Http\Controllers\Admin\VoucherController::class, 'claim']);
+    
     
     // Orders data refresh endpoint
     Route::get('/orders/data', [\App\Http\Controllers\OrderController::class, 'getData']);
