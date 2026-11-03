@@ -214,6 +214,148 @@ dashboard.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     
     dashboard.form = dashboardForm
 /**
+ * @see routes/web.php:746
+ * @route '/admin/vouchers'
+ */
+export const vouchers = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: vouchers.url(options),
+    method: 'get',
+})
+
+vouchers.definition = {
+    methods: ["get","head"],
+    url: '/admin/vouchers',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+ * @see routes/web.php:746
+ * @route '/admin/vouchers'
+ */
+vouchers.url = (options?: RouteQueryOptions) => {
+    return vouchers.definition.url + queryParams(options)
+}
+
+/**
+ * @see routes/web.php:746
+ * @route '/admin/vouchers'
+ */
+vouchers.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: vouchers.url(options),
+    method: 'get',
+})
+/**
+ * @see routes/web.php:746
+ * @route '/admin/vouchers'
+ */
+vouchers.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: vouchers.url(options),
+    method: 'head',
+})
+
+    /**
+ * @see routes/web.php:746
+ * @route '/admin/vouchers'
+ */
+    const vouchersForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: vouchers.url(options),
+        method: 'get',
+    })
+
+            /**
+ * @see routes/web.php:746
+ * @route '/admin/vouchers'
+ */
+        vouchersForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: vouchers.url(options),
+            method: 'get',
+        })
+            /**
+ * @see routes/web.php:746
+ * @route '/admin/vouchers'
+ */
+        vouchersForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: vouchers.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    vouchers.form = vouchersForm
+/**
+ * @see routes/web.php:751
+ * @route '/admin/banners'
+ */
+export const banners = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: banners.url(options),
+    method: 'get',
+})
+
+banners.definition = {
+    methods: ["get","head"],
+    url: '/admin/banners',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+ * @see routes/web.php:751
+ * @route '/admin/banners'
+ */
+banners.url = (options?: RouteQueryOptions) => {
+    return banners.definition.url + queryParams(options)
+}
+
+/**
+ * @see routes/web.php:751
+ * @route '/admin/banners'
+ */
+banners.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: banners.url(options),
+    method: 'get',
+})
+/**
+ * @see routes/web.php:751
+ * @route '/admin/banners'
+ */
+banners.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: banners.url(options),
+    method: 'head',
+})
+
+    /**
+ * @see routes/web.php:751
+ * @route '/admin/banners'
+ */
+    const bannersForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: banners.url(options),
+        method: 'get',
+    })
+
+            /**
+ * @see routes/web.php:751
+ * @route '/admin/banners'
+ */
+        bannersForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: banners.url(options),
+            method: 'get',
+        })
+            /**
+ * @see routes/web.php:751
+ * @route '/admin/banners'
+ */
+        bannersForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: banners.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    banners.form = bannersForm
+/**
 * @see \App\Http\Controllers\Admin\AdminController::manageRegistrations
  * @see app/Http/Controllers/Admin/AdminController.php:120
  * @route '/admin/manage-registrations'
@@ -757,6 +899,8 @@ const admin = {
     login: Object.assign(login, login),
 verify: Object.assign(verify, verify),
 dashboard: Object.assign(dashboard, dashboard),
+vouchers: Object.assign(vouchers, vouchers),
+banners: Object.assign(banners, banners),
 manageRegistrations: Object.assign(manageRegistrations, manageRegistrations),
 registrations: Object.assign(registrations, registrations),
 sellerApproval: Object.assign(sellerApproval, sellerApprovalDe7003),

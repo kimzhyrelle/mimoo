@@ -1,4 +1,4 @@
-﻿import { Head, Link } from '@inertiajs/react';
+﻿import { Head, Link, router } from '@inertiajs/react';
 import { ReactNode, useState } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
@@ -21,11 +21,16 @@ interface Props {
 
 export default function Reports({ auth, company }: Props) {
     const [activeTab, setActiveTab] = useState('reports');
+    const [showUserMenu, setShowUserMenu] = useState(false);
     const [selectedReport, setSelectedReport] = useState('overdue-parcels');
     const [timePeriod, setTimePeriod] = useState('last-7-days');
     const [fromDate, setFromDate] = useState('10/01/2026');
     const [toDate, setToDate] = useState('10/26/2026');
     const [barangayFilter, setBarangayFilter] = useState('all');
+
+    const handleLogout = () => {
+        router.post('/logout');
+    };
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: 'grid', href: '/logistics/dashboard' },
@@ -178,7 +183,6 @@ export default function Reports({ auth, company }: Props) {
                                 <div className="relative">
                                     <input
                                         type="text"
-                                        placeholder="Search / Scan"
                                         className="w-64 px-4 py-2 pl-10 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#3B1F6B] focus:border-transparent"
                                     />
                                     <svg
@@ -208,9 +212,41 @@ export default function Reports({ auth, company }: Props) {
                                     </svg>
                                     <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                                 </button>
-                                <button className="w-9 h-9 rounded-full bg-[#2B2249] text-white flex items-center justify-center text-sm font-bold">
-                                    {auth.user.name.charAt(0)}
-                                </button>
+                                <div className="relative">
+                                    <button 
+                                        onClick={() => setShowUserMenu(!showUserMenu)}
+                                        className="w-9 h-9 rounded-full bg-[#2B2249] text-white flex items-center justify-center text-sm font-bold hover:bg-[#3d2e5f] transition"
+                                    >
+                                        {auth.user.name.charAt(0)}
+                                    </button>
+                                    {showUserMenu && (
+                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                                            <Link
+                                                href="/logistics/account"
+                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                                        <circle cx="12" cy="7" r="4"/>
+                                                    </svg>
+                                                    Account
+                                                </div>
+                                            </Link>
+                                            <button
+                                                onClick={handleLogout}
+                                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                                    <polyline points="16 17 21 12 16 7"/>
+                                                    <line x1="21" y1="12" x2="9" y2="12"/>
+                                                </svg>
+                                                Log out
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </header>
@@ -430,7 +466,7 @@ export default function Reports({ auth, company }: Props) {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="text-xs text-gray-500 mb-6">Overdue Parcels â€¢ Oct 1 - 26</div>
+                                <div className="text-xs text-gray-500 mb-6">Overdue Parcels "¢ Oct 1 - 26</div>
                                 
                                 {/* Simple Bar Chart */}
                                 <div className="flex items-end gap-4 h-40">
@@ -492,14 +528,14 @@ export default function Reports({ auth, company }: Props) {
                                 </table>
                                 
                                 <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
-                                    <p className="text-xs text-gray-500">56 overdue parcels â€¢ Oct 1 - Oct 26, 2026</p>
+                                    <p className="text-xs text-gray-500">56 overdue parcels "¢ Oct 1 - Oct 26, 2026</p>
                                 </div>
                             </div>
 
                             {/* Daily Parcel Passthrough Chart */}
                             <div className="bg-white rounded-xl border border-gray-200 p-6">
                                 <h3 className="text-base font-bold text-gray-900 mb-6" style={fontSyncopate}>Daily Parcel Passthrough</h3>
-                                <div className="text-xs text-gray-500 mb-6">Parcels Processed â€¢ Dec 1 - 26</div>
+                                <div className="text-xs text-gray-500 mb-6">Parcels Processed "¢ Dec 1 - 26</div>
                                 
                                 {/* Simple Area Chart */}
                                 <div className="relative h-48">
@@ -588,7 +624,7 @@ export default function Reports({ auth, company }: Props) {
                                 </table>
                                 
                                 <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
-                                    <p className="text-xs text-gray-500">26 days in range â€¢ Oct 1 - Oct 26, 2026</p>
+                                    <p className="text-xs text-gray-500">26 days in range "¢ Oct 1 - Oct 26, 2026</p>
                                 </div>
                             </div>
                         </div>

@@ -94,6 +94,7 @@ const ICheck = () => (<svg {...S}><path d="M5 13l4 4L19 7" stroke="currentColor"
 const IWarn = () => (<svg {...S}><path d="M12 3l10 18H2L12 3z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /><path d="M12 10v5M12 18h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>);
 const IPrint = () => (<svg {...S}><path d="M6 9V4h12v5" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="M6 18H4a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-2" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="M6 14h12v6H6v-6Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /></svg>);
 const IClose = () => (<svg {...S}><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>);
+const IWaybill = () => (<svg {...S}><rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" strokeWidth="1.6" /><path d="M8 4v16M16 9H8M16 12H8M16 15H8" stroke="currentColor" strokeWidth="1.6" /></svg>);
 
 const TAB_ICON: Record<TabKey, ReactNode> = {
   all: (<svg {...S} stroke="currentColor" strokeWidth="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>),
@@ -136,7 +137,7 @@ function Barcode({ text }: { text: string }) {
 }
 
 function Waybill({ o, weight }: { o: SellerOrder; weight: number }) {
-  const cod = /cash/i.test(o.payment);
+  const cod = /cash|cod/i.test(o.payment);
   const no = waybillNo(o);
   return (
     <div className="wb">
@@ -148,7 +149,7 @@ function Waybill({ o, weight }: { o: SellerOrder; weight: number }) {
         <div><div className="lbl">Weight</div><b>{weight} kg</b></div>
       </div>
       <div className="wb-row"><div className="lbl">Contents</div>{o.items.map((i, k) => (<div key={k}>{i.name} ×{i.qty}</div>))}</div>
-      <div className={`wb-cod ${cod ? "" : "paid"}`}>{cod ? "COLLECT " + peso(orderTotal(o)) : "PAID · " + o.payment}</div>
+      <div className={`wb-cod ${cod ? "" : "paid"}`}>{cod ? "COLLECT " + peso(orderTotal(o)) : "PAID · " + o.payment.toUpperCase()}</div>
     </div>
   );
 }
@@ -421,8 +422,8 @@ export default function SellerOrders({ orders: initial }: PageProps) {
         note: order.note || null,
         items: order.items || [],
         weight: null,
-        waybill_no: null,
-        waybill_printed: false,
+        waybill_no: order.waybill_number || null,
+        waybill_printed: !!order.waybill_printed_at,
         tracking: null,
         delivered_on: null,
         is_new: false,
@@ -582,9 +583,24 @@ export default function SellerOrders({ orders: initial }: PageProps) {
                     <td><span className={`mini-pill ${PILL[o.stage]}`}>{LABEL[o.stage]}</span></td>
                     <td className="cell-muted num">{o.date}</td>
                     <td>
-                      <button type="button" className="icon-btn" onClick={() => openModal(o)} aria-label={`Open order ${o.order_number}`}>
-                        <svg {...S}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" /></svg>
-                      </button>
+                      <div style={{ display: 'flex', gap: '.4rem' }}>
+                        {/* Waybill button - only show for packed, shipped, in_transit, delivered */}
+                        {['awaiting_pickup', 'in_transit', 'delivered'].includes(o.stage) && o.waybill_no && (
+                          <button 
+                            type="button" 
+                            className="icon-btn waybill-btn" 
+                            onClick={() => setWb({ id: o.id, weight: defaultWeight(o) })}
+                            aria-label={`View waybill ${o.order_number}`}
+                            title="View waybill"
+                          >
+                            <IWaybill />
+                          </button>
+                        )}
+                        {/* Eye button - view order details */}
+                        <button type="button" className="icon-btn" onClick={() => openModal(o)} aria-label={`Open order ${o.order_number}`}>
+                          <svg {...S}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" /></svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -714,8 +730,9 @@ const CSS = `
   .cell-muted{ color:var(--muted); font-size:.78rem; }
   .mini-pill{ font-size:.76rem; font-weight:800; text-transform:uppercase; letter-spacing:.02em; white-space:nowrap; }
   .mini-pill.gold{ color:var(--gold); } .mini-pill.accent{ color:var(--primary); } .mini-pill.ok{ color:var(--ok); } .mini-pill.logi{ color:var(--logi); } .mini-pill.bad{ color:#DC2626; }
-  .icon-btn{ appearance:none; border:1.5px solid var(--lav-200); background:#fff; cursor:pointer; width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--muted); }
+  .icon-btn{ appearance:none; border:1.5px solid var(--lav-200); background:#fff; cursor:pointer; width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--muted); transition:all .15s ease; }
   .icon-btn:hover{ background:var(--lav-100); color:var(--primary); }
+  .icon-btn.waybill-btn:hover{ background:color-mix(in srgb, var(--logi) 12%, white); color:var(--logi); border-color:var(--logi); }
   .icon-btn svg{ width:15px; height:15px; }
   .empty-row td{ text-align:center; padding:2.2rem .5rem; color:var(--muted); font-size:.85rem; }
   .new-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--primary); margin-right:.45rem; }

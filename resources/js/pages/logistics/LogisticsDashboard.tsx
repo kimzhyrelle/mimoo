@@ -1,4 +1,4 @@
-﻿import { Head, Link } from '@inertiajs/react';
+﻿import { Head, Link, router } from '@inertiajs/react';
 import { ReactNode, useState } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
@@ -24,7 +24,7 @@ export default function LogisticsDashboard({ auth, company }: Props) {
     const [showUserMenu, setShowUserMenu] = useState(false);
 
     const handleLogout = () => {
-        window.location.href = '/logout';
+        router.post('/logout');
     };
 
     // Mock data for now - replace with real data later
@@ -45,7 +45,7 @@ export default function LogisticsDashboard({ auth, company }: Props) {
 
     const activityTimeline = [
         { type: 'success', message: 'Shift checklist submitted - Inbound 3 of 3 steps completed', time: '1 day ago' },
-        { type: 'success', message: 'Palasan â€” 1 parcels dispatched to A. Santos', time: '1 day ago' },
+        { type: 'success', message: 'Palasan "” 1 parcels dispatched to A. Santos', time: '1 day ago' },
         { type: 'info', message: '#1037 status updated to awaiting_sort', time: '1 day ago' },
         { type: 'info', message: '#1037 status updated to awaiting_sort', time: '2 days ago' },
     ];
@@ -160,7 +160,6 @@ export default function LogisticsDashboard({ auth, company }: Props) {
                                 <div className="relative">
                                     <input
                                         type="text"
-                                        placeholder="Search / Scan"
                                         className="w-64 px-4 py-2 pl-10 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#3B1F6B] focus:border-transparent"
                                     />
                                     <svg
@@ -236,7 +235,7 @@ export default function LogisticsDashboard({ auth, company }: Props) {
                             <div className="flex items-center gap-2 bg-[#E8E3F0] text-blue-700 px-3 py-1.5 rounded-lg border border-[#D4CEE0]">
                                 <span className="w-2 h-2 bg-[#E8E3F0] rounded-full animate-pulse"></span>
                                 <span className="text-xs font-semibold">STREAM LIVE</span>
-                                <span className="text-xs text-[#5B4B6E]">Wednesday, Oct 28, 2026 â€¢ 05:05 AM</span>
+                                <span className="text-xs text-[#5B4B6E]">Wednesday, Oct 28, 2026 "¢ 05:05 AM</span>
                             </div>
                             <button className="bg-[#2B2249] hover:bg-[#3B1F6B] text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -314,7 +313,7 @@ export default function LogisticsDashboard({ auth, company }: Props) {
                             <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
                                 <div className="border-b border-gray-200 px-5 py-4">
                                     <h2 className="text-sm font-bold text-gray-900">Parcels Processed Per Hour</h2>
-                                    <p className="text-xs text-gray-500 mt-0.5">Operating timeline: 06:00 â€“ 22:00</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">Operating timeline: 06:00 "“ 22:00</p>
                                 </div>
                                 <div className="p-5">
                                     <div className="h-64 flex items-end justify-between gap-2">
@@ -446,7 +445,7 @@ export default function LogisticsDashboard({ auth, company }: Props) {
                             </div>
                             <div className="border-t border-gray-200 px-5 py-3 bg-gray-50/50">
                                 <p className="text-xs text-gray-500">
-                                    50 parcels â€¢ Sorted by urgency â€¢ 05:05 AM
+                                    50 parcels "¢ Sorted by urgency "¢ 05:05 AM
                                 </p>
                             </div>
                         </div>

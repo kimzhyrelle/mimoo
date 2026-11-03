@@ -655,6 +655,9 @@ Route::get('/category/{category}', function (string $category) {
 Route::get('/auth/google', [SocialiteController::class, 'redirectToGoogle'])->name('auth.google');
 Route::get('/auth/google/callback', [SocialiteController::class, 'handleGoogleCallback'])->name('auth.google.callback');
 
+// Waybill QR code (public for scanning)
+Route::get('/waybill/{waybillNumber}/qr', [\App\Http\Controllers\WaybillController::class, 'qrCode'])->name('waybill.qr');
+
 // ---------------------------------------------------------------------------
 // Product API routes
 // ---------------------------------------------------------------------------
@@ -707,6 +710,11 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::get('/api/seller/orders/recent', [\App\Http\Controllers\SellerOrderController::class, 'recent']);
     Route::patch('/api/seller/orders/{id}/status', [\App\Http\Controllers\SellerOrderController::class, 'updateStatus']);
     
+    // Waybill routes (accessible by seller and logistics)
+    Route::post('/api/orders/{id}/waybill/generate', [\App\Http\Controllers\WaybillController::class, 'generate']);
+    Route::get('/api/orders/{id}/waybill', [\App\Http\Controllers\WaybillController::class, 'show']);
+    Route::post('/api/orders/{id}/waybill/mark-printed', [\App\Http\Controllers\WaybillController::class, 'markPrinted']);
+    
     // Real-time seller dashboard stream (SSE)
     Route::get('/api/seller/dashboard/stream', [\App\Http\Controllers\SellerDashboardStreamController::class, 'stream']);
     
@@ -733,6 +741,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
     // Protected routes — require the session flag set by verify()
     Route::middleware('admin.verified')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+        
+        // Vouchers Management
+        Route::get('/vouchers', function () {
+            return Inertia::render('admin/Vouchers');
+        })->name('vouchers');
+        
+        // Banner Management
+        Route::get('/banners', function () {
+            return Inertia::render('admin/BannerManagement');
+        })->name('banners');
+        
         Route::get('/manage-registrations', [AdminController::class, 'manageRegistrations'])->name('manage-registrations');
         Route::post('/registrations/{userId}/approve', [AdminController::class, 'approveRegistration'])->name('registrations.approve');
         Route::post('/registrations/{userId}/disapprove', [AdminController::class, 'disapproveRegistration'])->name('registrations.disapprove');

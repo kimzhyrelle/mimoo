@@ -1,4 +1,4 @@
-﻿import { Head, Link } from '@inertiajs/react';
+﻿import { Head, Link, router } from '@inertiajs/react';
 import { ReactNode, useState } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
@@ -17,8 +17,13 @@ interface Props {
 
 export default function Riders({ auth }: Props) {
     const [activeTab, setActiveTab] = useState('riders');
+    const [showUserMenu, setShowUserMenu] = useState(false);
     const [riderTab, setRiderTab] = useState('active');
     const [searchQuery, setSearchQuery] = useState('');
+
+    const handleLogout = () => {
+        router.post('/logout');
+    };
 
     const riders = [
         {
@@ -177,7 +182,6 @@ export default function Riders({ auth }: Props) {
                                 <div className="relative">
                                     <input
                                         type="text"
-                                        placeholder="Search / Scan"
                                         className="w-64 px-4 py-2 pl-10 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2B2249] focus:border-transparent"
                                     />
                                     <svg
@@ -207,9 +211,41 @@ export default function Riders({ auth }: Props) {
                                     </svg>
                                     <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                                 </button>
-                                <button className="w-9 h-9 rounded-full bg-[#2B2249] text-white flex items-center justify-center text-sm font-bold">
-                                    {auth.user.name.charAt(0)}
-                                </button>
+                                <div className="relative">
+                                    <button 
+                                        onClick={() => setShowUserMenu(!showUserMenu)}
+                                        className="w-9 h-9 rounded-full bg-[#2B2249] text-white flex items-center justify-center text-sm font-bold hover:bg-[#3d2e5f] transition"
+                                    >
+                                        {auth.user.name.charAt(0)}
+                                    </button>
+                                    {showUserMenu && (
+                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                                            <Link
+                                                href="/logistics/account"
+                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                                        <circle cx="12" cy="7" r="4"/>
+                                                    </svg>
+                                                    Account
+                                                </div>
+                                            </Link>
+                                            <button
+                                                onClick={handleLogout}
+                                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                                    <polyline points="16 17 21 12 16 7"/>
+                                                    <line x1="21" y1="12" x2="9" y2="12"/>
+                                                </svg>
+                                                Log out
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </header>
@@ -281,7 +317,7 @@ export default function Riders({ auth }: Props) {
                                         <div className="flex items-center justify-between mb-6">
                                             <div>
                                                 <h3 className="text-lg font-bold text-gray-900" style={fontSyncopate}>Active Riders</h3>
-                                                <p className="text-sm text-gray-500">One rider per barangay â€” 15 cleared, 1 unassigned</p>
+                                                <p className="text-sm text-gray-500">One rider per barangay "” 15 cleared, 1 unassigned</p>
                                             </div>
                                         </div>
 
@@ -290,7 +326,6 @@ export default function Riders({ auth }: Props) {
                                             <div className="col-span-2">
                                                 <input
                                                     type="text"
-                                                    placeholder="Search by name, initials, phone or plate..."
                                                     value={searchQuery}
                                                     onChange={(e) => setSearchQuery(e.target.value)}
                                                     className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2B2249]"
@@ -352,7 +387,7 @@ export default function Riders({ auth }: Props) {
                                                                     </div>
                                                                     <div>
                                                                         <div className="text-sm font-bold text-gray-900">{rider.name}</div>
-                                                                        <div className="text-xs text-gray-500">{rider.id} â€¢ {rider.hub}</div>
+                                                                        <div className="text-xs text-gray-500">{rider.id} "¢ {rider.hub}</div>
                                                                         <div className="text-xs text-gray-500">{rider.status}</div>
                                                                     </div>
                                                                 </div>

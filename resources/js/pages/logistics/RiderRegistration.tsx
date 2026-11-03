@@ -65,23 +65,23 @@ export default function RiderRegistration() {
                             <h3 className="font-semibold mb-4">What you'll need when applications open:</h3>
                             <ul className="text-left space-y-2 text-sm">
                                 <li className="flex items-start gap-3">
-                                    <span className="text-white/60">â€¢</span>
+                                    <span className="text-white/60">"¢</span>
                                     <span>Valid government-issued ID</span>
                                 </li>
                                 <li className="flex items-start gap-3">
-                                    <span className="text-white/60">â€¢</span>
+                                    <span className="text-white/60">"¢</span>
                                     <span>Driver's license (for motorcycle riders)</span>
                                 </li>
                                 <li className="flex items-start gap-3">
-                                    <span className="text-white/60">â€¢</span>
+                                    <span className="text-white/60">"¢</span>
                                     <span>Vehicle registration (OR/CR)</span>
                                 </li>
                                 <li className="flex items-start gap-3">
-                                    <span className="text-white/60">â€¢</span>
+                                    <span className="text-white/60">"¢</span>
                                     <span>Bank account or e-wallet for payouts</span>
                                 </li>
                                 <li className="flex items-start gap-3">
-                                    <span className="text-white/60">â€¢</span>
+                                    <span className="text-white/60">"¢</span>
                                     <span>Smartphone for the rider app</span>
                                 </li>
                             </ul>

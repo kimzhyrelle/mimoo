@@ -46,6 +46,9 @@ class SellerOrderController extends Controller
                     'total' => (float) $order->items->sum(fn($item) => $item->quantity * $item->unit_price),
                     'item_count' => $order->items->count(),
                     'created_at' => $order->created_at->format('M d, Y h:i A'),
+                    'waybill_number' => $order->waybill_number,
+                    'waybill_generated_at' => $order->waybill_generated_at?->format('M d, Y h:i A'),
+                    'waybill_printed_at' => $order->waybill_printed_at?->format('M d, Y h:i A'),
                     'items' => $order->items->map(function ($item) {
                         return [
                             'name' => $item->product_name,
@@ -126,6 +129,11 @@ class SellerOrderController extends Controller
             };
 
             if ($newStatus) {
+                // Auto-generate waybill when packing
+                if ($action === 'pack' && !$order->hasWaybill()) {
+                    $order->generateWaybillNumber();
+                }
+                
                 $order->update(['status' => $newStatus]);
                 
                 $messages = [
@@ -139,17 +147,23 @@ class SellerOrderController extends Controller
                     'order' => [
                         'id' => $order->id,
                         'status' => $order->status,
+                        'waybill_number' => $order->waybill_number,
+                        'waybill_generated_at' => $order->waybill_generated_at,
                     ],
                 ]);
             }
             
-            // For waybill_printed, just return success without changing status
+            // For waybill_printed, mark it and return
             if ($action === 'waybill_printed') {
+                $order->markWaybillPrinted();
+                
                 return response()->json([
                     'message' => 'Waybill printed successfully.',
                     'order' => [
                         'id' => $order->id,
                         'status' => $order->status,
+                        'waybill_number' => $order->waybill_number,
+                        'waybill_printed_at' => $order->waybill_printed_at,
                     ],
                 ]);
             }

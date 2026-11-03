@@ -1,4 +1,4 @@
-﻿import { Head, Link } from '@inertiajs/react';
+﻿import { Head, Link, router } from '@inertiajs/react';
 import { ReactNode, useState } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
@@ -21,8 +21,13 @@ interface Props {
 
 export default function SortAssign({ auth, company }: Props) {
     const [activeTab, setActiveTab] = useState('sort-assign');
+    const [showUserMenu, setShowUserMenu] = useState(false);
     const [viewMode, setViewMode] = useState<'staging' | 'parcel'>('staging');
     const [selectedParcels, setSelectedParcels] = useState<string[]>([]);
+
+    const handleLogout = () => {
+        router.post('/logout');
+    };
 
     const parcels = [
         { id: 'PKG44', address: '33 Road St., Brgy. Lumban', barangay: 'Lumban', carrier: 'J&T Express', rider: '' },
@@ -189,7 +194,6 @@ export default function SortAssign({ auth, company }: Props) {
                                 <div className="relative">
                                     <input
                                         type="text"
-                                        placeholder="Search / Scan"
                                         className="w-64 px-4 py-2 pl-10 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#3B1F6B] focus:border-transparent"
                                     />
                                     <svg
@@ -219,9 +223,41 @@ export default function SortAssign({ auth, company }: Props) {
                                     </svg>
                                     <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                                 </button>
-                                <button className="w-9 h-9 rounded-full bg-[#2B2249] text-white flex items-center justify-center text-sm font-bold">
-                                    {auth.user.name.charAt(0)}
-                                </button>
+                                <div className="relative">
+                                    <button 
+                                        onClick={() => setShowUserMenu(!showUserMenu)}
+                                        className="w-9 h-9 rounded-full bg-[#2B2249] text-white flex items-center justify-center text-sm font-bold hover:bg-[#3d2e5f] transition"
+                                    >
+                                        {auth.user.name.charAt(0)}
+                                    </button>
+                                    {showUserMenu && (
+                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                                            <Link
+                                                href="/logistics/account"
+                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                                        <circle cx="12" cy="7" r="4"/>
+                                                    </svg>
+                                                    Account
+                                                </div>
+                                            </Link>
+                                            <button
+                                                onClick={handleLogout}
+                                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                                    <polyline points="16 17 21 12 16 7"/>
+                                                    <line x1="21" y1="12" x2="9" y2="12"/>
+                                                </svg>
+                                                Log out
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </header>
@@ -239,7 +275,7 @@ export default function SortAssign({ auth, company }: Props) {
                                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }`}
                                 >
-                                    STAGE 01 â€” HUB #1 ALLOCATION
+                                    STAGE 01 "” HUB #1 ALLOCATION
                                 </button>
                                 <button
                                     onClick={() => setViewMode('parcel')}
@@ -267,7 +303,7 @@ export default function SortAssign({ auth, company }: Props) {
                                                 </div>
                                                 <div>
                                                     <h3 className="text-xl font-bold mb-1" style={fontSyncopate}>Staging Bay #5: Status</h3>
-                                                    <p className="text-sm text-gray-300">1 of 10 clusters assigned â€¢ 38 parcels staged</p>
+                                                    <p className="text-sm text-gray-300">1 of 10 clusters assigned "¢ 38 parcels staged</p>
                                                     <p className="text-xs text-gray-400 mt-1">22 weigh-in parcels have unrecorded weights</p>
                                                 </div>
                                             </div>
@@ -312,7 +348,7 @@ export default function SortAssign({ auth, company }: Props) {
                                                 <div className="text-xs font-semibold text-gray-500" style={fontSyncopate}>FLEET REQUIREMENT</div>
                                             </div>
                                             <div className="text-3xl font-bold text-gray-900 mb-2">0</div>
-                                            <div className="text-sm text-gray-600">0 idle â€¢ 0 on Route</div>
+                                            <div className="text-sm text-gray-600">0 idle "¢ 0 on Route</div>
                                         </div>
                                         <div className="bg-white rounded-xl border border-gray-200 p-6">
                                             <div className="flex items-center gap-3 mb-3">
@@ -409,7 +445,7 @@ export default function SortAssign({ auth, company }: Props) {
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <span className="text-sm text-gray-400">â€”</span>
+                                                            <span className="text-sm text-gray-400">"”</span>
                                                         )}
                                                     </div>
                                                 </div>
@@ -426,14 +462,13 @@ export default function SortAssign({ auth, company }: Props) {
                                     <div className="bg-white rounded-xl border border-gray-200 p-6">
                                         <div className="mb-6">
                                             <h3 className="text-lg font-bold text-gray-900 mb-2" style={fontSyncopate}>Parcel queue</h3>
-                                            <p className="text-sm text-gray-500">Newly arrived parcels â€” determine barangay, then assign rider</p>
+                                            <p className="text-sm text-gray-500">Newly arrived parcels "” determine barangay, then assign rider</p>
                                         </div>
 
                                         {/* Search and Filters */}
                                         <div className="grid grid-cols-7 gap-3 mb-6">
                                             <input
                                                 type="text"
-                                                placeholder="Search parcel ID or s"
                                                 className="col-span-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2B2249]"
                                             />
                                             <select className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2B2249]">
@@ -502,7 +537,7 @@ export default function SortAssign({ auth, company }: Props) {
                                                                 <div className="text-sm text-gray-600">{parcel.carrier}</div>
                                                             </td>
                                                             <td className="px-6 py-4">
-                                                                <span className="text-sm text-gray-400">â€”</span>
+                                                                <span className="text-sm text-gray-400">"”</span>
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
                                                                 <button className="text-sm font-semibold text-[#5B4B6E] hover:underline">

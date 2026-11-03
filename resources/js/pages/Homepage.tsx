@@ -665,7 +665,7 @@ function Header({
 
   return (
     <header
-      className="w-full text-white"
+      className="w-full text-white sticky top-0 z-50"
       style={{
         background:
           "linear-gradient(90deg, #1c1430 0%, #3a2d5c 45%, #6a5a8a 100%)",
@@ -1148,17 +1148,65 @@ export default function Homepage({ auth, initialProducts = [], filters = {} }: H
               See all <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
-            {products.slice(0, 10).map((p) => (
-              <ProductCard 
-                key={p.id} 
-                product={p} 
-                role={role} 
-                onGuestAction={handleGuestAction}
-                onAddToCart={handleAddToCart}
-              />
-            ))}
+          
+          {/* Carousel Container */}
+          <div className="relative">
+            {/* Left Arrow */}
+            {products.length > 5 && (
+              <button
+                onClick={() => {
+                  const container = document.getElementById('top-products-carousel');
+                  if (container) {
+                    container.scrollBy({ left: -container.offsetWidth * 0.8, behavior: 'smooth' });
+                  }
+                }}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-lg border border-neutral-200 hover:bg-neutral-50 transition-all hover:scale-110"
+                aria-label="Previous products"
+              >
+                <ChevronLeft className="h-5 w-5 text-neutral-700" />
+              </button>
+            )}
+
+            {/* Scrollable Product Grid */}
+            <div
+              id="top-products-carousel"
+              className="flex gap-2 sm:gap-3 overflow-x-auto scroll-smooth scrollbar-hide snap-x snap-mandatory px-1"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              <style>{`
+                #top-products-carousel::-webkit-scrollbar {
+                  display: none;
+                }
+              `}</style>
+              {products.slice(0, 15).map((p) => (
+                <div key={p.id} className="flex-none w-[calc(50%-4px)] sm:w-[calc(33.333%-8px)] lg:w-[calc(20%-10px)] snap-start">
+                  <ProductCard 
+                    product={p} 
+                    role={role} 
+                    onGuestAction={handleGuestAction}
+                    onAddToCart={handleAddToCart}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Right Arrow */}
+            {products.length > 5 && (
+              <button
+                onClick={() => {
+                  const container = document.getElementById('top-products-carousel');
+                  if (container) {
+                    container.scrollBy({ left: container.offsetWidth * 0.8, behavior: 'smooth' });
+                  }
+                }}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-lg border border-neutral-200 hover:bg-neutral-50 transition-all hover:scale-110"
+                aria-label="Next products"
+              >
+                <ChevronRight className="h-5 w-5 text-neutral-700" />
+              </button>
+            )}
           </div>
+
           {products.length === 0 && (
             <div className="mt-4 text-center text-sm text-neutral-500">
               No products available yet. Sellers can start adding products!

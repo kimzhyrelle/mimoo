@@ -1,4 +1,4 @@
-﻿import { Head, Link } from '@inertiajs/react';
+﻿import { Head, Link, router } from '@inertiajs/react';
 import { ReactNode, useState } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
@@ -21,7 +21,12 @@ interface Props {
 
 export default function Account({ auth, company }: Props) {
     const [activeTab, setActiveTab] = useState('account');
+    const [showUserMenu, setShowUserMenu] = useState(false);
     const [activeSection, setActiveSection] = useState('company-profile');
+
+    const handleLogout = () => {
+        router.post('/logout');
+    };
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: 'grid', href: '/logistics/dashboard' },
@@ -133,7 +138,6 @@ export default function Account({ auth, company }: Props) {
                                 <div className="relative">
                                     <input
                                         type="text"
-                                        placeholder="Search / Scan"
                                         className="w-64 px-4 py-2 pl-10 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#3B1F6B] focus:border-transparent"
                                     />
                                     <svg
@@ -163,9 +167,41 @@ export default function Account({ auth, company }: Props) {
                                     </svg>
                                     <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                                 </button>
-                                <button className="w-9 h-9 rounded-full bg-[#2B2249] text-white flex items-center justify-center text-sm font-bold">
-                                    {auth.user.name.charAt(0)}
-                                </button>
+                                <div className="relative">
+                                    <button 
+                                        onClick={() => setShowUserMenu(!showUserMenu)}
+                                        className="w-9 h-9 rounded-full bg-[#2B2249] text-white flex items-center justify-center text-sm font-bold hover:bg-[#3d2e5f] transition"
+                                    >
+                                        {auth.user.name.charAt(0)}
+                                    </button>
+                                    {showUserMenu && (
+                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                                            <Link
+                                                href="/logistics/account"
+                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                                        <circle cx="12" cy="7" r="4"/>
+                                                    </svg>
+                                                    Account
+                                                </div>
+                                            </Link>
+                                            <button
+                                                onClick={handleLogout}
+                                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                                    <polyline points="16 17 21 12 16 7"/>
+                                                    <line x1="21" y1="12" x2="9" y2="12"/>
+                                                </svg>
+                                                Log out
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </header>
@@ -186,7 +222,7 @@ export default function Account({ auth, company }: Props) {
                                         <div>
                                             <h1 className="text-xl font-bold text-gray-900" style={fontSyncopate}>Laguna Hub (Santa Cruz)</h1>
                                             <p className="text-sm text-gray-600 mt-1">
-                                                Registered Logistics Hub Partner â€¢ NODE ID: <span className="font-semibold">MIM-LAG-001</span> â€¢ Accredited since Oct 24, 2026
+                                                Registered Logistics Hub Partner "¢ NODE ID: <span className="font-semibold">MIM-LAG-001</span> "¢ Accredited since Oct 24, 2026
                                             </p>
                                         </div>
                                     </div>
@@ -194,7 +230,7 @@ export default function Account({ auth, company }: Props) {
                                         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#E8E3F0] text-blue-700 text-xs font-semibold">
                                             â˜… Hub Operational Tier
                                         </span>
-                                        <span className="text-xs text-gray-600">Priority Sorter â€¢ Class A</span>
+                                        <span className="text-xs text-gray-600">Priority Sorter "¢ Class A</span>
                                         <button className="mt-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50">
                                             Certificate
                                         </button>
@@ -329,7 +365,7 @@ export default function Account({ auth, company }: Props) {
                                                     <div>
                                                         <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">Middle Initial</label>
                                                         <div className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg">
-                                                            <p className="text-sm text-gray-400">â€”</p>
+                                                            <p className="text-sm text-gray-400">"”</p>
                                                         </div>
                                                     </div>
                                                     <div>
@@ -376,7 +412,7 @@ export default function Account({ auth, company }: Props) {
                                                     </div>
                                                 ))}
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-4">Document uploads aren't connected to storage yet â€” these entries are placeholders. Last updated: Oct 24, 2026 at 09:48 PM</p>
+                                            <p className="text-xs text-gray-500 mt-4">Document uploads aren't connected to storage yet "” these entries are placeholders. Last updated: Oct 24, 2026 at 09:48 PM</p>
                                         </div>
                                     )}
 

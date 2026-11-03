@@ -81,7 +81,7 @@ export function BuyerHeader({
 
   return (
     <header
-      className="w-full text-white"
+      className="w-full text-white sticky top-0 z-50"
       style={{
         background: "linear-gradient(90deg, #1c1430 0%, #3a2d5c 45%, #6a5a8a 100%)",
       }}

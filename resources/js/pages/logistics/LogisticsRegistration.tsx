@@ -714,7 +714,7 @@ export default function LogisticsRegistration() {
                                         className={inputCls(err('region'))}
                                         disabled={loading.regions}
                                     >
-                                        <option value="">Selectâ€¦</option>
+                                        <option value="">Select"¦</option>
                                         {regions.map((r) => (
                                             <option key={r.code} value={r.name}>{r.name}</option>
                                         ))}
@@ -734,7 +734,7 @@ export default function LogisticsRegistration() {
                                             }}
                                             className={inputCls(err('district'))}
                                         >
-                                            <option value="">Selectâ€¦</option>
+                                            <option value="">Select"¦</option>
                                             {NCR_DISTRICTS.map((d) => (
                                                 <option key={d} value={d}>{d}</option>
                                             ))}
@@ -753,7 +753,7 @@ export default function LogisticsRegistration() {
                                             className={inputCls(err('province'))}
                                             disabled={!data.region || loading.provinces}
                                         >
-                                            <option value="">{!data.region ? 'Select region first' : 'Selectâ€¦'}</option>
+                                            <option value="">{!data.region ? 'Select region first' : 'Select"¦'}</option>
                                             {provinces.map((p) => (
                                                 <option key={p.code} value={p.name}>{p.name}</option>
                                             ))}
@@ -774,8 +774,8 @@ export default function LogisticsRegistration() {
                                     >
                                         <option value="">
                                             {isNCR 
-                                                ? (!data.district ? 'Select district first' : 'Selectâ€¦')
-                                                : (!data.province ? 'Select province first' : 'Selectâ€¦')
+                                                ? (!data.district ? 'Select district first' : 'Select"¦')
+                                                : (!data.province ? 'Select province first' : 'Select"¦')
                                             }
                                         </option>
                                         {cities.map((c) => (
@@ -792,7 +792,7 @@ export default function LogisticsRegistration() {
                                         className={inputCls(err('barangay'))}
                                         disabled={!data.municipality_city || loading.barangays}
                                     >
-                                        <option value="">{!data.municipality_city ? 'Select city first' : 'Selectâ€¦'}</option>
+                                        <option value="">{!data.municipality_city ? 'Select city first' : 'Select"¦'}</option>
                                         {barangays.map((b) => (
                                             <option key={b.code} value={b.name}>{b.name}</option>
                                         ))}

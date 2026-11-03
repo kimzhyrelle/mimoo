@@ -13,7 +13,7 @@ const RIDER_SAMPLE_TOTAL = RIDER_FEE_PER_DELIVERY * RIDER_SAMPLE_DELIVERIES;
 const HUB_FEE_PER_PARCEL = 8;
 const HUB_SAMPLE_PARCELS = 200;
 const HUB_SAMPLE_TOTAL = HUB_FEE_PER_PARCEL * HUB_SAMPLE_PARCELS;
-const peso = (n: number) => `â‚±${n.toLocaleString('en-PH')}`;
+const peso = (n: number) => `₱${n.toLocaleString('en-PH')}`;
 
 const navLinks = [
     { label: 'Home', href: '/' },
@@ -595,7 +595,7 @@ export default function LogisticsLanding() {
                         <div className="grid grid-cols-3 gap-3 mb-4">
                             {[
                                 { label: 'Deliveries today', value: '8' },
-                                { label: 'Earned today', value: 'â‚±480' },
+                                { label: 'Earned today', value: '₱480' },
                                 { label: 'Pending pick-ups', value: '3' },
                             ].map((s) => (
                                 <div key={s.label} className="bg-white rounded-xl p-3 text-center">

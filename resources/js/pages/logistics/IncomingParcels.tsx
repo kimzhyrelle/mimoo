@@ -1,5 +1,5 @@
-﻿import { Head, Link } from '@inertiajs/react';
-import { ReactNode, useState } from 'react';
+﻿import { Head, Link, router } from '@inertiajs/react';
+import { ReactNode, useState, useRef, useEffect } from 'react';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
 const fontSyne = { fontFamily: 'Syne, sans-serif' };
@@ -24,6 +24,62 @@ export default function IncomingParcels({ auth, company }: Props) {
     const [viewMode, setViewMode] = useState<'scanner' | 'pickup'>('scanner');
     const [selectedParcel, setSelectedParcel] = useState('#1013');
     const [scannedParcel, setScannedParcel] = useState('#1078');
+    const [showUserMenu, setShowUserMenu] = useState(false);
+    const [cameraActive, setCameraActive] = useState(false);
+    const [cameraError, setCameraError] = useState<string | null>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+
+    const handleLogout = () => {
+        router.post('/logout');
+    };
+
+    const startCamera = async () => {
+        try {
+            setCameraError(null);
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: 'environment', // Use back camera on mobile
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            });
+            
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                streamRef.current = stream;
+                setCameraActive(true);
+            }
+        } catch (error) {
+            console.error('Camera error:', error);
+            setCameraError('Cannot access camera. Please allow camera permissions.');
+            setCameraActive(false);
+        }
+    };
+
+    const stopCamera = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
+        setCameraActive(false);
+    };
+
+    // Start camera when component mounts and scanner view is active
+    useEffect(() => {
+        if (viewMode === 'scanner') {
+            startCamera();
+        }
+        
+        // Cleanup camera when component unmounts
+        return () => {
+            stopCamera();
+        };
+    }, [viewMode]);
+
 
     const pickupSchedule = [
         { route: 'Poblacion I', color: 'purple', rider: { initial: 'JR', name: 'J. Ramos' }, window: '9:10 AM - 11:00 AM', ready: '10:30 AM' },
@@ -34,11 +90,11 @@ export default function IncomingParcels({ auth, company }: Props) {
     ];
 
     const dropOffParcels = [
-        { id: '#1011', seller: 'Min\'s Sari-Sari', dropped: 'JR â€¢ J. Ramos', arrived: '07:21 AM' },
-        { id: '#1038', seller: 'TechZone Laguna', dropped: 'KV â€¢ K. Villar', arrived: '07:24 AM' },
-        { id: '#1012', seller: 'CraftsbyLex', dropped: 'MC â€¢ M. Cruz', arrived: '07:27 AM' },
-        { id: '#1026', seller: 'Ph Clothing Co.', dropped: 'FD â€¢ F. Dela Cruz', arrived: '07:29 AM' },
-        { id: '#1013', seller: 'Barkly Kubo Snacks', dropped: 'AS â€¢ A. Santos', arrived: '07:55 AM' }
+        { id: '#1011', seller: 'Min\'s Sari-Sari', dropped: 'JR "¢ J. Ramos', arrived: '07:21 AM' },
+        { id: '#1038', seller: 'TechZone Laguna', dropped: 'KV "¢ K. Villar', arrived: '07:24 AM' },
+        { id: '#1012', seller: 'CraftsbyLex', dropped: 'MC "¢ M. Cruz', arrived: '07:27 AM' },
+        { id: '#1026', seller: 'Ph Clothing Co.', dropped: 'FD "¢ F. Dela Cruz', arrived: '07:29 AM' },
+        { id: '#1013', seller: 'Barkly Kubo Snacks', dropped: 'AS "¢ A. Santos', arrived: '07:55 AM' }
     ];
 
     const lastScanned = [
@@ -103,6 +159,14 @@ export default function IncomingParcels({ auth, company }: Props) {
                 .scrollbar-hide {
                     -ms-overflow-style: none;
                     scrollbar-width: none;
+                }
+                @keyframes scan {
+                    0% { top: 0; }
+                    50% { top: 100%; }
+                    100% { top: 0; }
+                }
+                .animate-scan {
+                    animation: scan 2s ease-in-out infinite;
                 }
             `}</style>
             
@@ -169,7 +233,6 @@ export default function IncomingParcels({ auth, company }: Props) {
                                 <div className="relative">
                                     <input
                                         type="text"
-                                        placeholder="Search / Scan"
                                         className="w-64 px-4 py-2 pl-10 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#3B1F6B] focus:border-transparent"
                                     />
                                     <svg
@@ -199,9 +262,41 @@ export default function IncomingParcels({ auth, company }: Props) {
                                     </svg>
                                     <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                                 </button>
-                                <button className="w-9 h-9 rounded-full bg-[#2B2249] text-white flex items-center justify-center text-sm font-bold">
-                                    {auth.user.name.charAt(0)}
-                                </button>
+                                <div className="relative">
+                                    <button 
+                                        onClick={() => setShowUserMenu(!showUserMenu)}
+                                        className="w-9 h-9 rounded-full bg-[#2B2249] text-white flex items-center justify-center text-sm font-bold hover:bg-[#3d2e5f] transition"
+                                    >
+                                        {auth.user.name.charAt(0)}
+                                    </button>
+                                    {showUserMenu && (
+                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                                            <Link
+                                                href="/logistics/account"
+                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                                        <circle cx="12" cy="7" r="4"/>
+                                                    </svg>
+                                                    Account
+                                                </div>
+                                            </Link>
+                                            <button
+                                                onClick={handleLogout}
+                                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                                    <polyline points="16 17 21 12 16 7"/>
+                                                    <line x1="21" y1="12" x2="9" y2="12"/>
+                                                </svg>
+                                                Log out
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </header>
@@ -256,43 +351,93 @@ export default function IncomingParcels({ auth, company }: Props) {
                                         <div className="mb-6">
                                             <div className="flex items-center justify-between mb-4">
                                                 <h3 className="text-lg font-bold text-gray-900" style={fontSyncopate}>Live Optical Viewfinder</h3>
-                                                <button className="px-3 py-1.5 bg-[#E8E3F0] text-[#5B4B6E] rounded-lg text-xs font-semibold">
-                                                    Camera Scanner Active (50 FPS)
+                                                <button 
+                                                    onClick={cameraActive ? stopCamera : startCamera}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                                                        cameraActive 
+                                                            ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                                                            : 'bg-[#E8E3F0] text-[#5B4B6E] hover:bg-[#D4CEE0]'
+                                                    }`}
+                                                >
+                                                    {cameraActive ? '● Camera Active' : 'Start Camera'}
                                                 </button>
                                             </div>
-                                            <div className="bg-[#1a1f3a] rounded-xl p-12 flex flex-col items-center justify-center">
-                                                <div className="relative w-64 h-64 mb-6">
-                                                    <div className="absolute inset-0 border-4 border-purple-400/30 rounded-2xl"></div>
-                                                    <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-purple-400 rounded-tl-2xl"></div>
-                                                    <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-purple-400 rounded-tr-2xl"></div>
-                                                    <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-purple-400 rounded-bl-2xl"></div>
-                                                    <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-purple-400 rounded-br-2xl"></div>
-                                                    <div className="absolute inset-0 flex items-center justify-center">
-                                                        <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center">
-                                                            <svg width="120" height="120" viewBox="0 0 100 100">
-                                                                <rect x="0" y="0" width="10" height="10" fill="black"/>
-                                                                <rect x="20" y="0" width="10" height="10" fill="black"/>
-                                                                <rect x="40" y="0" width="10" height="10" fill="black"/>
-                                                                <rect x="70" y="0" width="10" height="10" fill="black"/>
-                                                                <rect x="90" y="0" width="10" height="10" fill="black"/>
-                                                                <rect x="0" y="20" width="10" height="10" fill="black"/>
-                                                                <rect x="90" y="20" width="10" height="10" fill="black"/>
-                                                                <rect x="0" y="40" width="10" height="10" fill="black"/>
-                                                                <rect x="30" y="40" width="10" height="10" fill="black"/>
-                                                                <rect x="60" y="40" width="10" height="10" fill="black"/>
-                                                                <rect x="90" y="40" width="10" height="10" fill="black"/>
-                                                                <rect x="0" y="60" width="10" height="10" fill="black"/>
-                                                                <rect x="90" y="60" width="10" height="10" fill="black"/>
-                                                                <rect x="0" y="90" width="10" height="10" fill="black"/>
-                                                                <rect x="20" y="90" width="10" height="10" fill="black"/>
-                                                                <rect x="40" y="90" width="10" height="10" fill="black"/>
-                                                                <rect x="70" y="90" width="10" height="10" fill="black"/>
-                                                                <rect x="90" y="90" width="10" height="10" fill="black"/>
+                                            <div className="bg-[#1a1f3a] rounded-xl overflow-hidden relative w-full" style={{ minHeight: '500px', aspectRatio: '16/9' }}>
+                                                {/* Camera Video Feed - Must be first to be in background */}
+                                                <video
+                                                    ref={videoRef}
+                                                    autoPlay
+                                                    playsInline
+                                                    muted
+                                                    className="absolute inset-0 w-full h-full object-cover z-0"
+                                                    style={{ display: cameraActive ? 'block' : 'none' }}
+                                                />
+                                                
+                                                {/* Camera Error */}
+                                                {cameraError && (
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-[#1a1f3a] p-8 z-10">
+                                                        <div className="text-center">
+                                                            <svg className="w-16 h-16 mx-auto mb-4 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                                                                <line x1="1" y1="1" x2="23" y2="23"/>
                                                             </svg>
+                                                            <p className="text-red-400 text-sm mb-4">{cameraError}</p>
+                                                            <button 
+                                                                onClick={startCamera}
+                                                                className="px-4 py-2 bg-[#2B2249] text-white rounded-lg text-sm font-semibold hover:bg-[#3d2e5f] transition"
+                                                            >
+                                                                Try Again
+                                                            </button>
                                                         </div>
                                                     </div>
-                                                </div>
-                                                <p className="text-gray-400 text-sm">Center parcel QR-code inside window</p>
+                                                )}
+                                                
+                                                {/* Placeholder when camera is off */}
+                                                {!cameraActive && !cameraError && (
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-[#1a1f3a] p-8 z-10">
+                                                        <div className="text-center">
+                                                            <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                                                                <circle cx="12" cy="13" r="4"/>
+                                                            </svg>
+                                                            <p className="text-gray-400 text-sm mb-4">Camera is off</p>
+                                                            <button 
+                                                                onClick={startCamera}
+                                                                className="px-4 py-2 bg-[#2B2249] text-white rounded-lg text-sm font-semibold hover:bg-[#3d2e5f] transition"
+                                                            >
+                                                                Start Camera
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
+                                                {/* Scanning Overlay with corners */}
+                                                {cameraActive && (
+                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                                                        <div className="relative w-64 h-64">
+                                                            {/* Semi-transparent overlay around scanner */}
+                                                            <div className="absolute inset-0 border-4 border-purple-400/30 rounded-2xl"></div>
+                                                            
+                                                            {/* Corner brackets */}
+                                                            <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-purple-400 rounded-tl-2xl"></div>
+                                                            <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-purple-400 rounded-tr-2xl"></div>
+                                                            <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-purple-400 rounded-bl-2xl"></div>
+                                                            <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-purple-400 rounded-br-2xl"></div>
+                                                            
+                                                            {/* Scanning line animation */}
+                                                            <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-purple-400 to-transparent animate-scan"></div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
+                                                {/* Instructions */}
+                                                {cameraActive && (
+                                                    <div className="absolute bottom-4 left-0 right-0 text-center z-30">
+                                                        <p className="text-white text-sm font-medium bg-black/50 inline-block px-4 py-2 rounded-lg">
+                                                            Center QR code inside the frame
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </div>
                                             <button className="w-full mt-4 px-4 py-3 bg-gray-50 border-2 border-dashed border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-100 transition flex items-center justify-center gap-2">
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -325,7 +470,7 @@ export default function IncomingParcels({ auth, company }: Props) {
                                                 <div className="col-span-2 space-y-3">
                                                     <div className="flex justify-between">
                                                         <span className="text-xs font-semibold text-gray-500">Arrival Time</span>
-                                                        <span className="text-sm font-medium">Oct 26, 2026 â€” 07:21 AM</span>
+                                                        <span className="text-sm font-medium">Oct 26, 2026 "” 07:21 AM</span>
                                                     </div>
                                                     <div className="flex justify-between">
                                                         <span className="text-xs font-semibold text-gray-500">Contact Number</span>
@@ -354,7 +499,7 @@ export default function IncomingParcels({ auth, company }: Props) {
                                                         <div>
                                                             <div className="text-xs font-semibold text-gray-500 mb-1">ASSIGNMENT</div>
                                                             <div className="text-base font-bold text-gray-900">Target Bin: BIN-RO1</div>
-                                                            <div className="text-xs text-gray-600">Palasan â€¢ Station Zone Sector 801</div>
+                                                            <div className="text-xs text-gray-600">Palasan "¢ Station Zone Sector 801</div>
                                                         </div>
                                                     </div>
                                                     <button className="px-3 py-1.5 bg-[#D4CEE0] text-[#5B4B6E] rounded-lg text-xs font-semibold">
@@ -386,7 +531,7 @@ export default function IncomingParcels({ auth, company }: Props) {
                                         <div className="border-t border-gray-200 pt-6 mt-6">
                                             <div className="mb-4">
                                                 <h3 className="text-lg font-bold text-gray-900 mb-1" style={fontSyncopate}>Today's Pickup Schedule</h3>
-                                                <p className="text-sm text-gray-500">Sorted by cutoff time â€” earliest first. Sellers must be ready before cutoff</p>
+                                                <p className="text-sm text-gray-500">Sorted by cutoff time "” earliest first. Sellers must be ready before cutoff</p>
                                             </div>
                                             <div className="space-y-3">
                                                 {/* Table Header */}
@@ -417,7 +562,7 @@ export default function IncomingParcels({ auth, company }: Props) {
                                                                     <span className="text-sm text-gray-900">{pickup.rider.name}</span>
                                                                 </div>
                                                             ) : (
-                                                                <span className="text-sm text-gray-400">â€”</span>
+                                                                <span className="text-sm text-gray-400">"”</span>
                                                             )}
                                                         </div>
                                                         <div className="col-span-4 flex items-center text-sm text-gray-600">
@@ -441,7 +586,7 @@ export default function IncomingParcels({ auth, company }: Props) {
 
                             {/* Right Sidebar - Last 5 Scanned Parcels */}
                             <div className="w-96 flex-shrink-0 overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                                <div className="bg-white rounded-xl border border-gray-200 p-6 sticky top-0">
+                                <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
                                     <div className="flex items-center justify-between mb-4">
                                         <h3 className="text-lg font-bold text-gray-900" style={fontSyncopate}>Last 5 Scanned Parcels</h3>
                                         <button className="p-1.5 hover:bg-gray-100 rounded-lg">
@@ -497,7 +642,7 @@ export default function IncomingParcels({ auth, company }: Props) {
                                     </div>
                                     <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
                                         <span>5 waiting</span>
-                                        <span>Sorting hub â€” Bay 2</span>
+                                        <span>Sorting hub "” Bay 2</span>
                                     </div>
                                 </div>
                             </div>

@@ -3,10 +3,10 @@ import {
     AlertTriangle,
     Bell,
     CheckSquare,
-    CircleDollarSign,
     Cog,
     Eye,
     FileText,
+    Image,
     LayoutDashboard,
     LogOut,
     MessageSquare,
@@ -19,7 +19,8 @@ import type { ReactNode } from 'react';
 
 export type AdminNavKey =
     | 'dashboard'
-    | 'commission'
+    | 'vouchers'
+    | 'banners'
     | 'reports'
     | 'seller-approval'
     | 'logistics-approval'
@@ -29,7 +30,8 @@ export type AdminNavKey =
 
 const navItems: { key: AdminNavKey; label: string; icon: React.ElementType; href: string }[] = [
     { key: 'dashboard',          label: 'Dashboard',          icon: LayoutDashboard,  href: '/admin/dashboard'          },
-    { key: 'commission',         label: 'Commission',         icon: CircleDollarSign, href: '/admin/commission'         },
+    { key: 'vouchers',           label: 'Vouchers',           icon: FileText,         href: '/admin/vouchers'           },
+    { key: 'banners',            label: 'Banner Management',  icon: Image,            href: '/admin/banners'            },
     { key: 'seller-approval',    label: 'Seller Approval',    icon: UserCheck,        href: '/admin/seller-approval'    },
     { key: 'logistics-approval', label: 'Logistics Approval', icon: Truck,            href: '/admin/logistics-approval' },
     { key: 'product-approval',   label: 'Product Approval',   icon: CheckSquare,      href: '/admin/product-approval'   },
