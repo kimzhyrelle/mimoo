@@ -682,6 +682,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/api/orders', [\App\Http\Controllers\OrderController::class, 'store']);
     Route::post('/api/orders/{id}/cancel', [\App\Http\Controllers\OrderController::class, 'cancel']);
     
+    // Voucher validation
+    Route::post('/api/vouchers/validate', [\App\Http\Controllers\Admin\VoucherController::class, 'validate']);
+    
     // Orders data refresh endpoint
     Route::get('/orders/data', [\App\Http\Controllers\OrderController::class, 'getData']);
     
@@ -743,9 +746,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         
         // Vouchers Management
-        Route::get('/vouchers', function () {
-            return Inertia::render('admin/Vouchers');
-        })->name('vouchers');
+        Route::get('/vouchers', [App\Http\Controllers\Admin\VoucherController::class, 'index'])->name('vouchers');
+        Route::post('/vouchers', [App\Http\Controllers\Admin\VoucherController::class, 'store']);
+        Route::put('/vouchers/{voucher}', [App\Http\Controllers\Admin\VoucherController::class, 'update']);
+        Route::delete('/vouchers/{voucher}', [App\Http\Controllers\Admin\VoucherController::class, 'destroy']);
+        Route::patch('/vouchers/{voucher}/toggle', [App\Http\Controllers\Admin\VoucherController::class, 'toggleStatus']);
         
         // Banner Management
         Route::get('/banners', function () {

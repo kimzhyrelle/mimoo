@@ -1,6 +1,8 @@
+import VoucherController from './VoucherController'
 import AdminController from './AdminController'
 const Admin = {
-    AdminController: Object.assign(AdminController, AdminController),
+    VoucherController: Object.assign(VoucherController, VoucherController),
+AdminController: Object.assign(AdminController, AdminController),
 }
 
 export default Admin

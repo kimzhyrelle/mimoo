@@ -304,6 +304,64 @@ function SuperSeratusBanner() {
   );
 }
 
+function VoucherCard({ code, title, discount, minPurchase, validUntil }: {
+  code: string;
+  title: string;
+  discount: string;
+  minPurchase: number;
+  validUntil: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="min-w-[280px] sm:min-w-[300px] snap-start flex-none">
+      <div className="relative overflow-hidden rounded-xl border-2 border-dashed border-violet-300 bg-gradient-to-br from-violet-50 to-pink-50 p-4 hover:shadow-lg transition-shadow">
+        {/* Discount Badge */}
+        <div className="absolute top-2 right-2">
+          <div className="bg-gradient-to-r from-violet-600 to-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
+            {discount}
+          </div>
+        </div>
+
+        {/* Title */}
+        <div className="mb-3">
+          <h3 className="font-bold text-violet-900 text-base">{title}</h3>
+          <p className="text-xs text-violet-700 mt-0.5">
+            Min. purchase: ₱{minPurchase.toLocaleString()}
+          </p>
+        </div>
+
+        {/* Code */}
+        <div className="mb-3">
+          <div className="bg-white border-2 border-violet-200 rounded-lg p-3 flex items-center justify-between">
+            <span className="font-mono font-bold text-violet-900 text-lg tracking-wider">
+              {code}
+            </span>
+            <button
+              onClick={copyCode}
+              className="ml-2 px-3 py-1 bg-violet-600 text-white text-xs font-semibold rounded-md hover:bg-violet-700 transition-colors"
+            >
+              {copied ? '✓ Copied' : 'Copy'}
+            </button>
+          </div>
+        </div>
+
+        {/* Valid Until */}
+        <div className="flex items-center justify-between text-xs text-violet-700">
+          <span>Valid until</span>
+          <span className="font-semibold">{validUntil}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CategoryTile({ category }: { category: Category }) {
   return (
     <Link
@@ -1136,6 +1194,54 @@ export default function Homepage({ auth, initialProducts = [], filters = {} }: H
             </button>
           </div>
           <CategoryCarousel categories={CATEGORIES} />
+        </section>
+
+        {/* Vouchers Section */}
+        <section className="mt-6 sm:mt-8">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-neutral-900 sm:text-base">
+                Available Vouchers
+              </h2>
+              <p className="text-xs text-neutral-600 mt-0.5">Save more with these exclusive codes</p>
+            </div>
+          </div>
+          
+          {/* Vouchers Carousel */}
+          <div className="relative -mx-2">
+            <div className="flex gap-3 overflow-x-auto px-2 pb-2 snap-x snap-mandatory" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+              <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
+              {/* Sample Vouchers - Replace with real data */}
+              <VoucherCard
+                code="WELCOME10"
+                title="Welcome Discount"
+                discount="10% OFF"
+                minPurchase={500}
+                validUntil="Dec 31, 2026"
+              />
+              <VoucherCard
+                code="FREESHIP"
+                title="Free Shipping"
+                discount="₱0 Shipping"
+                minPurchase={1000}
+                validUntil="Nov 30, 2026"
+              />
+              <VoucherCard
+                code="SAVE100"
+                title="Save ₱100"
+                discount="₱100 OFF"
+                minPurchase={2000}
+                validUntil="Dec 15, 2026"
+              />
+              <VoucherCard
+                code="FLASH20"
+                title="Flash Sale"
+                discount="20% OFF"
+                minPurchase={1500}
+                validUntil="Nov 15, 2026"
+              />
+            </div>
+          </div>
         </section>
 
         {/* Top products */}

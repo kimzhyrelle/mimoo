@@ -214,7 +214,8 @@ dashboard.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     
     dashboard.form = dashboardForm
 /**
- * @see routes/web.php:746
+* @see \App\Http\Controllers\Admin\VoucherController::vouchers
+ * @see app/Http/Controllers/Admin/VoucherController.php:12
  * @route '/admin/vouchers'
  */
 export const vouchers = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -228,7 +229,8 @@ vouchers.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:746
+* @see \App\Http\Controllers\Admin\VoucherController::vouchers
+ * @see app/Http/Controllers/Admin/VoucherController.php:12
  * @route '/admin/vouchers'
  */
 vouchers.url = (options?: RouteQueryOptions) => {
@@ -236,7 +238,8 @@ vouchers.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:746
+* @see \App\Http\Controllers\Admin\VoucherController::vouchers
+ * @see app/Http/Controllers/Admin/VoucherController.php:12
  * @route '/admin/vouchers'
  */
 vouchers.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -244,7 +247,8 @@ vouchers.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     method: 'get',
 })
 /**
- * @see routes/web.php:746
+* @see \App\Http\Controllers\Admin\VoucherController::vouchers
+ * @see app/Http/Controllers/Admin/VoucherController.php:12
  * @route '/admin/vouchers'
  */
 vouchers.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -253,7 +257,8 @@ vouchers.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
     /**
- * @see routes/web.php:746
+* @see \App\Http\Controllers\Admin\VoucherController::vouchers
+ * @see app/Http/Controllers/Admin/VoucherController.php:12
  * @route '/admin/vouchers'
  */
     const vouchersForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -262,7 +267,8 @@ vouchers.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     })
 
             /**
- * @see routes/web.php:746
+* @see \App\Http\Controllers\Admin\VoucherController::vouchers
+ * @see app/Http/Controllers/Admin/VoucherController.php:12
  * @route '/admin/vouchers'
  */
         vouchersForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -270,7 +276,8 @@ vouchers.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             method: 'get',
         })
             /**
- * @see routes/web.php:746
+* @see \App\Http\Controllers\Admin\VoucherController::vouchers
+ * @see app/Http/Controllers/Admin/VoucherController.php:12
  * @route '/admin/vouchers'
  */
         vouchersForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -285,7 +292,7 @@ vouchers.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     
     vouchers.form = vouchersForm
 /**
- * @see routes/web.php:751
+ * @see routes/web.php:756
  * @route '/admin/banners'
  */
 export const banners = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -299,7 +306,7 @@ banners.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:751
+ * @see routes/web.php:756
  * @route '/admin/banners'
  */
 banners.url = (options?: RouteQueryOptions) => {
@@ -307,7 +314,7 @@ banners.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:751
+ * @see routes/web.php:756
  * @route '/admin/banners'
  */
 banners.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -315,7 +322,7 @@ banners.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     method: 'get',
 })
 /**
- * @see routes/web.php:751
+ * @see routes/web.php:756
  * @route '/admin/banners'
  */
 banners.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -324,7 +331,7 @@ banners.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
     /**
- * @see routes/web.php:751
+ * @see routes/web.php:756
  * @route '/admin/banners'
  */
     const bannersForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -333,7 +340,7 @@ banners.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     })
 
             /**
- * @see routes/web.php:751
+ * @see routes/web.php:756
  * @route '/admin/banners'
  */
         bannersForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -341,7 +348,7 @@ banners.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             method: 'get',
         })
             /**
- * @see routes/web.php:751
+ * @see routes/web.php:756
  * @route '/admin/banners'
  */
         bannersForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({

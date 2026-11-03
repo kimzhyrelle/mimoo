@@ -58,6 +58,7 @@ interface CartData {
 
 export default function Cart() {
   const { auth } = usePage<{ auth: { user: any } }>().props;
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
   const user = auth?.user;
   const role: UserRole = user?.account_type ? (user.account_type as UserRole) : "guest";
 
@@ -403,6 +404,19 @@ export default function Cart() {
                 Proceed to Checkout ({selectedItems.size})
               </button>
             </div>
+            
+            {/* Voucher Button */}
+            <div className="mt-4 pt-4 border-t border-[#E6DFF2]">
+              <button
+                onClick={() => setShowVoucherModal(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-[#4B2E7E] bg-[#F9F7FC] border-2 border-dashed border-[#B9A6DE] rounded-lg hover:bg-[#F3EFFC] transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                </svg>
+                Apply Voucher
+              </button>
+            </div>
           </div>
         )}
 
@@ -439,6 +453,83 @@ export default function Cart() {
           </div>
         </div>
       </main>
+
+      {/* Voucher Modal */}
+      {showVoucherModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="relative w-full max-w-md max-h-[80vh] overflow-y-auto rounded-xl bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
+              <h2 className="text-lg font-bold text-[#2A1B4D]">Select Voucher</h2>
+              <button
+                onClick={() => setShowVoucherModal(false)}
+                className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3">
+              {/* Sample vouchers */}
+              {[
+                { code: 'WELCOME10', title: '10% Off Welcome', discount: '10%', min: 500, savings: selectedTotal * 0.1 },
+                { code: 'SAVE100', title: 'Save ₱100', discount: '₱100', min: 2000, savings: 100 },
+                { code: 'FREESHIP', title: 'Free Shipping', discount: 'Free Ship', min: 1000, savings: 50 },
+              ].map((voucher) => {
+                const canApply = selectedTotal >= voucher.min;
+                
+                return (
+                  <button
+                    key={voucher.code}
+                    onClick={() => {
+                      if (canApply) {
+                        navigator.clipboard.writeText(voucher.code);
+                        toast.success(`Voucher ${voucher.code} copied! Apply it at checkout.`);
+                        setShowVoucherModal(false);
+                      }
+                    }}
+                    disabled={!canApply}
+                    className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                      canApply 
+                        ? 'border-violet-300 bg-gradient-to-br from-violet-50 to-pink-50 hover:shadow-md cursor-pointer' 
+                        : 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-mono font-bold text-violet-900">{voucher.code}</span>
+                          {canApply && (
+                            <span className="text-xs px-2 py-0.5 bg-green-500 text-white rounded-full">
+                              Available
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-700 mb-2">{voucher.title}</p>
+                        <p className="text-xs text-gray-600">
+                          Min. purchase: ₱{voucher.min.toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-violet-600">{voucher.discount}</div>
+                        {canApply && (
+                          <div className="text-xs text-green-600 mt-1">
+                            Save ₱{voucher.savings.toFixed(0)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {!canApply && (
+                      <div className="mt-2 text-xs text-red-600">
+                        Add ₱{(voucher.min - selectedTotal).toLocaleString()} more to use
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

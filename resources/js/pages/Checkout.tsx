@@ -78,6 +78,12 @@ export default function Checkout() {
   const [shippingPhone, setShippingPhone] = useState(user?.contact_number || "");
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "gcash" | "paymongo">("cod");
 
+  // Voucher state
+  const [voucherCode, setVoucherCode] = useState("");
+  const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
+  const [voucherDiscount, setVoucherDiscount] = useState(0);
+  const [applyingVoucher, setApplyingVoucher] = useState(false);
+
   // Address fields - pre-fill from user registration
   const [region, setRegion] = useState(user?.region || "");
   const [province, setProvince] = useState(user?.province || "");
@@ -198,6 +204,58 @@ export default function Checkout() {
   function handleLogout() {
     router.post("/logout");
   }
+
+  // Apply voucher
+  async function applyVoucher() {
+    if (!voucherCode.trim()) {
+      toast.error('Please enter a voucher code');
+      return;
+    }
+
+    setApplyingVoucher(true);
+
+    try {
+      const response = await fetch('/api/vouchers/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+        body: JSON.stringify({
+          code: voucherCode.toUpperCase(),
+          order_total: subtotal,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.valid) {
+        setAppliedVoucher(data.voucher);
+        setVoucherDiscount(data.voucher.discount_amount);
+        toast.success(data.message || 'Voucher applied!');
+      } else {
+        toast.error(data.message || 'Invalid voucher code');
+        setAppliedVoucher(null);
+        setVoucherDiscount(0);
+      }
+    } catch (error) {
+      console.error('Voucher validation error:', error);
+      toast.error('Failed to apply voucher');
+    } finally {
+      setApplyingVoucher(false);
+    }
+  }
+
+  // Remove voucher
+  function removeVoucher() {
+    setVoucherCode('');
+    setAppliedVoucher(null);
+    setVoucherDiscount(0);
+    toast.info('Voucher removed');
+  }
+
+  // Calculate final total with voucher
+  const finalTotal = subtotal - voucherDiscount;
 
   async function handlePlaceOrder(e: React.FormEvent) {
     e.preventDefault();
@@ -496,6 +554,53 @@ export default function Checkout() {
                       {peso(subtotal)}
                     </span>
                   </div>
+
+                  {/* Voucher Section */}
+                  <div className="py-3 border-t border-[#E6DFF2]">
+                    {!appliedVoucher ? (
+                      <div className="space-y-2">
+                        <label className="text-[0.85rem] font-semibold text-[#2A1B4D]">
+                          Have a voucher?
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={voucherCode}
+                            onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                            placeholder="Enter code"
+                            className="flex-1 px-3 py-2 text-sm rounded-lg border border-[#E6DFF2] focus:border-[#4B2E7E] focus:ring-2 focus:ring-[#4B2E7E]/20 outline-none uppercase"
+                          />
+                          <button
+                            onClick={applyVoucher}
+                            disabled={applyingVoucher || !voucherCode.trim()}
+                            className="px-4 py-2 text-sm font-semibold text-white bg-[#4B2E7E] rounded-lg hover:bg-[#3B1F6B] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {applyingVoucher ? 'Applying...' : 'Apply'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-green-900">{appliedVoucher.code}</p>
+                            <p className="text-xs text-green-700">{appliedVoucher.name}</p>
+                          </div>
+                          <button
+                            onClick={removeVoucher}
+                            className="text-green-700 hover:text-green-900 text-sm font-semibold"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <div className="mt-2 flex justify-between items-center">
+                          <span className="text-xs text-green-700">Discount</span>
+                          <span className="text-sm font-bold text-green-900">-{peso(voucherDiscount)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex justify-between text-[0.85rem]">
                     <span className="text-[#6E6570]">Shipping</span>
                     <span
@@ -511,7 +616,7 @@ export default function Checkout() {
                       className="font-extrabold text-[#4B2E7E]"
                       style={{ fontFamily: "'Poppins', sans-serif" }}
                     >
-                      {peso(total)}
+                      {peso(finalTotal)}
                     </span>
                   </div>
                 </div>
