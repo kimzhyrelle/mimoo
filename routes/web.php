@@ -79,26 +79,39 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::get('/logistics/incoming-parcels', function () {
         $user = auth()->user();
         
-        // Fetch real orders with status "in_transit" from database
-        $incomingOrders = \App\Models\Order::where('status', 'in_transit')
-            ->with(['items.product', 'user'])
+        // Fetch real orders with status "packed" from database (packed = ready for pickup)
+        $incomingOrders = \App\Models\Order::where('status', 'packed')
+            ->with(['items.product'])
             ->orderBy('updated_at', 'desc')
             ->get()
             ->map(function ($order) {
+                // Get buyer info
+                $buyer = \App\Models\User::find($order->buyer_id);
+                
+                // Get seller info from first item's product
+                $sellerName = 'N/A';
+                if ($order->items->isNotEmpty()) {
+                    $product = $order->items->first()->product;
+                    if ($product && $product->seller_id) {
+                        $seller = \App\Models\User::find($product->seller_id);
+                        $sellerName = $seller ? ($seller->business_name ?? $seller->name) : 'N/A';
+                    }
+                }
+                
                 return [
                     'id' => $order->id,
-                    'order_number' => $order->order_number,
+                    'order_number' => 'MIM-' . str_pad($order->id, 8, '0', STR_PAD_LEFT),
                     'waybill_number' => $order->waybill_number,
-                    'buyer_name' => $order->user->name ?? 'N/A',
-                    'buyer_phone' => $order->contact_number,
-                    'buyer_address' => $order->shipping_address,
-                    'seller_name' => $order->items->first()->product->user->name ?? 'N/A',
-                    'total_amount' => $order->total_amount,
-                    'payment_method' => $order->payment_method,
+                    'buyer_name' => $buyer->name ?? $order->shipping_name ?? 'N/A',
+                    'buyer_phone' => $order->shipping_phone ?? 'N/A',
+                    'buyer_address' => $order->shipping_address ?? 'N/A',
+                    'seller_name' => $sellerName,
+                    'total_amount' => $order->total ?? 0,
+                    'payment_method' => $order->payment_method ?? 'Cash on Delivery',
                     'items_count' => $order->items->count(),
                     'weight' => $order->weight ?? 0,
                     'shipped_at' => $order->updated_at->format('M d, Y H:i'),
-                    'status' => 'awaiting_sort',
+                    'status' => 'packed',
                 ];
             });
         
@@ -118,6 +131,154 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
             'incomingParcels' => $incomingOrders,
         ]);
     })->name('logistics.incoming-parcels');
+    
+    // API: Get parcel details by waybill number (for scanner)
+    Route::get('/api/logistics/parcel/{waybillNumber}', function ($waybillNumber) {
+        // Debug: Log the scanned waybill number
+        \Log::info('Scanned waybill number: ' . $waybillNumber);
+        
+        $order = \App\Models\Order::where('waybill_number', $waybillNumber)
+            ->with(['items.product']) // Just load product, we'll get seller manually
+            ->first();
+        
+        // Debug: Log all waybill numbers in database
+        $allWaybills = \App\Models\Order::whereNotNull('waybill_number')
+            ->pluck('waybill_number', 'id');
+        \Log::info('All waybill numbers in DB:', $allWaybills->toArray());
+        
+        if (!$order) {
+            return response()->json([
+                'error' => 'Parcel not found',
+                'scanned' => $waybillNumber,
+                'available_waybills' => $allWaybills->values(),
+            ], 404);
+        }
+        
+        // Get buyer info
+        $buyer = \App\Models\User::find($order->buyer_id);
+        
+        // Get seller info from first item's product
+        $sellerName = 'N/A';
+        if ($order->items->isNotEmpty()) {
+            $product = $order->items->first()->product;
+            if ($product && $product->seller_id) {
+                $seller = \App\Models\User::find($product->seller_id);
+                $sellerName = $seller ? ($seller->business_name ?? $seller->name) : 'N/A';
+            }
+        }
+        
+        return response()->json([
+            'parcel' => [
+                'id' => $order->id,
+                'order_number' => 'MIM-' . str_pad($order->id, 8, '0', STR_PAD_LEFT),
+                'waybill_number' => $order->waybill_number,
+                'buyer_name' => $buyer->name ?? $order->shipping_name ?? 'N/A',
+                'buyer_phone' => $order->shipping_phone ?? 'N/A',
+                'buyer_address' => $order->shipping_address ?? 'N/A',
+                'seller_name' => $sellerName,
+                'total_amount' => $order->total,
+                'payment_method' => $order->payment_method ?? 'Cash on Delivery',
+                'items_count' => $order->items->count(),
+                'weight' => $order->weight ?? 0,
+                'shipped_at' => $order->updated_at->toISOString(),
+                'status' => $order->status,
+            ],
+        ]);
+    });
+    
+    // DEBUG ROUTE: Check waybill numbers in database
+    Route::get('/api/debug/waybills', function () {
+        $orders = \App\Models\Order::whereNotNull('waybill_number')
+            ->select('id', 'waybill_number', 'status', 'waybill_generated_at', 'waybill_printed_at')
+            ->get()
+            ->map(function ($order) {
+                return [
+                    'id' => $order->id,
+                    'order_number' => 'MIM-' . str_pad($order->id, 8, '0', STR_PAD_LEFT),
+                    'waybill_number' => $order->waybill_number,
+                    'status' => $order->status,
+                    'waybill_generated_at' => $order->waybill_generated_at,
+                    'waybill_printed_at' => $order->waybill_printed_at,
+                ];
+            });
+        
+        return response()->json([
+            'count' => $orders->count(),
+            'orders' => $orders,
+        ]);
+    });
+    
+    // API: Confirm parcel received at logistics hub (packed → in_transit)
+    Route::post('/api/logistics/parcel/{id}/confirm', function ($id) {
+        $order = \App\Models\Order::findOrFail($id);
+        
+        // Validate that order is in packed status (ready for pickup)
+        if ($order->status !== 'packed') {
+            return response()->json([
+                'error' => 'Order is not ready for pickup',
+                'current_status' => $order->status,
+            ], 400);
+        }
+        
+        // Update order status to in_transit
+        $order->update(['status' => 'in_transit']);
+        
+        \Log::info('Parcel confirmed received at logistics hub', [
+            'order_id' => $order->id,
+            'waybill_number' => $order->waybill_number,
+            'confirmed_by' => auth()->id(),
+            'confirmed_at' => now(),
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Parcel confirmed! Now in transit.',
+            'order' => [
+                'id' => $order->id,
+                'waybill_number' => $order->waybill_number,
+                'status' => $order->status,
+            ],
+        ]);
+    });
+    
+    // API: Report problem with parcel
+    Route::post('/api/logistics/parcel/{id}/report', function (Illuminate\Http\Request $request, $id) {
+        $order = \App\Models\Order::findOrFail($id);
+        
+        $reason = $request->input('reason', '');
+        
+        if (empty($reason)) {
+            return response()->json([
+                'error' => 'Problem reason is required',
+            ], 400);
+        }
+        
+        // Log the problem
+        \Log::warning('Parcel problem reported', [
+            'order_id' => $order->id,
+            'waybill_number' => $order->waybill_number,
+            'status' => $order->status,
+            'reason' => $reason,
+            'reported_by' => auth()->id(),
+            'reported_at' => now(),
+        ]);
+        
+        // TODO: In future, you might want to:
+        // 1. Store problem reports in a separate table
+        // 2. Send notification to seller
+        // 3. Update order status to 'on_hold' or similar
+        // 4. Create a ticket in support system
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Problem reported. Seller will be notified.',
+            'order' => [
+                'id' => $order->id,
+                'waybill_number' => $order->waybill_number,
+                'status' => $order->status,
+            ],
+        ]);
+    });
     
     // Logistics Courier Applications
     Route::get('/logistics/courier-applications', function () {
@@ -164,6 +325,66 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::get('/logistics/sort-assign', function () {
         $user = auth()->user();
         
+        // Fetch orders with status "in_transit" (confirmed at logistics hub, ready for sorting)
+        $transitOrders = \App\Models\Order::where('status', 'in_transit')
+            ->with(['items.product'])
+            ->orderBy('updated_at', 'desc')
+            ->get()
+            ->map(function ($order) {
+                // Get buyer info
+                $buyer = \App\Models\User::find($order->buyer_id);
+                
+                // Get seller info from first item's product
+                $sellerName = 'N/A';
+                if ($order->items->isNotEmpty()) {
+                    $product = $order->items->first()->product;
+                    if ($product && $product->seller_id) {
+                        $seller = \App\Models\User::find($product->seller_id);
+                        $sellerName = $seller ? ($seller->business_name ?? $seller->name) : 'N/A';
+                    }
+                }
+                
+                // Extract barangay from shipping address
+                $address = $order->shipping_address ?? '';
+                $barangay = 'Unknown';
+                if (preg_match('/Brgy\.?\s+([^,]+)/i', $address, $matches)) {
+                    $barangay = trim($matches[1]);
+                } elseif (preg_match('/Barangay\s+([^,]+)/i', $address, $matches)) {
+                    $barangay = trim($matches[1]);
+                }
+                
+                return [
+                    'id' => $order->id,
+                    'order_number' => 'MIM-' . str_pad($order->id, 8, '0', STR_PAD_LEFT),
+                    'waybill_number' => $order->waybill_number,
+                    'buyer_name' => $buyer->name ?? $order->shipping_name ?? 'N/A',
+                    'buyer_phone' => $order->shipping_phone ?? 'N/A',
+                    'buyer_address' => $order->shipping_address ?? 'N/A',
+                    'barangay' => $barangay,
+                    'seller_name' => $sellerName,
+                    'total_amount' => $order->total ?? 0,
+                    'payment_method' => $order->payment_method ?? 'Cash on Delivery',
+                    'items_count' => $order->items->count(),
+                    'weight' => $order->weight ?? 0,
+                    'confirmed_at' => $order->updated_at->format('M d, Y H:i'),
+                    'status' => 'in_transit',
+                ];
+            });
+        
+        // Fetch approved courier/logistics companies
+        $approvedCouriers = \App\Models\User::where('account_type', 'logistics')
+            ->where('status', 'approved')
+            ->orderBy('company_name')
+            ->get()
+            ->map(function ($courier) {
+                return [
+                    'id' => $courier->id,
+                    'name' => $courier->company_name ?? $courier->business_name ?? $courier->name,
+                    'contact_person' => trim(($courier->contact_first_name ?? '') . ' ' . ($courier->contact_last_name ?? '')),
+                    'email' => $courier->email,
+                ];
+            });
+        
         return Inertia::render('logistics/SortAssign', [
             'auth' => [
                 'user' => [
@@ -177,6 +398,8 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
                 'name' => $user->company_name ?? $user->business_name,
                 'contact_person' => trim($user->contact_first_name . ' ' . $user->contact_last_name),
             ],
+            'parcels' => $transitOrders,
+            'couriers' => $approvedCouriers,
         ]);
     })->name('logistics.sort-assign');
     

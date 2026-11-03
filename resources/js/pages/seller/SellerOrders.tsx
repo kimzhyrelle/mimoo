@@ -2,6 +2,7 @@ import { Head } from "@inertiajs/react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { toast } from "sonner";
+import { QRCodeSVG } from "qrcode.react";
 import SellerShell from "@/layouts/seller/seller-shell";
 
 // ---------------------------------------------------------------------------
@@ -137,10 +138,28 @@ function Barcode({ text }: { text: string }) {
 function Waybill({ o, weight }: { o: SellerOrder; weight: number }) {
   const cod = /cash|cod/i.test(o.payment);
   const no = waybillNo(o);
+  
+  console.log('Waybill component rendering:', {
+    order_id: o.id,
+    order_number: o.order_number,
+    waybill_no_from_object: o.waybill_no,
+    computed_waybill_no: no,
+  });
+  
   return (
     <div className="wb">
       <div className="wb-top"><span className="wb-brand">MIMOO.</span><span className="wb-tag">Shipping label · Standard</span></div>
-      <div className="wb-code"><Barcode text={no} /><div className="no">{no}</div></div>
+      <div className="wb-code">
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ flex: 1 }}>
+            <Barcode text={no} />
+            <div className="no">{no}</div>
+          </div>
+          <div style={{ width: '80px', height: '80px', border: '2px solid #ddd', padding: '4px', background: 'white', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <QRCodeSVG value={no} size={72} level="L" />
+          </div>
+        </div>
+      </div>
       <div className="wb-row wb-to"><div className="lbl">Ship to</div><div className="nm">{o.buyer}</div><div>{o.phone}</div><div>{o.address}</div></div>
       <div className="wb-grid">
         <div><div className="lbl">Order</div><b>{o.order_number}</b><br />{o.date}</div>
@@ -484,7 +503,14 @@ export default function SellerOrders({ orders: initial }: PageProps) {
       setOrders((prev) =>
         prev.map((x) =>
           x.id === o.id
-            ? { ...x, ...(action === "waybill_printed" ? { waybill_printed: true, waybill_no: waybillNo(o) } : {}), ...(stage ? { stage } : {}), ...(data.order ?? {}) }
+            ? { 
+                ...x, 
+                ...(action === "waybill_printed" ? { waybill_printed: true } : {}), 
+                ...(stage ? { stage } : {}), 
+                ...(data.order ?? {}),
+                // Map backend field names to frontend
+                ...(data.order?.waybill_number ? { waybill_no: data.order.waybill_number } : {}),
+              }
             : x
         )
       );
@@ -591,7 +617,16 @@ export default function SellerOrders({ orders: initial }: PageProps) {
             busy={busy}
             onClose={() => setOpenId(null)}
             onAct={(action, payload) => act(openOrder, action, payload)}
-            onOpenWaybill={(weight) => setWb({ id: openOrder.id, weight })}
+            onOpenWaybill={(weight) => {
+              console.log('Opening waybill - Order data:', {
+                id: openOrder.id,
+                order_number: openOrder.order_number,
+                waybill_no: openOrder.waybill_no,
+                waybill_printed: openOrder.waybill_printed,
+                computed: waybillNo(openOrder),
+              });
+              setWb({ id: openOrder.id, weight });
+            }}
           />
         )}
 

@@ -119,26 +119,30 @@ class SellerOrderController extends Controller
         if ($request->has('action')) {
             $action = $request->input('action');
             
+            \Log::info("Order {$order->id} - Action: {$action}");
+            
             // Map actions to status updates
             $newStatus = match ($action) {
-                'accept' => 'paid',           // Accept order → mark as paid
-                'pack' => 'packed',           // Packed, ready for pickup
-                'pickup' => 'shipped',        // Handed to courier → shipped
-                'waybill_printed' => null,    // No status change, just tracking
+                'accept' => 'paid',              // Accept order → mark as paid
+                'pack' => 'packed',              // Packed, ready for logistics pickup (will show in incoming parcels)
+                'pickup' => 'shipped',           // Handed to courier → shipped (deprecated)
+                'waybill_printed' => null,       // No status change, just tracking
                 default => null,
             };
 
             if ($newStatus) {
                 // Auto-generate waybill when packing
                 if ($action === 'pack' && !$order->hasWaybill()) {
-                    $order->generateWaybillNumber();
+                    $waybill = $order->generateWaybillNumber();
+                    \Log::info("Order {$order->id} - Generated waybill: {$waybill}");
                 }
                 
                 $order->update(['status' => $newStatus]);
+                \Log::info("Order {$order->id} - Updated status to: {$newStatus}, waybill: " . $order->waybill_number);
                 
                 $messages = [
                     'accept' => 'Order accepted and now preparing.',
-                    'pack' => 'Order marked as packed. Waiting for pickup.',
+                    'pack' => 'Order packed and shipped. Now awaiting logistics pickup.',
                     'pickup' => 'Order handed to courier. Tracking started.',
                 ];
                 

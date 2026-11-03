@@ -156,10 +156,8 @@ class WaybillController extends Controller
      */
     public function qrCode(string $waybillNumber): mixed
     {
-        // Validate waybill exists
-        $order = Order::where('waybill_number', $waybillNumber)->firstOrFail();
-
-        // Generate QR code as SVG
+        // Generate QR code as SVG without validating if waybill exists
+        // This allows preview/generation even before the waybill is saved
         $options = new QROptions([
             'version'    => 5,
             'outputType' => QRCode::OUTPUT_MARKUP_SVG,
@@ -170,6 +168,7 @@ class WaybillController extends Controller
         $svg = $qrcode->render($waybillNumber);
 
         return response($svg)
-            ->header('Content-Type', 'image/svg+xml');
+            ->header('Content-Type', 'image/svg+xml')
+            ->header('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
     }
 }

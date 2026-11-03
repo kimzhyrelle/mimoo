@@ -1,5 +1,6 @@
 ﻿import { Head, Link, router } from '@inertiajs/react';
 import { ReactNode, useState, useRef, useEffect } from 'react';
+import { Html5Qrcode } from 'html5-qrcode';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
 const fontSyne = { fontFamily: 'Syne, sans-serif' };
@@ -40,60 +41,188 @@ export default function IncomingParcels({ auth, company, incomingParcels = [] }:
     const [activeTab, setActiveTab] = useState('incoming-parcels');
     const [viewMode, setViewMode] = useState<'scanner' | 'pickup'>('scanner');
     const [selectedParcel, setSelectedParcel] = useState('#1013');
-    const [scannedParcel, setScannedParcel] = useState('#1078');
+    const [scannedParcel, setScannedParcel] = useState<string | null>(null);
+    const [scannedOrderData, setScannedOrderData] = useState<IncomingParcel | null>(null);
+    const [loadingOrderData, setLoadingOrderData] = useState(false);
+    const [processingAction, setProcessingAction] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [cameraActive, setCameraActive] = useState(false);
     const [cameraError, setCameraError] = useState<string | null>(null);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const streamRef = useRef<MediaStream | null>(null);
+    const [lastScan, setLastScan] = useState<string | null>(null);
+    const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+    const scannerId = 'qr-reader-scanner';
 
     const handleLogout = () => {
         router.post('/logout');
     };
 
-    const startCamera = async () => {
+    const handleQRCodeSuccess = async (decodedText: string) => {
+        console.log('QR Code scanned:', decodedText);
+        setScannedParcel(decodedText);
+        setLastScan(decodedText);
+        
+        // Play beep sound or provide visual feedback
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA==');
+        audio.play().catch(console.error);
+        
+        // Fetch order details from backend
+        await fetchOrderDetails(decodedText);
+    };
+    
+    const fetchOrderDetails = async (waybillNumber: string) => {
+        setLoadingOrderData(true);
         try {
-            setCameraError(null);
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: 'environment', // Use back camera on mobile
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
+            const response = await fetch(`/api/logistics/parcel/${encodeURIComponent(waybillNumber)}`);
+            
+            if (!response.ok) {
+                throw new Error('Parcel not found');
+            }
+            
+            const data = await response.json();
+            setScannedOrderData(data.parcel);
+        } catch (error) {
+            console.error('Error fetching order details:', error);
+            setScannedOrderData(null);
+            // Show error to user
+            alert('Parcel not found in system. Please check the waybill number.');
+        } finally {
+            setLoadingOrderData(false);
+        }
+    };
+    
+    const confirmReceived = async () => {
+        if (!scannedOrderData) return;
+        
+        setProcessingAction(true);
+        try {
+            const response = await fetch(`/api/logistics/parcel/${scannedOrderData.id}/confirm`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
             });
             
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                streamRef.current = stream;
-                setCameraActive(true);
+            if (!response.ok) {
+                throw new Error('Failed to confirm parcel');
             }
+            
+            const data = await response.json();
+            alert(`✓ Parcel ${scannedOrderData.waybill_number} confirmed! Now in transit.`);
+            
+            // Clear scanned data and refresh
+            setScannedOrderData(null);
+            setScannedParcel(null);
+            setLastScan(null);
+            
+            // Refresh the page to update the awaiting pickup list
+            router.reload();
         } catch (error) {
-            console.error('Camera error:', error);
-            setCameraError('Cannot access camera. Please allow camera permissions.');
+            console.error('Error confirming parcel:', error);
+            alert('Failed to confirm parcel. Please try again.');
+        } finally {
+            setProcessingAction(false);
+        }
+    };
+    
+    const reportProblem = async () => {
+        if (!scannedOrderData) return;
+        
+        const reason = prompt('What is the problem with this parcel?');
+        if (!reason || reason.trim() === '') {
+            return; // User cancelled
+        }
+        
+        setProcessingAction(true);
+        try {
+            const response = await fetch(`/api/logistics/parcel/${scannedOrderData.id}/report`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({ reason }),
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to report problem');
+            }
+            
+            const data = await response.json();
+            alert(`Problem reported for ${scannedOrderData.waybill_number}. Seller will be notified.`);
+            
+            // Clear scanned data
+            setScannedOrderData(null);
+            setScannedParcel(null);
+            setLastScan(null);
+        } catch (error) {
+            console.error('Error reporting problem:', error);
+            alert('Failed to report problem. Please try again.');
+        } finally {
+            setProcessingAction(false);
+        }
+    };
+
+    const startScanner = async () => {
+        try {
+            setCameraError(null);
+            
+            // Stop existing scanner if any
+            if (html5QrCodeRef.current) {
+                await html5QrCodeRef.current.stop();
+            }
+            
+            // Create new scanner instance
+            html5QrCodeRef.current = new Html5Qrcode(scannerId);
+            
+            // Start scanning
+            await html5QrCodeRef.current.start(
+                { facingMode: 'environment' }, // Use back camera
+                {
+                    fps: 10, // Frames per second to scan
+                    qrbox: { width: 250, height: 250 }, // Scanning box size
+                    aspectRatio: 16/9
+                },
+                handleQRCodeSuccess,
+                (errorMessage) => {
+                    // Ignore "No MultiFormat Readers" errors - they're normal when no QR is in frame
+                    if (!errorMessage.includes('No MultiFormat Readers')) {
+                        console.log('QR scan error:', errorMessage);
+                    }
+                }
+            );
+            
+            setCameraActive(true);
+        } catch (error: any) {
+            console.error('Scanner start error:', error);
+            setCameraError(error?.message || 'Cannot access camera. Please allow camera permissions.');
             setCameraActive(false);
         }
     };
 
-    const stopCamera = () => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
+    const stopScanner = async () => {
+        try {
+            if (html5QrCodeRef.current) {
+                await html5QrCodeRef.current.stop();
+                html5QrCodeRef.current = null;
+            }
+            setCameraActive(false);
+        } catch (error) {
+            console.error('Scanner stop error:', error);
         }
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-        }
-        setCameraActive(false);
     };
 
-    // Start camera when component mounts and scanner view is active
+    // Start/stop scanner based on view mode
     useEffect(() => {
         if (viewMode === 'scanner') {
-            startCamera();
+            startScanner();
+        } else {
+            stopScanner();
         }
         
-        // Cleanup camera when component unmounts
+        // Cleanup on unmount
         return () => {
-            stopCamera();
+            stopScanner();
         };
     }, [viewMode]);
 
@@ -101,6 +230,7 @@ export default function IncomingParcels({ auth, company, incomingParcels = [] }:
         { id: 'dashboard', label: 'Dashboard', icon: 'grid', href: '/logistics/dashboard' },
         { id: 'incoming-parcels', label: 'Incoming Parcels', icon: 'inbox', href: '/logistics/incoming-parcels' },
         { id: 'sort-assign', label: 'Sort & Assign', icon: 'sort', href: '/logistics/sort-assign' },
+        { id: 'courier-applications', label: 'Courier Applications', icon: 'file-text', href: '/logistics/courier-applications' },
         { id: 'delivery-monitoring', label: 'Delivery Monitoring', icon: 'monitor', href: '/logistics/delivery-monitoring' },
         { id: 'riders', label: 'Riders', icon: 'bike', href: '/logistics/riders' },
         { id: 'branches-checklists', label: 'Branches & Checklists', icon: 'checklist', href: '/logistics/branches-checklists' },
@@ -119,6 +249,8 @@ export default function IncomingParcels({ auth, company, incomingParcels = [] }:
                 return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>;
             case 'sort':
                 return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M7 12h10M10 18h4"/></svg>;
+            case 'file-text':
+                return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>;
             case 'monitor':
                 return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>;
             case 'bike':
@@ -159,6 +291,40 @@ export default function IncomingParcels({ auth, company, incomingParcels = [] }:
                 }
                 .animate-scan {
                     animation: scan 2s ease-in-out infinite;
+                }
+                
+                /* html5-qrcode styling - IMPORTANT for video display */
+                #qr-reader-scanner {
+                    position: relative;
+                    width: 100%;
+                    height: 100%;
+                    min-height: 500px;
+                }
+                
+                #qr-reader-scanner video {
+                    width: 100% !important;
+                    height: 100% !important;
+                    object-fit: cover !important;
+                    border-radius: 0.75rem;
+                }
+                
+                #qr-reader-scanner > div {
+                    width: 100% !important;
+                    height: 100% !important;
+                }
+                
+                /* Hide the default shaded region from html5-qrcode */
+                #qr-reader-scanner__scan_region {
+                    border: none !important;
+                }
+                
+                /* Style the dashboard/controls from html5-qrcode */
+                #qr-reader-scanner__dashboard_section {
+                    display: none !important;
+                }
+                
+                #qr-reader-scanner__dashboard_section_csr {
+                    display: none !important;
                 }
             `}</style>
             
@@ -344,24 +510,21 @@ export default function IncomingParcels({ auth, company, incomingParcels = [] }:
                                             <div className="flex items-center justify-between mb-4">
                                                 <h3 className="text-lg font-bold text-gray-900" style={fontSyncopate}>Live Optical Viewfinder</h3>
                                                 <button 
-                                                    onClick={cameraActive ? stopCamera : startCamera}
+                                                    onClick={cameraActive ? stopScanner : startScanner}
                                                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                                                         cameraActive 
                                                             ? 'bg-green-100 text-green-700 hover:bg-green-200' 
                                                             : 'bg-[#E8E3F0] text-[#5B4B6E] hover:bg-[#D4CEE0]'
                                                     }`}
                                                 >
-                                                    {cameraActive ? '? Camera Active' : 'Start Camera'}
+                                                    {cameraActive ? '● Scanner Active' : 'Start Scanner'}
                                                 </button>
                                             </div>
                                             <div className="bg-[#1a1f3a] rounded-xl overflow-hidden relative w-full" style={{ minHeight: '500px', aspectRatio: '16/9' }}>
-                                                {/* Camera Video Feed - Must be first to be in background */}
-                                                <video
-                                                    ref={videoRef}
-                                                    autoPlay
-                                                    playsInline
-                                                    muted
-                                                    className="absolute inset-0 w-full h-full object-cover z-0"
+                                                {/* QR Scanner Container - html5-qrcode will render here */}
+                                                <div 
+                                                    id={scannerId}
+                                                    className="w-full h-full"
                                                     style={{ display: cameraActive ? 'block' : 'none' }}
                                                 />
                                                 
@@ -375,7 +538,7 @@ export default function IncomingParcels({ auth, company, incomingParcels = [] }:
                                                             </svg>
                                                             <p className="text-red-400 text-sm mb-4">{cameraError}</p>
                                                             <button 
-                                                                onClick={startCamera}
+                                                                onClick={startScanner}
                                                                 className="px-4 py-2 bg-[#2B2249] text-white rounded-lg text-sm font-semibold hover:bg-[#3d2e5f] transition"
                                                             >
                                                                 Try Again
@@ -384,7 +547,7 @@ export default function IncomingParcels({ auth, company, incomingParcels = [] }:
                                                     </div>
                                                 )}
                                                 
-                                                {/* Placeholder when camera is off */}
+                                                {/* Placeholder when scanner is off */}
                                                 {!cameraActive && !cameraError && (
                                                     <div className="absolute inset-0 flex items-center justify-center bg-[#1a1f3a] p-8 z-10">
                                                         <div className="text-center">
@@ -392,32 +555,22 @@ export default function IncomingParcels({ auth, company, incomingParcels = [] }:
                                                                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                                                                 <circle cx="12" cy="13" r="4"/>
                                                             </svg>
-                                                            <p className="text-gray-400 text-sm mb-4">Camera is off</p>
+                                                            <p className="text-gray-400 text-sm mb-4">Scanner is off</p>
                                                             <button 
-                                                                onClick={startCamera}
+                                                                onClick={startScanner}
                                                                 className="px-4 py-2 bg-[#2B2249] text-white rounded-lg text-sm font-semibold hover:bg-[#3d2e5f] transition"
                                                             >
-                                                                Start Camera
+                                                                Start Scanner
                                                             </button>
                                                         </div>
                                                     </div>
                                                 )}
                                                 
-                                                {/* Scanning Overlay with corners */}
-                                                {cameraActive && (
-                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                                                        <div className="relative w-64 h-64">
-                                                            {/* Semi-transparent overlay around scanner */}
-                                                            <div className="absolute inset-0 border-4 border-purple-400/30 rounded-2xl"></div>
-                                                            
-                                                            {/* Corner brackets */}
-                                                            <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-purple-400 rounded-tl-2xl"></div>
-                                                            <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-purple-400 rounded-tr-2xl"></div>
-                                                            <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-purple-400 rounded-bl-2xl"></div>
-                                                            <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-purple-400 rounded-br-2xl"></div>
-                                                            
-                                                            {/* Scanning line animation */}
-                                                            <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-purple-400 to-transparent animate-scan"></div>
+                                                {/* Scan success indicator */}
+                                                {lastScan && (
+                                                    <div className="absolute top-4 left-0 right-0 text-center z-30">
+                                                        <div className="bg-green-500 text-white text-sm font-bold inline-block px-4 py-2 rounded-lg shadow-lg">
+                                                            ✓ Scanned: {lastScan}
                                                         </div>
                                                     </div>
                                                 )}
@@ -426,7 +579,7 @@ export default function IncomingParcels({ auth, company, incomingParcels = [] }:
                                                 {cameraActive && (
                                                     <div className="absolute bottom-4 left-0 right-0 text-center z-30">
                                                         <p className="text-white text-sm font-medium bg-black/50 inline-block px-4 py-2 rounded-lg">
-                                                            Center QR code inside the frame
+                                                            Point camera at QR code or barcode
                                                         </p>
                                                     </div>
                                                 )}
@@ -445,78 +598,187 @@ export default function IncomingParcels({ auth, company, incomingParcels = [] }:
                                         <div className="border-t border-gray-200 pt-6">
                                             <div className="flex items-center justify-between mb-4">
                                                 <h3 className="text-lg font-bold text-gray-900" style={fontSyncopate}>Scanned Result</h3>
-                                                <div className="px-3 py-1 bg-[#E8E3F0] text-[#5B4B6E] rounded-lg text-xs font-bold">
-                                                    TRACKING ID: {scannedParcel}
-                                                </div>
+                                                {scannedParcel && (
+                                                    <div className="px-3 py-1 bg-[#E8E3F0] text-[#5B4B6E] rounded-lg text-xs font-bold">
+                                                        TRACKING ID: {scannedParcel}
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="grid grid-cols-3 gap-4">
-                                                <div className="bg-gray-50 rounded-lg p-4 flex items-center justify-center">
-                                                    <svg width="80" height="80" viewBox="0 0 100 100">
-                                                        <rect x="0" y="0" width="10" height="10" fill="black"/>
-                                                        <rect x="20" y="0" width="10" height="10" fill="black"/>
-                                                        <rect x="40" y="0" width="10" height="10" fill="black"/>
-                                                        <rect x="70" y="0" width="10" height="10" fill="black"/>
-                                                        <rect x="90" y="0" width="10" height="10" fill="black"/>
-                                                    </svg>
+                                            
+                                            {loadingOrderData ? (
+                                                <div className="text-center py-8">
+                                                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#9B5DE5]"></div>
+                                                    <p className="mt-2 text-sm text-gray-500">Loading order details...</p>
                                                 </div>
-                                                <div className="col-span-2 space-y-3">
-                                                    <div className="flex justify-between">
-                                                        <span className="text-xs font-semibold text-gray-500">Arrival Time</span>
-                                                        <span className="text-sm font-medium">Oct 26, 2026 "� 07:21 AM</span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-xs font-semibold text-gray-500">Contact Number</span>
-                                                        <span className="text-sm font-medium">0917 105 1040</span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-xs font-semibold text-gray-500">Route Name</span>
-                                                        <span className="text-sm font-medium">Monte Clera Tomtes</span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-xs font-semibold text-gray-500">Delivery Address</span>
-                                                        <span className="text-sm font-medium">17 Bros! St., Purok 2, Palasan I</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Target Bin */}
-                                            <div className="bg-[#E8E3F0] border border-[#D4CEE0] rounded-lg p-4 mt-4">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 bg-[#D4CEE0] rounded-lg flex items-center justify-center">
-                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#5B4B6E]">
-                                                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                            ) : scannedOrderData ? (
+                                                <>
+                                                    <div className="grid grid-cols-3 gap-4">
+                                                        <div className="bg-gray-50 rounded-lg p-4 flex items-center justify-center">
+                                                            <svg width="80" height="80" viewBox="0 0 100 100">
+                                                                <rect x="0" y="0" width="10" height="10" fill="black"/>
+                                                                <rect x="20" y="0" width="10" height="10" fill="black"/>
+                                                                <rect x="40" y="0" width="10" height="10" fill="black"/>
+                                                                <rect x="70" y="0" width="10" height="10" fill="black"/>
+                                                                <rect x="90" y="0" width="10" height="10" fill="black"/>
                                                             </svg>
                                                         </div>
-                                                        <div>
-                                                            <div className="text-xs font-semibold text-gray-500 mb-1">ASSIGNMENT</div>
-                                                            <div className="text-base font-bold text-gray-900">Target Bin: BIN-RO1</div>
-                                                            <div className="text-xs text-gray-600">Palasan "� Station Zone Sector 801</div>
+                                                        <div className="col-span-2 space-y-3">
+                                                            <div className="flex justify-between">
+                                                                <span className="text-xs font-semibold text-gray-500">Order Number</span>
+                                                                <span className="text-sm font-medium">{scannedOrderData.order_number}</span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-xs font-semibold text-gray-500">Buyer</span>
+                                                                <span className="text-sm font-medium">{scannedOrderData.buyer_name}</span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-xs font-semibold text-gray-500">Contact Number</span>
+                                                                <span className="text-sm font-medium">{scannedOrderData.buyer_phone}</span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-xs font-semibold text-gray-500">Payment</span>
+                                                                <span className={`text-sm font-bold ${scannedOrderData.payment_method.toLowerCase().includes('cod') ? 'text-orange-600' : 'text-green-600'}`}>
+                                                                    {scannedOrderData.payment_method.toUpperCase()}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-xs font-semibold text-gray-500">Delivery Address</span>
+                                                                <span className="text-sm font-medium text-right">{scannedOrderData.buyer_address}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <button className="px-3 py-1.5 bg-[#D4CEE0] text-[#5B4B6E] rounded-lg text-xs font-semibold">
-                                                        Category: China #5
-                                                    </button>
-                                                </div>
-                                            </div>
 
-                                            {/* Action Buttons */}
-                                            <div className="grid grid-cols-2 gap-3 mt-6">
-                                                <button className="px-6 py-3 bg-[#2B2249] text-white rounded-lg font-semibold hover:bg-[#2E2240] transition flex items-center justify-center gap-2">
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                        <polyline points="20 6 9 17 4 12"/>
+                                                    {/* Order Items */}
+                                                    <div className="bg-gray-50 rounded-lg p-4 mt-4">
+                                                        <div className="text-xs font-semibold text-gray-500 mb-2">ORDER ITEMS</div>
+                                                        <div className="text-sm font-medium text-gray-900">
+                                                            {scannedOrderData.items_count} item{scannedOrderData.items_count > 1 ? 's' : ''} • Weight: {scannedOrderData.weight}kg
+                                                        </div>
+                                                        <div className="text-sm font-bold text-gray-900 mt-2">
+                                                            Total: ₱{scannedOrderData.total_amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Seller Info */}
+                                                    <div className="bg-[#E8E3F0] border border-[#D4CEE0] rounded-lg p-4 mt-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 bg-[#D4CEE0] rounded-lg flex items-center justify-center">
+                                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#5B4B6E]">
+                                                                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                                                        <polyline points="9 22 9 12 15 12 15 22"/>
+                                                                    </svg>
+                                                                </div>
+                                                                <div>
+                                                                    <div className="text-xs font-semibold text-gray-500 mb-1">SELLER</div>
+                                                                    <div className="text-base font-bold text-gray-900">{scannedOrderData.seller_name}</div>
+                                                                    <div className="text-xs text-gray-600">Shipped: {new Date(scannedOrderData.shipped_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Action Buttons */}
+                                                    <div className="grid grid-cols-2 gap-3 mt-6">
+                                                        <button 
+                                                            onClick={confirmReceived}
+                                                            disabled={processingAction}
+                                                            className="px-6 py-3 bg-[#2B2249] text-white rounded-lg font-semibold hover:bg-[#2E2240] transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                <polyline points="20 6 9 17 4 12"/>
+                                                            </svg>
+                                                            {processingAction ? 'Processing...' : 'Confirm Received'}
+                                                        </button>
+                                                        <button 
+                                                            onClick={reportProblem}
+                                                            disabled={processingAction}
+                                                            className="px-6 py-3 bg-white border border-red-200 text-red-600 rounded-lg font-semibold hover:bg-red-50 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                <circle cx="12" cy="12" r="10"/>
+                                                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                                                            </svg>
+                                                            Report Problem
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="text-center py-12 bg-gray-50 rounded-xl">
+                                                    <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                        <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+                                                        <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+                                                        <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+                                                        <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
                                                     </svg>
-                                                    Confirm Received
-                                                </button>
-                                                <button className="px-6 py-3 bg-white border border-red-200 text-red-600 rounded-lg font-semibold hover:bg-red-50 transition flex items-center justify-center gap-2">
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <line x1="12" y1="8" x2="12" y2="12"/>
-                                                        <line x1="12" y1="16" x2="12.01" y2="16"/>
-                                                    </svg>
-                                                    Report Problem
-                                                </button>
+                                                    <p className="text-sm font-medium text-gray-900 mb-1">No parcel scanned yet</p>
+                                                    <p className="text-xs text-gray-500">Scan a QR code to view parcel details</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Awaiting Pickup Parcels Table */}
+                                        <div className="border-t border-gray-200 pt-6 mt-6">
+                                            <div className="mb-4">
+                                                <h3 className="text-lg font-bold text-gray-900 mb-1" style={fontSyncopate}>Awaiting Pickup</h3>
+                                                <p className="text-sm text-gray-500">Orders ready for pickup from sellers ({incomingParcels.length} parcels)</p>
                                             </div>
+                                            
+                                            {incomingParcels.length === 0 ? (
+                                                <div className="text-center py-12 bg-gray-50 rounded-xl">
+                                                    <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                        <path d="M20 7h-9"/>
+                                                        <path d="M14 17H5"/>
+                                                        <circle cx="17" cy="17" r="3"/>
+                                                        <circle cx="7" cy="7" r="3"/>
+                                                    </svg>
+                                                    <p className="text-sm font-medium text-gray-900 mb-1">No parcels awaiting pickup</p>
+                                                    <p className="text-xs text-gray-500">Parcels will appear here when sellers mark orders as packed</p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    {incomingParcels.map((parcel) => (
+                                                        <div key={parcel.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:border-[#9B5DE5] hover:shadow-sm transition">
+                                                            <div className="flex items-start justify-between mb-3">
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-3 mb-2">
+                                                                        <span className="text-base font-bold text-gray-900">{parcel.order_number}</span>
+                                                                        <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded">
+                                                                            {parcel.payment_method === 'cod' || /cod|cash/i.test(parcel.payment_method) ? 'COD' : 'PAID'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="text-sm text-gray-600 mb-1">
+                                                                        <span className="font-medium">Waybill:</span> {parcel.waybill_number}
+                                                                    </div>
+                                                                    <div className="text-sm text-gray-600">
+                                                                        <span className="font-medium">Seller:</span> {parcel.seller_name}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <div className="text-sm font-bold text-gray-900 mb-1">₱{parcel.total_amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</div>
+                                                                    <div className="text-xs text-gray-500">{parcel.weight || 0}kg · {parcel.items_count} {parcel.items_count === 1 ? 'item' : 'items'}</div>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div className="border-t border-gray-100 pt-3 mt-3">
+                                                                <div className="text-xs font-semibold text-gray-500 mb-1">BUYER</div>
+                                                                <div className="text-sm font-medium text-gray-900 mb-1">{parcel.buyer_name}</div>
+                                                                <div className="text-xs text-gray-600 mb-1">{parcel.buyer_phone}</div>
+                                                                <div className="text-xs text-gray-600">{parcel.buyer_address}</div>
+                                                            </div>
+                                                            
+                                                            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
+                                                                    <circle cx="12" cy="12" r="10"/>
+                                                                    <polyline points="12 6 12 12 16 14"/>
+                                                                </svg>
+                                                                <span className="text-xs text-gray-500">Shipped {parcel.shipped_at}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -534,7 +796,7 @@ export default function IncomingParcels({ auth, company, incomingParcels = [] }:
                                             </svg>
                                         </button>
                                     </div>
-                                    <p className="text-sm text-gray-500 mb-6">Orders in transit from sellers ({incomingParcels.length} parcels)</p>
+                                    <p className="text-sm text-gray-500 mb-6">Orders ready for pickup from sellers ({incomingParcels.length} parcels)</p>
                                     <div className="space-y-3">
                                         {incomingParcels.length === 0 ? (
                                             <div className="text-center py-8">

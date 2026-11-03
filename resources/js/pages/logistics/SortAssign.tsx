@@ -4,6 +4,30 @@ import { ReactNode, useState } from 'react';
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
 const fontSyne = { fontFamily: 'Syne, sans-serif' };
 
+interface ParcelData {
+    id: number;
+    order_number: string;
+    waybill_number: string;
+    buyer_name: string;
+    buyer_phone: string;
+    buyer_address: string;
+    barangay: string;
+    seller_name: string;
+    total_amount: number;
+    payment_method: string;
+    items_count: number;
+    weight: number;
+    confirmed_at: string;
+    status: string;
+}
+
+interface CourierData {
+    id: number;
+    name: string;
+    contact_person: string;
+    email: string;
+}
+
 interface Props {
     auth: {
         user: {
@@ -17,66 +41,42 @@ interface Props {
         name: string;
         contact_person: string;
     };
+    parcels: ParcelData[];
+    couriers: CourierData[];
 }
 
-export default function SortAssign({ auth, company }: Props) {
+export default function SortAssign({ auth, company, parcels = [], couriers = [] }: Props) {
     const [activeTab, setActiveTab] = useState('sort-assign');
     const [showUserMenu, setShowUserMenu] = useState(false);
-    const [viewMode, setViewMode] = useState<'staging' | 'parcel'>('staging');
-    const [selectedParcels, setSelectedParcels] = useState<string[]>([]);
+    const [selectedParcels, setSelectedParcels] = useState<number[]>([]);
+    const [selectedCourier, setSelectedCourier] = useState<string>('');
 
     const handleLogout = () => {
         router.post('/logout');
     };
 
-    const parcels = [
-        { id: 'PKG44', address: '33 Road St., Brgy. Lumban', barangay: 'Lumban', carrier: 'J&T Express', rider: '' },
-        { id: 'PKG45', address: 'Purok 2, Brgy. Gatid', barangay: 'Gatid', carrier: 'J&T Express', rider: '' },
-        { id: 'PKG94', address: 'Purok 2, Brgy. Palasan', barangay: 'Palasan', carrier: 'J&T Express', rider: '' },
-        { id: 'PKG30', address: '8 Quintos St., Lumban', barangay: 'Lumban', carrier: 'J&T Express', rider: '' },
-        { id: 'PKG45', address: 'Purok 4, Brgy. Magsaysay', barangay: 'Magsaysay', carrier: 'Lalamore', rider: '' },
-        { id: 'PKG96', address: '850 Ross, Brgy. Noalisan', barangay: 'Noalisan', carrier: 'J&T Express', rider: '' }
-    ];
-
-    const destinations = [
-        { 
-            name: 'Magsaysay', 
-            color: 'green',
-            parcels: 3, 
-            weight: '6.4 kg', 
-            rider: { initial: 'EN', name: 'E. Navarro', parcels: 3 }
-        },
-        { 
-            name: 'Bagong Pook', 
-            color: 'blue',
-            parcels: 2, 
-            weight: '5.0 kg', 
-            rider: { initial: 'CD', name: 'C. Delos Santos', parcels: 3 }
-        },
-        { 
-            name: 'Duluti', 
-            color: 'red',
-            parcels: 2, 
-            weight: '4.2 kg', 
-            rider: { initial: 'KV', name: 'K. Villar', parcels: 3 }
-        },
-        { 
-            name: 'Gatid', 
-            color: 'purple',
-            parcels: 3, 
-            weight: '7.9 kg', 
-            rider: { initial: 'JC', name: 'J. Dela Cruz', parcels: 3 }
-        },
-        { 
-            name: 'Lumban', 
-            color: 'purple',
-            parcels: 3, 
-            weight: '4.5 kg', 
-            rider: null
+    // Group parcels by barangay
+    const groupedByBarangay = parcels.reduce((acc, parcel) => {
+        const barangay = parcel.barangay;
+        if (!acc[barangay]) {
+            acc[barangay] = {
+                name: barangay,
+                parcels: [],
+                totalWeight: 0,
+                totalCount: 0,
+            };
         }
-    ];
+        acc[barangay].parcels.push(parcel);
+        acc[barangay].totalWeight += parcel.weight || 0;
+        acc[barangay].totalCount += 1;
+        return acc;
+    }, {} as Record<string, { name: string; parcels: ParcelData[]; totalWeight: number; totalCount: number }>);
 
-    const toggleParcelSelection = (id: string) => {
+    const clusters = Object.values(groupedByBarangay);
+    const totalParcels = parcels.length;
+    const totalWeight = parcels.reduce((sum, p) => sum + (p.weight || 0), 0);
+
+    const toggleParcelSelection = (id: number) => {
         if (selectedParcels.includes(id)) {
             setSelectedParcels(selectedParcels.filter(p => p !== id));
         } else {
@@ -84,10 +84,32 @@ export default function SortAssign({ auth, company }: Props) {
         }
     };
 
+    const toggleSelectAll = () => {
+        if (selectedParcels.length === parcels.length) {
+            setSelectedParcels([]);
+        } else {
+            setSelectedParcels(parcels.map(p => p.id));
+        }
+    };
+
+    const handleAssign = () => {
+        if (selectedParcels.length === 0) {
+            alert('Please select at least one parcel');
+            return;
+        }
+        if (!selectedCourier) {
+            alert('Please select a courier');
+            return;
+        }
+        alert(`Assigning ${selectedParcels.length} parcel(s) to ${selectedCourier}...`);
+        // TODO: Call backend API to assign parcels
+    };
+
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: 'grid', href: '/logistics/dashboard' },
         { id: 'incoming-parcels', label: 'Incoming Parcels', icon: 'inbox', href: '/logistics/incoming-parcels' },
         { id: 'sort-assign', label: 'Sort & Assign', icon: 'sort', href: '/logistics/sort-assign' },
+        { id: 'courier-applications', label: 'Courier Applications', icon: 'file-text', href: '/logistics/courier-applications' },
         { id: 'delivery-monitoring', label: 'Delivery Monitoring', icon: 'monitor', href: '/logistics/delivery-monitoring' },
         { id: 'riders', label: 'Riders', icon: 'bike', href: '/logistics/riders' },
         { id: 'branches-checklists', label: 'Branches & Checklists', icon: 'checklist', href: '/logistics/branches-checklists' },
@@ -106,6 +128,8 @@ export default function SortAssign({ auth, company }: Props) {
                 return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>;
             case 'sort':
                 return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M7 12h10M10 18h4"/></svg>;
+            case 'file-text':
+                return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>;
             case 'monitor':
                 return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>;
             case 'bike':
@@ -129,7 +153,12 @@ export default function SortAssign({ auth, company }: Props) {
 
     return (
         <>
-            <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`}</style><Head title="Sort & Assign" />
+            <Head title="Sort & Assign" />
+            
+            <style>{`
+                .scrollbar-hide::-webkit-scrollbar { display: none; }
+                .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
             
             <div className="flex h-screen bg-gray-50" style={fontSyne}>
                 {/* Sidebar */}
@@ -194,6 +223,7 @@ export default function SortAssign({ auth, company }: Props) {
                                 <div className="relative">
                                     <input
                                         type="text"
+                                        placeholder="Search parcels..."
                                         className="w-64 px-4 py-2 pl-10 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#3B1F6B] focus:border-transparent"
                                     />
                                     <svg
@@ -208,7 +238,6 @@ export default function SortAssign({ auth, company }: Props) {
                                         <circle cx="11" cy="11" r="7" />
                                         <path d="m21 21-4.3-4.3" />
                                     </svg>
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">Ctrl + K</span>
                                 </div>
                                 <button className="p-2 hover:bg-gray-100 rounded-lg transition">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -264,259 +293,100 @@ export default function SortAssign({ auth, company }: Props) {
 
                     {/* Content Area */}
                     <main className="flex-1 overflow-auto p-6 bg-gray-50">
-                        <div className="max-w-7xl mx-auto">
-                            {/* View Toggle Tabs */}
-                            <div className="flex gap-2 mb-6">
-                                <button
-                                    onClick={() => setViewMode('staging')}
-                                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                                        viewMode === 'staging'
-                                            ? 'bg-[#2B2249] text-white'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                    }`}
-                                >
-                                    STAGE 01 "” HUB #1 ALLOCATION
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('parcel')}
-                                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                                        viewMode === 'parcel'
-                                            ? 'bg-[#2B2249] text-white'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                    }`}
-                                >
-                                    Lumbun
-                                </button>
+                        <div className="max-w-7xl mx-auto space-y-6">
+                            {/* Summary Cards */}
+                            <div className="grid grid-cols-3 gap-6">
+                                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="w-10 h-10 bg-[#E8E3F0] rounded-lg flex items-center justify-center">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#5B4B6E]">
+                                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                            </svg>
+                                        </div>
+                                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide" style={fontSyncopate}>Total Parcels</div>
+                                    </div>
+                                    <div className="text-3xl font-bold text-gray-900">{totalParcels}</div>
+                                    <div className="text-sm text-gray-600 mt-1">Ready for assignment</div>
+                                </div>
+
+                                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="w-10 h-10 bg-[#E8E3F0] rounded-lg flex items-center justify-center">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#5B4B6E]">
+                                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                            </svg>
+                                        </div>
+                                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide" style={fontSyncopate}>Total Weight</div>
+                                    </div>
+                                    <div className="text-3xl font-bold text-gray-900">{totalWeight.toFixed(1)} kg</div>
+                                    <div className="text-sm text-gray-600 mt-1">Combined weight</div>
+                                </div>
+
+                                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="w-10 h-10 bg-[#E8E3F0] rounded-lg flex items-center justify-center">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#5B4B6E]">
+                                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                                <circle cx="12" cy="10" r="3"/>
+                                            </svg>
+                                        </div>
+                                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide" style={fontSyncopate}>Destinations</div>
+                                    </div>
+                                    <div className="text-3xl font-bold text-gray-900">{clusters.length}</div>
+                                    <div className="text-sm text-gray-600 mt-1">Unique barangays</div>
+                                </div>
                             </div>
 
-                            {/* Staging Bay #5 Status View */}
-                            {viewMode === 'staging' && (
-                                <>
-                                    {/* Status Banner */}
-                                    <div className="bg-[#2B2249] rounded-xl p-6 mb-6 text-white">
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex items-start gap-4">
-                                                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                        <path d="M3 6h18M7 12h10M10 18h4"/>
-                                                    </svg>
-                                                </div>
-                                                <div>
-                                                    <h3 className="text-xl font-bold mb-1" style={fontSyncopate}>Staging Bay #5: Status</h3>
-                                                    <p className="text-sm text-gray-300">1 of 10 clusters assigned "¢ 38 parcels staged</p>
-                                                    <p className="text-xs text-gray-400 mt-1">22 weigh-in parcels have unrecorded weights</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-3">
-                                                <button className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-semibold transition">
-                                                    Review Weigh-in Logs
-                                                </button>
-                                                <button className="px-4 py-2 bg-[#3D2E54] hover:bg-[#2E2240] text-white rounded-lg text-sm font-semibold transition flex items-center gap-2">
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                                                        <polyline points="22 4 12 14.01 9 11.01"/>
-                                                    </svg>
-                                                    Push to Loading Goods
-                                                </button>
-                                            </div>
+                            {/* Main Content Grid */}
+                            <div className="grid grid-cols-3 gap-6">
+                                {/* Unassigned Parcels - Takes 2 columns */}
+                                <div className="col-span-2 bg-white rounded-xl border border-gray-200 p-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-gray-900" style={fontSyncopate}>Unassigned Parcels</h3>
+                                            <p className="text-sm text-gray-500">{totalParcels} parcels awaiting courier assignment</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={toggleSelectAll}
+                                                className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition"
+                                            >
+                                                {selectedParcels.length === parcels.length ? 'Deselect All' : 'Select All'}
+                                            </button>
+                                            <select className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition">
+                                                <option className="text-gray-900">Filter by Barangay</option>
+                                                {clusters.map((cluster, idx) => (
+                                                    <option key={idx} value={cluster.name} className="text-gray-900">{cluster.name}</option>
+                                                ))}
+                                            </select>
                                         </div>
                                     </div>
 
-                                    {/* Stats Cards */}
-                                    <div className="grid grid-cols-3 gap-6 mb-6">
-                                        <div className="bg-white rounded-xl border border-gray-200 p-6">
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <div className="w-10 h-10 bg-[#E8E3F0] rounded-lg flex items-center justify-center">
-                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#5B4B6E]">
-                                                        <rect x="3" y="3" width="18" height="18" rx="2"/>
-                                                    </svg>
-                                                </div>
-                                                <div className="text-xs font-semibold text-gray-500" style={fontSyncopate}>WORK VOLUME</div>
-                                            </div>
-                                            <div className="text-3xl font-bold text-gray-900 mb-2">32</div>
-                                            <div className="text-sm text-gray-600">10 clusters pending</div>
-                                        </div>
-                                        <div className="bg-white rounded-xl border border-gray-200 p-6">
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <div className="w-10 h-10 bg-[#E8E3F0] rounded-lg flex items-center justify-center">
-                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#5B4B6E]">
-                                                        <circle cx="5.5" cy="17.5" r="3.5"/>
-                                                        <circle cx="18.5" cy="17.5" r="3.5"/>
-                                                        <path d="M12 17.5V14l-3-3 4-3 2 3h2"/>
-                                                    </svg>
-                                                </div>
-                                                <div className="text-xs font-semibold text-gray-500" style={fontSyncopate}>FLEET REQUIREMENT</div>
-                                            </div>
-                                            <div className="text-3xl font-bold text-gray-900 mb-2">0</div>
-                                            <div className="text-sm text-gray-600">0 idle "¢ 0 on Route</div>
-                                        </div>
-                                        <div className="bg-white rounded-xl border border-gray-200 p-6">
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <div className="w-10 h-10 bg-[#E8E3F0] rounded-lg flex items-center justify-center">
-                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#5B4B6E]">
-                                                        <rect x="2" y="7" width="20" height="14" rx="2"/>
-                                                        <path d="M16 3h2a2 2 0 0 1 2 2v2"/>
-                                                    </svg>
-                                                </div>
-                                                <div className="text-xs font-semibold text-gray-500" style={fontSyncopate}>TODAY'S PROGRESS</div>
-                                            </div>
-                                            <div className="text-3xl font-bold text-gray-900 mb-2">0</div>
-                                            <div className="text-sm text-gray-600">Fully assigned today</div>
-                                        </div>
-                                    </div>
-
-                                    {/* Destination Clusters */}
-                                    <div className="bg-white rounded-xl border border-gray-200 p-6">
-                                        <div className="flex items-center justify-between mb-6">
-                                            <div>
-                                                <h3 className="text-lg font-bold text-gray-900" style={fontSyncopate}>Destination Clusters</h3>
-                                                <p className="text-sm text-gray-500">10 clusters</p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm hover:bg-gray-100">
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
-                                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                                                    </svg>
-                                                </button>
-                                                <button className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">
-                                                    Unassigned only
-                                                </button>
-                                                <button className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">
-                                                    Heaviest First
-                                                </button>
-                                                <button className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">
-                                                    Oldest First
-                                                </button>
-                                                <button className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm hover:bg-gray-100 flex items-center gap-2">
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
-                                                        <line x1="4" y1="21" x2="4" y2="14"/>
-                                                        <line x1="4" y1="10" x2="4" y2="3"/>
-                                                        <line x1="12" y1="21" x2="12" y2="12"/>
-                                                        <line x1="12" y1="8" x2="12" y2="3"/>
-                                                        <line x1="20" y1="21" x2="20" y2="16"/>
-                                                        <line x1="20" y1="12" x2="20" y2="3"/>
-                                                        <line x1="1" y1="14" x2="7" y2="14"/>
-                                                        <line x1="9" y1="8" x2="15" y2="8"/>
-                                                        <line x1="17" y1="16" x2="23" y2="16"/>
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Show all rows</div>
-                                            
-                                            {/* Table Header */}
-                                            <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 rounded-t-lg border-b border-gray-200">
-                                                <div className="col-span-3 text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>BARANGAY</div>
-                                                <div className="col-span-2 text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>PARCELS</div>
-                                                <div className="col-span-2 text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>WEIGHT</div>
-                                                <div className="col-span-5 text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>RIDER</div>
-                                            </div>
-
-                                            {/* Table Rows */}
-                                            {destinations.map((dest, idx) => (
-                                                <div key={idx} className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50 rounded-lg border-b border-gray-100 last:border-0">
-                                                    <div className="col-span-3 flex items-center gap-2">
-                                                        <div className={`w-3 h-3 rounded-full ${
-                                                            dest.color === 'green' ? 'bg-green-500' :
-                                                            dest.color === 'blue' ? 'bg-[#E8E3F0]' :
-                                                            dest.color === 'red' ? 'bg-red-500' :
-                                                            'bg-[#E8E3F0]'
-                                                        }`}></div>
-                                                        <span className="text-sm font-medium text-gray-900">{dest.name}</span>
-                                                    </div>
-                                                    <div className="col-span-2 flex items-center">
-                                                        <span className="text-sm text-gray-900">{dest.parcels}</span>
-                                                        <span className="text-xs text-gray-500 ml-1">sorted</span>
-                                                    </div>
-                                                    <div className="col-span-2 flex items-center">
-                                                        <span className="text-sm font-medium text-gray-900">{dest.weight}</span>
-                                                    </div>
-                                                    <div className="col-span-5 flex items-center">
-                                                        {dest.rider ? (
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-8 h-8 rounded-full bg-[#D4CEE0] text-[#5B4B6E] flex items-center justify-center text-xs font-bold">
-                                                                    {dest.rider.initial}
-                                                                </div>
-                                                                <div>
-                                                                    <div className="text-sm font-medium text-gray-900">{dest.rider.name}</div>
-                                                                    <div className="text-xs text-gray-500">{dest.rider.parcels} parcels</div>
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-sm text-gray-400">"”</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-
-                            {/* Parcel Queue View */}
-                            {viewMode === 'parcel' && (
-                                <div className="space-y-6">
-                                    {/* Parcel Queue Section */}
-                                    <div className="bg-white rounded-xl border border-gray-200 p-6">
-                                        <div className="mb-6">
-                                            <h3 className="text-lg font-bold text-gray-900 mb-2" style={fontSyncopate}>Parcel queue</h3>
-                                            <p className="text-sm text-gray-500">Newly arrived parcels "” determine barangay, then assign rider</p>
-                                        </div>
-
-                                        {/* Search and Filters */}
-                                        <div className="grid grid-cols-7 gap-3 mb-6">
-                                            <input
-                                                type="text"
-                                                className="col-span-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2B2249]"
-                                            />
-                                            <select className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2B2249]">
-                                                <option>Sort: Default</option>
-                                            </select>
-                                            <select className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2B2249]">
-                                                <option>All statuses</option>
-                                            </select>
-                                            <select className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2B2249]">
-                                                <option>All barangays</option>
-                                            </select>
-                                            <select className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2B2249]">
-                                                <option>All riders</option>
-                                            </select>
-                                            <div className="flex gap-2">
-                                                <button className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm hover:bg-gray-100">
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
-                                                        <rect x="3" y="4" width="18" height="18" rx="2"/>
-                                                    </svg>
-                                                </button>
-                                                <button className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm hover:bg-gray-100">
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-600">
-                                                        <rect x="3" y="4" width="18" height="18" rx="2"/>
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Parcels Table */}
-                                        <div className="overflow-x-auto">
+                                    {/* Parcels Table */}
+                                    <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                                        {parcels.length > 0 ? (
                                             <table className="w-full">
-                                                <thead className="bg-gray-50 border-b border-gray-200">
+                                                <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
                                                     <tr>
                                                         <th className="px-4 py-3 text-left">
-                                                            <input type="checkbox" className="rounded border-gray-300" />
+                                                            <input 
+                                                                type="checkbox" 
+                                                                className="rounded border-gray-300"
+                                                                checked={selectedParcels.length === parcels.length && parcels.length > 0}
+                                                                onChange={toggleSelectAll}
+                                                            />
                                                         </th>
-                                                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>PARCEL</th>
-                                                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>DELIVERY ADDRESS</th>
-                                                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>BARANGAY</th>
-                                                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>CARRIER</th>
-                                                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>ASSIGNED RIDER</th>
-                                                        <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>ACTION</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>Waybill</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>Buyer</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>Barangay</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>Weight</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600" style={fontSyncopate}>Payment</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100">
-                                                    {parcels.map((parcel, idx) => (
-                                                        <tr key={idx} className="hover:bg-gray-50">
-                                                            <td className="px-4 py-4">
+                                                    {parcels.map((parcel) => (
+                                                        <tr key={parcel.id} className="hover:bg-gray-50 cursor-pointer">
+                                                            <td className="px-4 py-3">
                                                                 <input 
                                                                     type="checkbox" 
                                                                     className="rounded border-gray-300"
@@ -524,39 +394,119 @@ export default function SortAssign({ auth, company }: Props) {
                                                                     onChange={() => toggleParcelSelection(parcel.id)}
                                                                 />
                                                             </td>
-                                                            <td className="px-6 py-4">
-                                                                <div className="text-sm font-bold text-gray-900">#{parcel.id}</div>
+                                                            <td className="px-4 py-3">
+                                                                <div className="text-sm font-bold text-gray-900">{parcel.waybill_number}</div>
+                                                                <div className="text-xs text-gray-500">{parcel.order_number}</div>
                                                             </td>
-                                                            <td className="px-6 py-4">
-                                                                <div className="text-sm text-gray-900">{parcel.address}</div>
+                                                            <td className="px-4 py-3">
+                                                                <div className="text-sm text-gray-900">{parcel.buyer_name}</div>
+                                                                <div className="text-xs text-gray-500">{parcel.buyer_phone}</div>
                                                             </td>
-                                                            <td className="px-6 py-4">
-                                                                <div className="text-sm font-medium text-gray-900">{parcel.barangay}</div>
+                                                            <td className="px-4 py-3">
+                                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                                                    {parcel.barangay}
+                                                                </span>
                                                             </td>
-                                                            <td className="px-6 py-4">
-                                                                <div className="text-sm text-gray-600">{parcel.carrier}</div>
+                                                            <td className="px-4 py-3">
+                                                                <div className="text-sm text-gray-900">
+                                                                    {parcel.weight > 0 ? `${parcel.weight} kg` : <span className="text-gray-400">No weight</span>}
+                                                                </div>
                                                             </td>
-                                                            <td className="px-6 py-4">
-                                                                <span className="text-sm text-gray-400">"”</span>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-right">
-                                                                <button className="text-sm font-semibold text-[#5B4B6E] hover:underline">
-                                                                    View
-                                                                </button>
+                                                            <td className="px-4 py-3">
+                                                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                                                    parcel.payment_method === 'Cash on Delivery' 
+                                                                        ? 'bg-orange-100 text-orange-800' 
+                                                                        : 'bg-green-100 text-green-800'
+                                                                }`}>
+                                                                    {parcel.payment_method === 'Cash on Delivery' ? 'COD' : 'PAID'}
+                                                                </span>
                                                             </td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
                                             </table>
-                                        </div>
+                                        ) : (
+                                            <div className="py-12 text-center text-gray-400">
+                                                <svg className="w-12 h-12 mx-auto mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                                </svg>
+                                                <p className="text-sm">No unassigned parcels</p>
+                                                <p className="text-xs text-gray-500 mt-1">Parcels will appear here after confirmation at incoming parcels</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
 
-                                        <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-                                            <span>38 sorting</span>
-                                            <span>91 results</span>
+                                {/* Right Column */}
+                                <div className="space-y-6">
+                                    {/* Courier Selection */}
+                                    <div className="bg-white rounded-xl border border-gray-200 p-6">
+                                        <h3 className="text-lg font-bold text-gray-900 mb-4" style={fontSyncopate}>Courier Selection</h3>
+                                        
+                                        {selectedParcels.length > 0 && (
+                                            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                                <div className="text-sm font-medium text-blue-900">
+                                                    {selectedParcels.length} parcel(s) selected
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-3">
+                                            <label className="text-sm font-medium text-gray-700">Select Courier</label>
+                                            <select 
+                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2B2249] focus:border-transparent"
+                                                value={selectedCourier}
+                                                onChange={(e) => setSelectedCourier(e.target.value)}
+                                            >
+                                                <option value="" className="text-gray-900">-- Select Courier --</option>
+                                                {couriers.length > 0 ? (
+                                                    couriers.map((courier) => (
+                                                        <option key={courier.id} value={courier.id} className="text-gray-900">
+                                                            {courier.name}
+                                                        </option>
+                                                    ))
+                                                ) : (
+                                                    <option disabled className="text-gray-500">No approved couriers available</option>
+                                                )}
+                                            </select>
+
+                                            <button
+                                                onClick={handleAssign}
+                                                disabled={selectedParcels.length === 0 || !selectedCourier}
+                                                className={`w-full px-4 py-3 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-2 ${
+                                                    selectedParcels.length === 0 || !selectedCourier
+                                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                        : 'bg-[#2B2249] text-white hover:bg-[#3d2e5f]'
+                                                }`}
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <circle cx="5.5" cy="17.5" r="3.5"/>
+                                                    <circle cx="18.5" cy="17.5" r="3.5"/>
+                                                    <path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
+                                                    <path d="M12 17.5V14l-3-3 4-3 2 3h2"/>
+                                                </svg>
+                                                Assign to Courier
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Assignment History */}
+                                    <div className="bg-white rounded-xl border border-gray-200 p-6">
+                                        <h3 className="text-lg font-bold text-gray-900 mb-4" style={fontSyncopate}>Assignment History</h3>
+                                        
+                                        <div className="space-y-3">
+                                            <div className="text-sm text-gray-500 text-center py-8">
+                                                <svg className="w-10 h-10 mx-auto mb-2 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <circle cx="12" cy="12" r="10"/>
+                                                    <polyline points="12 6 12 12 16 14"/>
+                                                </svg>
+                                                <p>No assignments yet</p>
+                                                <p className="text-xs text-gray-400 mt-1">Assignment history will appear here</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            )}
+                            </div>
                         </div>
                     </main>
                 </div>
