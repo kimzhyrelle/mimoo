@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/error_messages.dart';
 import '../../core/theme.dart';
 import '../../data/repositories/app_repositories_scope.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -15,6 +16,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _newPass = TextEditingController();
   final _confirm = TextEditingController();
   bool _saving = false;
+  String? _currentError;
 
   bool get _hasLength => _newPass.text.length >= 8;
   bool get _hasUpper => RegExp(r'[A-Z]').hasMatch(_newPass.text);
@@ -32,6 +34,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   void _rebuild() => setState(() {});
 
+  void _currentChanged(String _) {
+    if (_currentError != null) setState(() => _currentError = null);
+  }
+
   @override
   void dispose() {
     _current.dispose();
@@ -44,24 +50,36 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (!_canSubmit || _saving) return;
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _currentError = null;
+    });
     try {
       await AppRepositoriesScope.of(context).riderProfile.changePassword(
             currentPassword: _current.text,
             newPassword: _newPass.text,
           );
       if (!mounted) return;
+      _current.clear();
+      _newPass.clear();
+      _confirm.clear();
       setState(() => _saving = false);
       Navigator.pop(context);
       messenger
           .showSnackBar(SnackBar(content: Text(l10n.changePasswordUpdated)));
     } catch (error) {
       if (!mounted) return;
+      final msg = friendlyError(error,
+          fallback: 'Could not update password. Please try again.');
+      if (msg.toLowerCase().contains('current password')) {
+        setState(() {
+          _saving = false;
+          _currentError = l10n.changePasswordCurrentIncorrect;
+        });
+        return;
+      }
       setState(() => _saving = false);
-      final msg = error.toString().replaceFirst('Exception: ', '');
-      messenger.showSnackBar(
-        SnackBar(content: Text(msg.isEmpty ? 'Could not update password.' : msg)),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(msg)));
     }
   }
 
@@ -72,9 +90,18 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     return MScaffold(
       title: l10n.settingsChangePassword,
       body: ListView(padding: MS.pagePadding, children: [
-        MField(l10n.changePasswordCurrent, obscure: true, required: true, controller: _current, prefix: Icons.lock_outline),
+        PasswordField(
+          l10n.changePasswordCurrent,
+          controller: _current,
+          error: _currentError,
+          onChanged: _currentChanged,
+        ),
         const SizedBox(height: 12),
-        MField(l10n.changePasswordNew, obscure: true, required: true, controller: _newPass, prefix: Icons.password),
+        PasswordField(
+          l10n.changePasswordNew,
+          controller: _newPass,
+          prefix: Icons.password,
+        ),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(12),
@@ -87,7 +114,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           ]),
         ),
         const SizedBox(height: 12),
-        MField(l10n.changePasswordConfirm, obscure: true, required: true, controller: _confirm, prefix: Icons.lock_reset),
+        PasswordField(
+          l10n.changePasswordConfirm,
+          controller: _confirm,
+          prefix: Icons.lock_reset,
+        ),
         const SizedBox(height: 20),
         PillButton(
           l10n.changePasswordSubmit,

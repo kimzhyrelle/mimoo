@@ -119,3 +119,25 @@ job detail.
 - [x] Stage 5: Light/Dark/System theme switching wired end-to-end via
   `SettingsController` + `AnimatedBuilder` on `MaterialApp`. Login screen always
   uses `ThemeMode.light`. No restart needed to apply the change.
+- [x] UI remediation Stage 1: Repaired mojibake in ARB copy and delivery screens
+  (`…`, `·`, curly quotes, `₱`), added the shared `kDot` separator, and repaired
+  previously stored text via database schema v3. Analyze clean; 27/27 tests pass.
+- [x] UI remediation Stage 2: Login card centered and capped at 480dp with the
+  `mimoo rider` wordmark header; inline dismissible errors via `friendlyError`,
+  loading state on the button, passkey guidance, and debug tools hidden until a
+  five-times long-press on the wordmark.
+- [x] UI remediation Stage 3: One delivery-detail layout for at-hub, out-for-
+  delivery, failed and delivered states via shared `delivery_sections.dart`
+  (progress, recipient + Call/Message, drop-off, note, parcel, payment, custody).
+- [x] UI remediation Stage 4: COD Balance keeps the summary pinned while the
+  collected list scrolls, adds `remitCollected` (marks parcels remitted and
+  records a confirmed remittance), a GCash/Hub Remit sheet, due-cutoff chip,
+    remitted history and a ₱0.00 empty state. Analyze clean; 27/27 tests pass.
+  - [x] UI remediation Stage 5: App-wide `MimooScrollBehavior` hides scrollbars
+    while keeping touch, mouse and stylus dragging.
+  - [x] UI remediation Stage 6: Shared widgets, shell, drawer and the Home, Jobs,
+    Earnings and History tabs now resolve light/dark tokens via `MC.of(context)`;
+    `MimooColors` gained amber/coral/tertiary/secondary tokens, and legacy
+    `MC.*` arguments are mapped to the active palette.
+  - [x] UI remediation Stage 7: Reusable `PasswordField` with show/hide plus an
+    inline "Current password is incorrect." check in Change password.

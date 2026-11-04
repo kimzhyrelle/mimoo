@@ -347,6 +347,62 @@ class LocalParcelRepository extends ChangeNotifier implements ParcelRepository {
   }
 
   @override
+  Future<CodRemittance> remitCollected({
+    required String method,
+    required String reference,
+  }) async {
+    final collected = unremitted;
+    final total = collected.fold<double>(0, (sum, p) => sum + p.codAmount);
+    if (total <= 0) {
+      throw StateError('There is no collected COD to remit.');
+    }
+    if (reference.trim().length < 3) {
+      throw StateError('A reference of at least 3 characters is required.');
+    }
+    late final CodRemittance record;
+    await _db.database.transaction((txn) async {
+      final now = DateTime.now();
+      for (final parcel in collected) {
+        await txn.update(
+          'parcels',
+          {'cod_remitted': 1, 'updated_at': now.toIso8601String()},
+          where: 'tracking_no = ?',
+          whereArgs: [parcel.trackingNo],
+        );
+      }
+      final id = await txn.insert('cod_remittances', {
+        'amount': total,
+        'collected': total,
+        'difference': 0.0,
+        'status': 'confirmed',
+        'reference': reference.trim(),
+        'method': method,
+        'created_at': now.toIso8601String(),
+        'confirmed_at': now.toIso8601String(),
+      });
+      record = CodRemittance(
+        id: id,
+        amount: total,
+        collected: total,
+        difference: 0,
+        status: 'confirmed',
+        reference: reference.trim(),
+        method: method,
+        createdAt: now,
+        confirmedAt: now,
+      );
+      await _db.enqueue(txn,
+          entity: 'cod_remittance',
+          entityId: '$id',
+          action: 'remit',
+          payload: record.toMap());
+    });
+    await refresh();
+    await _outbox?.refresh();
+    return record;
+  }
+
+  @override
   Future<String> uploadPhoto(String filePath, {String purpose = 'pod'}) async {
     // Local repo: return the file path directly (no upload in test/offline mode).
     return filePath;
@@ -356,7 +412,8 @@ class LocalParcelRepository extends ChangeNotifier implements ParcelRepository {
   Future<Map<String, dynamic>> sendDeliveryOtp(String trackingNo) async {
     // Local repo: return a static debug OTP for testing.
     return {
-      'expires_at': DateTime.now().add(const Duration(minutes: 10)).toIso8601String(),
+      'expires_at':
+          DateTime.now().add(const Duration(minutes: 10)).toIso8601String(),
       'resend_after': 60,
       'debug_otp': '000000',
     };
@@ -482,14 +539,6 @@ class LocalJobOfferRepository extends ChangeNotifier
       if (state == 'accepted') {
         if (!offer.expiresAt.isAfter(DateTime.now())) {
           throw StateError('This offer has expired.');
-        }
-        final count = Sqflite.firstIntValue(await txn.rawQuery(
-              "SELECT COUNT(*) FROM parcels WHERE status IN ('assigned', 'picked_up', 'out_for_delivery')",
-            )) ??
-            0;
-        if (count >= 3) {
-          throw StateError(
-              'The rider already has the maximum of three active jobs.');
         }
         final parcelRows = await txn.query('parcels',
             where: 'tracking_no = ?', whereArgs: [offer.parcelId], limit: 1);

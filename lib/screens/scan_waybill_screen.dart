@@ -12,7 +12,7 @@ class ScanResult {
   const ScanResult(this.outcome, this.code, [this.detail]);
 }
 
-/// onValidate must call your API: ok -> mark picked up (+â‚± pickup pay); mismatch/duplicate leave the job unchanged.
+/// onValidate must call your API: ok -> mark picked up (+₱ pickup pay); mismatch/duplicate leave the job unchanged.
 /// When [expectedTracking] is null the scan resolves any parcel assigned to the rider.
 class ScanWaybillScreen extends StatefulWidget {
   final String? expectedTracking;
@@ -79,47 +79,48 @@ class _ScanState extends State<ScanWaybillScreen> {
                 style: ts(12, w: FontWeight.w800, c: Colors.white)))
       ],
       body: Column(children: [
-        SizedBox(
-            height: 300,
-            child: Stack(fit: StackFit.expand, children: [
-              MobileScanner(
-                  controller: _ctrl,
-                  onDetect: (cap) {
-                    final v = cap.barcodes.firstOrNull?.rawValue;
-                    if (v != null) _submit(v);
-                  },
-                  errorBuilder: (ctx, err, _) => _cameraDenied()),
-              IgnorePointer(
-                  child: Center(
-                      child: Container(
-                          width: 280,
-                          height: 190,
-                          decoration: BoxDecoration(
-                              border: Border.all(color: MC.violet, width: 4),
-                              borderRadius: BorderRadius.circular(16))))),
-              Positioned(
-                  bottom: 12,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                      child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(99)),
-                          child: Text('Align the parcel QR within frame',
-                              style: ts(12,
-                                  c: Colors.white, w: FontWeight.w500))))),
-            ])),
         Expanded(
-            child: Container(
-                transform: Matrix4.translationValues(0, -16, 0),
-                decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(24))),
-                child: ListView(padding: MS.pagePadding, children: [
+            child: Stack(fit: StackFit.expand, children: [
+          MobileScanner(
+              controller: _ctrl,
+              onDetect: (cap) {
+                final v = cap.barcodes.firstOrNull?.rawValue;
+                if (v != null) _submit(v);
+              },
+              errorBuilder: (ctx, err, _) => _cameraDenied()),
+          IgnorePointer(
+              child: Center(
+                  child: Container(
+                      width: 280,
+                      height: 190,
+                      decoration: BoxDecoration(
+                          border: Border.all(color: MC.violet, width: 4),
+                          borderRadius: BorderRadius.circular(16))))),
+          Positioned(
+              bottom: 12,
+              left: 0,
+              right: 0,
+              child: Center(
+                  child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(99)),
+                      child: Text('Align the parcel QR within frame',
+                          style:
+                              ts(12, c: Colors.white, w: FontWeight.w500))))),
+        ])),
+        Container(
+            transform: Matrix4.translationValues(0, -16, 0),
+            decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+            child: ListView(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: MS.pagePadding,
+                children: [
                   Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -174,14 +175,14 @@ class _ScanState extends State<ScanWaybillScreen> {
                           Text('Pickup Pay: ${peso(widget.pickupPay)}',
                               style: ts(12, w: FontWeight.w600)),
                           Text('COD ${peso(widget.cod)}',
-                              style: ts(12,
-                                  w: FontWeight.w800, c: MC.violetDark))
+                              style:
+                                  ts(12, w: FontWeight.w800, c: MC.violetDark))
                         ])
                   else
                     Text(
                         'Scan a pickup waybill or a parcel assigned to you at the hub.',
                         style: ts(12, c: MC.muted)),
-                ]))),
+                ])),
       ]));
 
   Widget _banner(ScanResult r) => switch (r.outcome) {

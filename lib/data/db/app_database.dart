@@ -17,8 +17,8 @@ class AppDatabase {
       : _factory = factory ?? databaseFactory;
 
   static const name = 'mimoo_rider.db';
-  // Bumped to 2 to add rider_accounts, issue_reports, and email column.
-  static const version = 2;
+  // Version 3 repaired mojibake; version 4 extends pending pickup offers.
+  static const version = 4;
   final DatabaseFactory _factory;
   final String? databasePath;
   Database? _database;
@@ -58,6 +58,24 @@ class AppDatabase {
     }
     if (oldVersion < 2 && newVersion >= 2) {
       await _upgradeToVersionTwo(db);
+    }
+    if (oldVersion < 3 && newVersion >= 3) {
+      await _upgradeToVersionThree(db);
+    }
+    if (oldVersion < 4 && newVersion >= 4) {
+      await db.update(
+        'job_offers',
+        {
+          'expires_at':
+              DateTime.now().add(const Duration(minutes: 3)).toIso8601String(),
+        },
+        where: "state = 'pending'",
+      );
+      await db.update(
+        'notifications',
+        {'body': 'Poblacion I · ₱30 pickup pay · Expires in 3m'},
+        where: "kind = 'job_offer' AND body LIKE '%Expires in 60s%'",
+      );
     }
   }
 
@@ -269,18 +287,264 @@ class AppDatabase {
     ''');
     // Add decline_count to job_offers if it doesn't exist.
     try {
-      await db
-          .execute('ALTER TABLE job_offers ADD COLUMN decline_count INTEGER NOT NULL DEFAULT 0');
+      await db.execute(
+          'ALTER TABLE job_offers ADD COLUMN decline_count INTEGER NOT NULL DEFAULT 0');
     } catch (_) {}
+  }
+
+  /// Upgrade from version 2 → 3: repair text that older builds stored as
+  /// mojibake (for example a middle dot saved as two Latin-1 characters).
+  Future<void> _upgradeToVersionThree(DatabaseExecutor db) async {
+    const columns = <String, List<String>>{
+      'rider_profile': [
+        'name',
+        'address',
+        'fleet_name',
+        'hub_name',
+        'suspension_reason'
+      ],
+      'parcels': [
+        'seller_name',
+        'seller_address',
+        'buyer_name',
+        'address',
+        'area_name',
+        'failure_reason',
+        'route_code',
+        'landmark',
+        'item'
+      ],
+      'parcel_status_logs': ['reason'],
+      'job_offers': ['area_name'],
+      'notifications': ['title', 'body'],
+      'conversations': ['title'],
+      'messages': ['body'],
+      'emergency_contacts': ['name', 'relationship'],
+      'issue_reports': ['category', 'description'],
+      'cod_remittances': ['reference'],
+    };
+    // Bad sequences are written as escapes so this source file stays clean.
+    const fixes = <String, String>{
+      '\u00C2\u00B7': '\u00B7',
+      '\u00E2\u20AC\u00A6': '\u2026',
+      '\u00E2\u20AC\u0153': '\u201C',
+      '\u00E2\u20AC\u009D': '\u201D',
+      '\u00E2\u201A\u00B1': '\u20B1',
+    };
+    for (final entry in columns.entries) {
+      for (final column in entry.value) {
+        var expression = column;
+        final args = <String>[];
+        for (final fix in fixes.entries) {
+          expression = 'REPLACE($expression, ?, ?)';
+          args
+            ..add(fix.key)
+            ..add(fix.value);
+        }
+        await db.rawUpdate(
+            'UPDATE ${entry.key} SET $column = $expression', args);
+      }
+    }
+  }
+
+  Future<void> _seedAdditionalPickupOffers(
+      DatabaseExecutor txn, DateTime now) async {
+    const offers = <({
+      String tracking,
+      String seller,
+      String area,
+      String address,
+      String item,
+      double cod,
+      double km,
+    })>[
+      (
+        tracking: 'TRK-0012451',
+        seller: 'Bubukal Farms',
+        area: 'Bubukal',
+        address: 'Bubukal Road, Santa Cruz, Laguna',
+        item: 'Fresh produce box',
+        cod: 350,
+        km: 3.1,
+      ),
+      (
+        tracking: 'TRK-0012452',
+        seller: 'Laguna Loom & Craft',
+        area: 'Palasan',
+        address: 'Palasan Market, Santa Cruz, Laguna',
+        item: 'Handwoven tote bag',
+        cod: 0,
+        km: 1.8,
+      ),
+      (
+        tracking: 'TRK-0012453',
+        seller: 'Santa Cruz Home Finds',
+        area: 'Gatid',
+        address: 'Gatid Centro, Santa Cruz, Laguna',
+        item: 'Ceramic mug set',
+        cod: 425,
+        km: 4.2,
+      ),
+    ];
+
+    for (final offer in offers) {
+      final parcelId = await txn.insert('parcels', {
+        'tracking_no': offer.tracking,
+        'job_type': ParcelJobType.pickup.name,
+        'status': ParcelStatus.readyForPickup.value,
+        'seller_name': offer.seller,
+        'seller_address': offer.address,
+        'buyer_name': 'Mimoo Customer',
+        'buyer_phone': '+639181234567',
+        'address': offer.address,
+        'area_id': offer.area.toLowerCase(),
+        'area_name': offer.area,
+        'cod_amount': offer.cod,
+        'is_prepaid': offer.cod == 0 ? 1 : 0,
+        'updated_at': now.toIso8601String(),
+        'route_code': 'SL-${offer.area.substring(0, 1).toUpperCase()}01',
+        'landmark': 'Near ${offer.area} town center',
+        'carrier': 'jnt',
+        'item': offer.item,
+      });
+      await txn.insert('parcel_status_logs', {
+        'parcel_id': parcelId,
+        'from_status': null,
+        'to_status': ParcelStatus.readyForPickup.value,
+        'created_at': now.toIso8601String(),
+      });
+      await txn.insert('job_offers', {
+        'parcel_id': offer.tracking,
+        'area_name': offer.area,
+        'payout': 30.0,
+        'cod_amount': offer.cod,
+        'km': offer.km,
+        'expires_at': now.add(const Duration(minutes: 3)).toIso8601String(),
+        'state': 'pending',
+        'decline_count': 0,
+      });
+    }
+
+    await txn.insert('app_meta', {
+      'key': 'pickup_offers_demo_v1',
+      'value': '1',
+    });
+  }
+
+  Future<void> _seedMorePickupOffers(DatabaseExecutor txn, DateTime now) async {
+    const offers = <({
+      String tracking,
+      String seller,
+      String area,
+      String address,
+      String item,
+      double cod,
+      double km,
+    })>[
+      (
+        tracking: 'TRK-0012454',
+        seller: 'Pagsawitan Daily Goods',
+        area: 'Pagsawitan',
+        address: 'Pagsawitan Road, Santa Cruz, Laguna',
+        item: 'Household essentials',
+        cod: 280,
+        km: 2.7,
+      ),
+      (
+        tracking: 'TRK-0012455',
+        seller: 'San Jose Bakeshop',
+        area: 'San Jose',
+        address: 'San Jose Street, Santa Cruz, Laguna',
+        item: 'Assorted baked goods',
+        cod: 0,
+        km: 3.6,
+      ),
+      (
+        tracking: 'TRK-0012456',
+        seller: 'Labuin School Supplies',
+        area: 'Labuin',
+        address: 'Labuin Road, Santa Cruz, Laguna',
+        item: 'School supply bundle',
+        cod: 640,
+        km: 5.2,
+      ),
+      (
+        tracking: 'TRK-0012457',
+        seller: 'Santo Angel Pantry',
+        area: 'Santo Angel',
+        address: 'Santo Angel Centro, Santa Cruz, Laguna',
+        item: 'Pantry goods',
+        cod: 195,
+        km: 4.5,
+      ),
+    ];
+
+    for (final offer in offers) {
+      final parcelId = await txn.insert('parcels', {
+        'tracking_no': offer.tracking,
+        'job_type': ParcelJobType.pickup.name,
+        'status': ParcelStatus.readyForPickup.value,
+        'seller_name': offer.seller,
+        'seller_address': offer.address,
+        'buyer_name': 'Mimoo Customer',
+        'buyer_phone': '+639181234567',
+        'address': offer.address,
+        'area_id': offer.area.toLowerCase(),
+        'area_name': offer.area,
+        'cod_amount': offer.cod,
+        'is_prepaid': offer.cod == 0 ? 1 : 0,
+        'updated_at': now.toIso8601String(),
+        'route_code': 'SL-${offer.area.substring(0, 1).toUpperCase()}01',
+        'landmark': 'Near ${offer.area} town center',
+        'carrier': 'jnt',
+        'item': offer.item,
+      });
+      await txn.insert('parcel_status_logs', {
+        'parcel_id': parcelId,
+        'from_status': null,
+        'to_status': ParcelStatus.readyForPickup.value,
+        'created_at': now.toIso8601String(),
+      });
+      await txn.insert('job_offers', {
+        'parcel_id': offer.tracking,
+        'area_name': offer.area,
+        'payout': 30.0,
+        'cod_amount': offer.cod,
+        'km': offer.km,
+        'expires_at': now.add(const Duration(minutes: 3)).toIso8601String(),
+        'state': 'pending',
+        'decline_count': 0,
+      });
+    }
+
+    await txn.insert('app_meta', {
+      'key': 'pickup_offers_demo_v2',
+      'value': '1',
+    });
   }
 
   Future<void> seedIfNeeded() async {
     await database.transaction((txn) async {
       final seeded = await txn.query('app_meta',
           columns: ['value'], where: 'key = ?', whereArgs: ['seeded']);
-      if (seeded.isNotEmpty && seeded.first['value'] == '1') return;
-
       final now = DateTime.now();
+      if (seeded.isNotEmpty && seeded.first['value'] == '1') {
+        final pickupOffersSeeded = await txn.query('app_meta',
+            columns: ['value'],
+            where: 'key = ?',
+            whereArgs: ['pickup_offers_demo_v1']);
+        if (pickupOffersSeeded.isEmpty) {
+          await _seedAdditionalPickupOffers(txn, now);
+        }
+        final morePickupOffersSeeded = await txn.query('app_meta',
+            columns: ['value'],
+            where: 'key = ?',
+            whereArgs: ['pickup_offers_demo_v2']);
+        if (morePickupOffersSeeded.isEmpty) {
+          await _seedMorePickupOffers(txn, now);
+        }
+        return;
+      }
 
       // --- Rider profile ---
       await txn.insert('rider_profile', {
@@ -337,15 +601,17 @@ class AppDatabase {
         'payout': 30.0,
         'cod_amount': 500.0,
         'km': 2.4,
-        'expires_at': now.add(const Duration(seconds: 60)).toIso8601String(),
+        'expires_at': now.add(const Duration(minutes: 3)).toIso8601String(),
         'state': 'pending',
         'decline_count': 0,
       });
+      await _seedAdditionalPickupOffers(txn, now);
+      await _seedMorePickupOffers(txn, now);
 
       // --- Notifications ---
       await txn.insert('notifications', {
         'title': 'New job offer near you',
-        'body': 'Poblacion I · ₱30 pickup pay · Expires in 60s',
+        'body': 'Poblacion I · ₱30 pickup pay · Expires in 3m',
         'kind': 'job_offer',
         'parcel_id': 'TRK-0012450',
         'created_at': now.toIso8601String(),
@@ -355,13 +621,15 @@ class AppDatabase {
         'body': 'TRK-0012390 is at Santa Cruz Hub.',
         'kind': 'parcel_assigned',
         'parcel_id': 'TRK-0012390',
-        'created_at': now.subtract(const Duration(minutes: 22)).toIso8601String(),
+        'created_at':
+            now.subtract(const Duration(minutes: 22)).toIso8601String(),
       });
       await txn.insert('notifications', {
         'title': 'Seller marked parcels ready',
         'body': 'Santa Cruz Handicrafts has 2 parcels ready.',
         'kind': 'seller_ready',
-        'created_at': now.subtract(const Duration(minutes: 8)).toIso8601String(),
+        'created_at':
+            now.subtract(const Duration(minutes: 8)).toIso8601String(),
       });
       await txn.insert('notifications', {
         'title': 'COD remittance confirmed',
@@ -387,25 +655,29 @@ class AppDatabase {
         'conversation_id': conversationIds[0],
         'sender': 'hub',
         'body': "Yes po, I'm waiting at the blue gate now.",
-        'created_at': now.subtract(const Duration(minutes: 5)).toIso8601String(),
+        'created_at':
+            now.subtract(const Duration(minutes: 5)).toIso8601String(),
       });
       await txn.insert('messages', {
         'conversation_id': conversationIds[0],
         'sender': 'rider',
         'body': 'On my way — ETA 8 mins.',
-        'created_at': now.subtract(const Duration(minutes: 3)).toIso8601String(),
+        'created_at':
+            now.subtract(const Duration(minutes: 3)).toIso8601String(),
       });
       await txn.insert('messages', {
         'conversation_id': conversationIds[1],
         'sender': 'hub',
         'body': 'Please return uncollected parcels before 7:00 PM.',
-        'created_at': now.subtract(const Duration(minutes: 15)).toIso8601String(),
+        'created_at':
+            now.subtract(const Duration(minutes: 15)).toIso8601String(),
       });
       await txn.insert('messages', {
         'conversation_id': conversationIds[2],
         'sender': 'hub',
         'body': 'The parcels are sealed and ready on the counter.',
-        'created_at': now.subtract(const Duration(minutes: 35)).toIso8601String(),
+        'created_at':
+            now.subtract(const Duration(minutes: 35)).toIso8601String(),
       });
 
       // --- Emergency contacts ---
@@ -429,7 +701,8 @@ class AppDatabase {
         'reference': 'GCASH-20261031-001',
         'method': 'gcash',
         'created_at': now.subtract(const Duration(days: 1)).toIso8601String(),
-        'confirmed_at': now.subtract(const Duration(hours: 1)).toIso8601String(),
+        'confirmed_at':
+            now.subtract(const Duration(hours: 1)).toIso8601String(),
       });
 
       await txn.insert('app_meta', {'key': 'seeded', 'value': '1'});
@@ -455,6 +728,8 @@ class AppDatabase {
         await txn.delete(table);
       }
       await txn.delete('app_meta', where: 'key = ?', whereArgs: ['seeded']);
+      await txn.delete('app_meta',
+          where: 'key = ?', whereArgs: ['pickup_offers_demo_v1']);
     });
     await seedIfNeeded();
   }
@@ -575,10 +850,10 @@ class AppDatabase {
         podPhotoPath:
             status == ParcelStatus.delivered ? 'local/demo-pod.jpg' : null,
         assignedAt: stamp,
-        pickedUpAt: type == ParcelJobType.pickup ||
-                status != ParcelStatus.assigned
-            ? stamp.add(const Duration(minutes: 20))
-            : null,
+        pickedUpAt:
+            type == ParcelJobType.pickup || status != ParcelStatus.assigned
+                ? stamp.add(const Duration(minutes: 20))
+                : null,
         outForDeliveryAt: status == ParcelStatus.outForDelivery ||
                 status == ParcelStatus.delivered ||
                 status == ParcelStatus.failedDelivery ||
@@ -608,14 +883,12 @@ class AppDatabase {
       parcel('TRK-0012388', ParcelJobType.pickup, ParcelStatus.pickedUp,
           area: 'Palasan', pickupFee: 30, seller: 'Santa Cruz Handicrafts'),
       // Active delivery
-      parcel('TRK-0012345', ParcelJobType.delivery,
-          ParcelStatus.outForDelivery,
+      parcel('TRK-0012345', ParcelJobType.delivery, ParcelStatus.outForDelivery,
           cod: 500, area: 'Poblacion I', item: 'Handwoven table runner'),
       parcel('TRK-0012390', ParcelJobType.delivery, ParcelStatus.assigned,
           cod: 650, area: 'Bubukal', buyer: 'Liza Ramos'),
       // Failed delivery
-      parcel('TRK-0012301', ParcelJobType.delivery,
-          ParcelStatus.failedDelivery,
+      parcel('TRK-0012301', ParcelJobType.delivery, ParcelStatus.failedDelivery,
           cod: 650,
           area: 'Gatid',
           failure: 'Buyer not home',
@@ -657,11 +930,14 @@ class AppDatabase {
       // Need 80 more: one delivery (50) + one pickup that is returned
       // (contributes pickupFee via pickedUpAt but is NOT active).
       parcel('TRK-0012501', ParcelJobType.pickup, ParcelStatus.returned,
-          area: 'Bubukal', pickupFee: 30, daysAgo: 0,
-          seller: 'Bubukal Farms'),
+          area: 'Bubukal', pickupFee: 30, daysAgo: 0, seller: 'Bubukal Farms'),
       parcel('TRK-0012502', ParcelJobType.delivery, ParcelStatus.delivered,
-          cod: 200, collected: true, deliveryFee: 50, area: 'Palasan',
-          daysAgo: 0, buyer: 'Elena Cruz'),
+          cod: 200,
+          collected: true,
+          deliveryFee: 50,
+          area: 'Palasan',
+          daysAgo: 0,
+          buyer: 'Elena Cruz'),
     ];
 
     // Add bulk history entries for earnings/history coverage.
@@ -674,8 +950,16 @@ class AppDatabase {
     //     130 + 840 = 970 ✓ → today(210) + 970 = 1180 ✓
     // Pickups use 'returned' status to avoid being counted as active.
     final areas = [
-      'Poblacion I', 'Bubukal', 'Palasan', 'Gatid', 'Duhat',
-      'Buenavista', 'Magsaysay', 'Nanhaya', 'Bagong Pook', 'Lumban',
+      'Poblacion I',
+      'Bubukal',
+      'Palasan',
+      'Gatid',
+      'Duhat',
+      'Buenavista',
+      'Magsaysay',
+      'Nanhaya',
+      'Bagong Pook',
+      'Lumban',
     ];
     // 12 bulk deliveries, daysAgo cycles 1-6.
     for (var i = 0; i < 12; i++) {

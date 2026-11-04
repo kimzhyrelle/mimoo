@@ -29,8 +29,6 @@ class MimooDrawer extends StatelessWidget {
       listenable: Listenable.merge([
         repositories.parcels,
         repositories.riderProfile,
-        repositories.notifications,
-        repositories.conversations,
         riderStatus,
       ]),
       builder: (context, _) {
@@ -41,19 +39,6 @@ class MimooDrawer extends StatelessWidget {
         final hub = profile?.hubName ?? '';
         final photoPath = profile?.photoPath;
 
-        final unreadMessages =
-            repositories.conversations.conversations.fold<int>(
-          0,
-          (count, conversation) =>
-              count +
-              repositories.conversations
-                  .messagesFor(conversation.id ?? -1)
-                  .where((m) => m.sender != 'rider' && m.readAt == null)
-                  .length,
-        );
-        final unreadNotifications = repositories.notifications.notifications
-            .where((n) => n.readAt == null)
-            .length;
         final codOnHand = repositories.parcels.codOnHand;
         final isOnline = riderStatus.isOnline;
         final isSuspended = riderStatus.isSuspended;
@@ -91,16 +76,10 @@ class MimooDrawer extends StatelessWidget {
                           badgeColor: c.coral),
                       _item(context, c, Icons.chat_bubble_outline_rounded,
                           l10n.drawerMessages,
-                          route: '/chat',
-                          badge: unreadMessages > 0
-                              ? '$unreadMessages'
-                              : null),
+                          route: '/chat'),
                       _item(context, c, Icons.notifications_none_rounded,
                           l10n.drawerNotifications,
-                          route: '/notifications',
-                          badge: unreadNotifications > 0
-                              ? '$unreadNotifications'
-                              : null),
+                          route: '/notifications'),
                       Padding(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 8),
@@ -197,7 +176,7 @@ class MimooDrawer extends StatelessWidget {
             // Active/Offline/Suspended chip — live from RiderStatusScope
             if (isSuspended)
               MChip(l10n.riderStatusSuspended,
-                  bg: MC.coralSoft, fg: MC.coral, icon: Icons.block)
+                  bg: c.coralSoft, fg: c.coral, icon: Icons.block)
             else if (isOnline)
               MChip(l10n.drawerActive,
                   bg: c.greenSoft, fg: c.green, icon: Icons.circle)
@@ -225,7 +204,7 @@ class MimooDrawer extends StatelessWidget {
                   color: badgeColor ?? c.primary,
                   borderRadius: BorderRadius.circular(99)),
               child: Text(badge,
-                  style: ts(12, w: FontWeight.w800, c: Colors.white)),
+                  style: ts(12, w: FontWeight.w800, c: c.lowest)),
             ),
           const SizedBox(width: 4),
           Icon(Icons.chevron_right, color: c.onSurfaceVariant),

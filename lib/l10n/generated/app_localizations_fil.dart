@@ -408,6 +408,16 @@ class AppLocalizationsFil extends AppLocalizations {
   String get changePasswordUpdated => 'Na-update ang password.';
 
   @override
+  String get changePasswordCurrentIncorrect =>
+      'Mali ang kasalukuyang password.';
+
+  @override
+  String get showPassword => 'Ipakita ang password';
+
+  @override
+  String get hidePassword => 'Itago ang password';
+
+  @override
   String get emergencyAddTitle => 'Magdagdag ng emergency contact';
 
   @override
@@ -508,7 +518,7 @@ class AppLocalizationsFil extends AppLocalizations {
   String get permissionsTitle => 'Lokasyon at mga pahintulot';
 
   @override
-  String get permissionsChecking => 'Sinusuriâ€¦';
+  String get permissionsChecking => 'Sinusuri…';
 
   @override
   String get permissionsAllowed => 'Pinapayagan';
@@ -631,7 +641,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get helpReportScreenshotAttached =>
-      'Nakalakip ang screenshot Â· i-tap para palitan';
+      'Nakalakip ang screenshot · i-tap para palitan';
 
   @override
   String get helpReportSubmit => 'Isumite ang report';

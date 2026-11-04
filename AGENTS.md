@@ -59,7 +59,7 @@ Instructions for AI coding agents (GitHub Copilot, opencode, etc.). Read this fu
 
 These come from the QA assumptions and the test workbooks. Changing them breaks test cases.
 
-- **Job offer:** expires after **60 s**; declined or expired offers go to the next nearest rider; **3 declines** → Unassigned. Max **3 active jobs** per rider.
+- **Job offer:** expires after **3 min**; declined or expired offers go to the next nearest rider; **3 declines** → Unassigned. Riders choose how many active jobs they can handle; there is no system-enforced active-job limit.
 - **Pickup:** confirm by scanning the waybill **or** typing the tracking number; a mismatched tracking number is rejected ("tracking number does not match this job").
 - **Delivery lifecycle:** Assigned → Picked Up → At Hub → Out for Delivery → Delivered. No skipping states.
 - **Proof of delivery (3 steps, order fixed):** (1) **live camera photo**, gallery uploads are not allowed; (2) buyer's **6-digit OTP**; (3) **exact COD amount** (₱499.99 and ₱500.01 must both fail for ₱500.00). Prepaid orders have COD ₱0 and skip step 3.

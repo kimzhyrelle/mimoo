@@ -22,6 +22,7 @@ class _HistoryTabState extends State<HistoryTab> {
     return ListenableBuilder(
       listenable: parcelsRepository,
       builder: (context, _) {
+        final c = MC.of(context);
         final parcels = {
           for (final parcel in parcelsRepository.parcels) parcel.id: parcel,
         };
@@ -90,7 +91,7 @@ class _HistoryTabState extends State<HistoryTab> {
             constraints: const BoxConstraints(maxWidth: 600),
             child: ListView(padding: MS.pagePadding, children: [
               Text('RIDER DISPATCH LOG',
-                  style: MT.badge.copyWith(color: MC.secondary)),
+                  style: MT.badge.copyWith(color: c.secondary)),
               Text('Job History', style: MT.headlineLg),
               const SizedBox(height: MS.md),
               MSegmentedControl(
@@ -101,7 +102,7 @@ class _HistoryTabState extends State<HistoryTab> {
               const SizedBox(height: MS.xl),
               if (jobs.isEmpty)
                 MCard(
-                    color: MC.container,
+                    color: c.container,
                     child: Column(children: [
                       const IconDot(Icons.inbox_outlined, size: 56),
                       const SizedBox(height: 8),
@@ -123,18 +124,19 @@ class _HistoryCard extends StatelessWidget {
   final HistoryJob job;
   const _HistoryCard({required this.job});
 
-  (Color, Color) get _statusColors {
-    if (job.status.startsWith('Delivered')) return (MC.high, MC.primary);
-    if (job.status.startsWith('Picked')) return (MC.primaryFixed, MC.primary);
+  (Color, Color) _statusColors(MimooColors c) {
+    if (job.status.startsWith('Delivered')) return (c.highest, c.primary);
+    if (job.status.startsWith('Picked')) return (c.primaryFixed, c.primary);
     if (job.status.startsWith('Return')) {
-      return (MC.errorContainer, MC.tertiary);
+      return (c.errorContainer, c.tertiary);
     }
-    return (MC.highest, MC.onSurface);
+    return (c.highest, c.text);
   }
 
   @override
   Widget build(BuildContext context) {
-    final (statusBg, statusFg) = _statusColors;
+    final c = MC.of(context);
+    final (statusBg, statusFg) = _statusColors(c);
     final earned = job.earnings > 0 ? '+${peso(job.earnings)}' : peso(0);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -144,7 +146,7 @@ class _HistoryCard extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Wrap(spacing: MS.sm, runSpacing: MS.sm, children: [
             Text(job.tracking, style: MT.labelLg),
-            MChip(job.type, bg: MC.container, fg: MC.secondary),
+            MChip(job.type, bg: c.container, fg: c.secondary),
             MChip(job.status, bg: statusBg, fg: statusFg),
           ]),
           Text(job.time, style: MT.bodySm),
@@ -153,12 +155,12 @@ class _HistoryCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                  color: MC.low, borderRadius: BorderRadius.circular(8)),
+                  color: c.low, borderRadius: BorderRadius.circular(8)),
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(job.label.toUpperCase(),
-                        style: MT.badge.copyWith(color: MC.secondary)),
+                        style: MT.badge.copyWith(color: c.secondary)),
                     Text(job.location,
                         style: MT.bodyMd.copyWith(fontWeight: FontWeight.w500)),
                   ])),
@@ -167,15 +169,15 @@ class _HistoryCard extends StatelessWidget {
             if (job.cod != null)
               Expanded(
                 child: Text(job.cod!,
-                    style: MT.bodySm.copyWith(color: MC.onSurfaceVariant),
+                    style: MT.bodySm.copyWith(color: c.onSurfaceVariant),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis),
               ),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text('EARNINGS', style: MT.badge.copyWith(color: MC.secondary)),
+              Text('EARNINGS', style: MT.badge.copyWith(color: c.secondary)),
               Text(earned,
                   style: MT.currency.copyWith(
-                      color: job.earnings > 0 ? MC.primary : MC.outline)),
+                      color: job.earnings > 0 ? c.primary : c.outline)),
             ]),
           ]),
         ]),

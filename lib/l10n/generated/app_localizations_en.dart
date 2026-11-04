@@ -408,6 +408,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get changePasswordUpdated => 'Password updated.';
 
   @override
+  String get changePasswordCurrentIncorrect => 'Current password is incorrect.';
+
+  @override
+  String get showPassword => 'Show password';
+
+  @override
+  String get hidePassword => 'Hide password';
+
+  @override
   String get emergencyAddTitle => 'Add emergency contact';
 
   @override
@@ -505,7 +514,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get permissionsTitle => 'Location & permissions';
 
   @override
-  String get permissionsChecking => 'Checkingâ€¦';
+  String get permissionsChecking => 'Checking…';
 
   @override
   String get permissionsAllowed => 'Allowed';
@@ -628,7 +637,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get helpReportScreenshotAttached =>
-      'Screenshot attached Â· tap to replace';
+      'Screenshot attached · tap to replace';
 
   @override
   String get helpReportSubmit => 'Submit report';

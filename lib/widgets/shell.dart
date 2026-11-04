@@ -21,7 +21,24 @@ class MimooAppBar extends StatelessWidget implements PreferredSizeWidget {
     final l10n = AppLocalizations.of(context);
     return AppBar(
       backgroundColor: MC.header,
+      flexibleSpace: const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [MC.violetDark, MC.violet],
+          ),
+        ),
+      ),
       toolbarHeight: 64,
+      automaticallyImplyLeading: false,
+      leading: Builder(
+        builder: (context) => IconButton(
+          tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
+          onPressed: () => Scaffold.of(context).openDrawer(),
+          icon: const Icon(Icons.menu, color: Colors.white, size: 26),
+        ),
+      ),
       titleSpacing: 8,
       title: Row(children: [
         Text('mimoo',

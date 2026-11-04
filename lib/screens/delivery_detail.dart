@@ -1,36 +1,99 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../core/error_messages.dart';
 import '../core/theme.dart';
 import '../data/parcel_flow.dart';
 import '../data/repositories/app_repositories_scope.dart';
 import '../widgets/common.dart';
 import '../widgets/custody_timeline.dart';
+import '../widgets/delivery_sections.dart';
 import 'pickup_detail_screen.dart';
-import 'out_for_delivery_screen.dart';
 
-class DeliveryDetailScreen extends StatelessWidget {
+class DeliveryDetailScreen extends StatefulWidget {
   final DispatchParcel parcel;
-  const DeliveryDetailScreen({super.key, required this.parcel});
+  final VoidCallback? onBack;
+  final Future<bool> Function()? onMarkOut;
+  const DeliveryDetailScreen(
+      {super.key, required this.parcel, this.onBack, this.onMarkOut});
 
-  Future<void> _callBuyer(BuildContext context) async {
+  @override
+  State<DeliveryDetailScreen> createState() => _DeliveryDetailScreenState();
+}
+
+class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
+  bool _busy = false;
+  bool _markedOut = false;
+
+  DispatchParcel get _parcel => widget.parcel;
+
+  Future<void> _callBuyer() async {
     final messenger = ScaffoldMessenger.of(context);
-    final uri = Uri.parse('tel:${parcel.phone}');
+    final uri = Uri.parse('tel:${_parcel.phone}');
     var opened = false;
     try {
       opened = await canLaunchUrl(uri) && await launchUrl(uri);
     } catch (_) {
       opened = false;
     }
-    if (!opened && context.mounted) {
+    if (!opened) {
       messenger.showSnackBar(
           const SnackBar(content: Text("Couldn't start the call")));
     }
   }
 
-  Future<void> _fail(BuildContext context) async {
+  void _message() => Navigator.pushNamed(context, '/chat/thread');
+
+  Future<void> _markOut() async {
+    if (_busy) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    try {
+      final completed = widget.onMarkOut != null
+          ? await widget.onMarkOut!()
+          : await _advanceToOutForDelivery();
+      if (mounted && completed) setState(() => _markedOut = true);
+    } catch (error) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text(friendlyError(error))));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<bool> _advanceToOutForDelivery() async {
+    final parcels = AppRepositoriesScope.of(context).parcels;
+    final current = parcels.byTracking(_parcel.trackingNo);
+    if (current == null) return false;
+    final steps = switch (current.status) {
+      ParcelStatus.assigned => [
+          ParcelStatus.pickedUp,
+          ParcelStatus.atHub,
+          ParcelStatus.outForDelivery,
+        ],
+      ParcelStatus.pickedUp => [
+          ParcelStatus.atHub,
+          ParcelStatus.outForDelivery,
+        ],
+      ParcelStatus.atHub => [ParcelStatus.outForDelivery],
+      ParcelStatus.failedDelivery => [
+          ParcelStatus.atHub,
+          ParcelStatus.outForDelivery,
+        ],
+      _ => const <ParcelStatus>[],
+    };
+    for (final step in steps) {
+      final changed = await parcels.transition(current.trackingNo, step);
+      if (!changed) return false;
+    }
+    return steps.isNotEmpty;
+  }
+
+  Future<void> _fail() async {
+    final c = MC.of(context);
     final reason = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: MC.lowest,
+      backgroundColor: c.lowest,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => SafeArea(
@@ -45,245 +108,108 @@ class DeliveryDetailScreen extends StatelessWidget {
                         width: 44,
                         height: 5,
                         decoration: BoxDecoration(
-                            color: MC.outlineVariant,
+                            color: c.outlineVariant,
                             borderRadius: BorderRadius.circular(9)))),
                 const SizedBox(height: 16),
-                Text('Why did the delivery fail?', style: MT.headlineMd),
+                Text('Why did the delivery fail?',
+                    style: MT.headlineMd.copyWith(color: c.text)),
                 const SizedBox(height: 8),
                 for (final reason in failureReasons)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.report_problem_outlined,
-                        color: MC.tertiaryContainer),
+                    leading:
+                        Icon(Icons.report_problem_outlined, color: c.coral),
                     title: Text(reason,
-                        style: MT.bodyMd.copyWith(fontWeight: FontWeight.w600)),
-                    trailing: const Icon(Icons.chevron_right),
+                        style: MT.bodyMd.copyWith(
+                            fontWeight: FontWeight.w600, color: c.text)),
+                    trailing: Icon(Icons.chevron_right, color: c.muted),
                     onTap: () => Navigator.pop(ctx, reason),
                   ),
               ]),
         ),
       ),
     );
-    if (reason == null || !context.mounted) return;
-
-    // Disable the button while the request is in flight by tracking state at
-    // the DeliveryDetailScreen level — use a local flag so we don't need extra
-    // setState calls on a StatelessWidget.
+    if (reason == null || !mounted) return;
     try {
       await AppRepositoriesScope.of(context).parcels.transition(
-            parcel.trackingNo,
+            _parcel.trackingNo,
             ParcelStatus.failedDelivery,
             reason: reason,
           );
-    } catch (e) {
-      if (!context.mounted) return;
-      final msg = e.toString().replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg.isEmpty ? 'Failed to update status.' : msg)),
-      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(friendlyError(error))));
       return;
     }
-    if (!context.mounted) return;
+    if (!mounted) return;
     Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
   }
 
   @override
   Widget build(BuildContext context) {
-    final p = parcel;
-    final step = p.lifecycleStep;
-    final canAct = p.status == ParcelStatus.outForDelivery;
+    final p = _parcel;
+    final c = MC.of(context);
+    final status = _markedOut ? ParcelStatus.outForDelivery : p.status;
+    final step = deliveryStepFor(status);
+    final delivered = status == ParcelStatus.delivered;
+    final atHub = status == ParcelStatus.assigned ||
+        status == ParcelStatus.pickedUp ||
+        status == ParcelStatus.atHub ||
+        status == ParcelStatus.failedDelivery;
+    final canPod = status == ParcelStatus.outForDelivery;
+    final (pillBg, pillFg) = switch (status) {
+      ParcelStatus.failedDelivery => (c.coral, c.lowest),
+      ParcelStatus.delivered || ParcelStatus.returned => (
+          c.greenSoft,
+          c.green
+        ),
+      ParcelStatus.outForDelivery => (c.primary, c.lowest),
+      _ => (c.container, c.primary),
+    };
     return Scaffold(
+      backgroundColor: c.bg,
       appBar: MSubAppBar(
         title:
             Text(p.tracking, style: MT.labelLg.copyWith(color: Colors.white)),
+        onBack: widget.onBack,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: MChip(p.status.label,
-                bg: p.status == ParcelStatus.failedDelivery
-                    ? MC.coral
-                    : MC.container,
-                fg: p.status == ParcelStatus.failedDelivery
-                    ? Colors.white
-                    : MC.primary),
+            child: MChip(status.label, bg: pillBg, fg: pillFg),
           ),
         ],
       ),
       body: MPageBody(
           child: ListView(padding: MS.pagePadding, children: [
-        if (p.status == ParcelStatus.failedDelivery) ...[
-          InfoBanner(
-            Icons.warning,
-            'Overdue Â· ${p.failReason ?? 'Delivery failed'}',
-            body:
-                'Return the parcel to the hub. Logistics clears it when it is scanned back in.',
-            bg: MC.coral,
-            fg: Colors.white,
-          ),
+        if (status == ParcelStatus.failedDelivery) ...[
+          DeliveryOverdueBanner(parcel: p),
           const SizedBox(height: 12),
         ],
-        if (p.status == ParcelStatus.delivered) ...[
+        if (delivered) ...[
           InfoBanner(Icons.check_circle, 'Delivered',
               body: 'Handover completed to ${p.buyer}.',
-              bg: MC.greenBg,
-              fg: MC.green),
+              bg: c.greenSoft,
+              fg: c.green),
           const SizedBox(height: 12),
         ],
-        MCard(
-            child: Column(children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('DELIVERY LIFECYCLE',
-                style: MT.badge.copyWith(color: MC.onSurfaceVariant)),
-            Text('Step ${step + 1} of 5',
-                style: MT.badge.copyWith(color: MC.primary)),
-          ]),
-          const SizedBox(height: 12),
-          Row(children: [
-            for (var i = 0; i < lifecycleSteps.length; i++)
-              Expanded(
-                  child: Column(children: [
-                CircleAvatar(
-                  radius: 12,
-                  backgroundColor: i < step
-                      ? MC.primary
-                      : (i == step ? MC.primaryContainer : MC.highest),
-                  child: Icon(
-                    i < step
-                        ? Icons.check
-                        : (i == step
-                            ? Icons.sports_motorsports
-                            : Icons.circle_outlined),
-                    size: 14,
-                    color: i <= step ? Colors.white : MC.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  lifecycleSteps[i],
-                  style: MT.badge.copyWith(
-                      fontSize: 12,
-                      color: i == step
-                          ? MC.primaryContainer
-                          : MC.onSurfaceVariant),
-                  textAlign: TextAlign.center,
-                ),
-              ])),
-          ]),
-        ])),
+        DeliveryProgressCard(step: step, completed: delivered),
         const SizedBox(height: 12),
-        MCard(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            const CircleAvatar(
-                radius: 24,
-                backgroundColor: MC.highest,
-                child: Icon(Icons.person, color: MC.primary)),
-            const SizedBox(width: 12),
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text(p.buyer, style: MT.headlineMd),
-                  Text(p.phone, style: MT.bodySm),
-                ])),
-            Flexible(
-              child: Text(p.areaName ?? '',
-                  style: MT.bodySm.copyWith(
-                      color: MC.secondary, fontWeight: FontWeight.w600),
-                  maxLines: 2,
-                  textAlign: TextAlign.end,
-                  overflow: TextOverflow.ellipsis),
-            ),
-          ]),
-          const SizedBox(height: 12),
-          Row(children: [
-            Expanded(
-                child: OutlinedButton.icon(
-                    onPressed: () => _callBuyer(context),
-                    icon: const Icon(Icons.call, size: 18),
-                    label: const Text('Call'),
-                    style: OutlinedButton.styleFrom(
-                        shape: const StadiumBorder(),
-                        minimumSize: const Size.fromHeight(48),
-                        foregroundColor: MC.primary,
-                        side: BorderSide.none,
-                        backgroundColor: MC.container))),
-            const SizedBox(width: 8),
-            Expanded(
-                child: FilledButton.icon(
-                    onPressed: () =>
-                        Navigator.pushNamed(context, '/chat/thread'),
-                    icon: const Icon(Icons.chat, size: 18),
-                    label: const Text('Message'),
-                    style: FilledButton.styleFrom(
-                        shape: const StadiumBorder(),
-                        minimumSize: const Size.fromHeight(48),
-                        backgroundColor: MC.primary))),
-          ]),
-          const SizedBox(height: 12),
-          Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                  color: MC.low, borderRadius: BorderRadius.circular(12)),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('DROP-OFF ADDRESS',
-                        style: MT.badge.copyWith(color: MC.onSurfaceVariant)),
-                    Text(p.address,
-                        style: MT.bodyLg.copyWith(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 4),
-                    Text('${p.areaName} Â· Route ${p.routeCode}',
-                        style: MT.bodySm.copyWith(
-                            color: MC.primary, fontWeight: FontWeight.w700)),
-                    if (p.landmark?.isNotEmpty == true) ...[
-                      const SizedBox(height: 8),
-                      Row(children: [
-                        const Icon(Icons.near_me, size: 18, color: MC.tertiary),
-                        const SizedBox(width: 8),
-                        Expanded(
-                            child: Text('"${p.landmark}"', style: MT.labelMd))
-                      ]),
-                    ],
-                  ])),
-          const SizedBox(height: 12),
-          Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(p.carrierLabel,
-                    style: MT.bodySm.copyWith(color: MC.onSurfaceVariant)),
-                MChip(p.weightLabel, bg: MC.highest),
-                Text(p.item ?? 'Parcel',
-                    style: MT.bodySm,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-              ]),
-        ])),
+        DeliveryRecipientCard(
+          parcel: p,
+          onCall: _callBuyer,
+          onMessage: _message,
+        ),
         const SizedBox(height: 12),
-        if (p.isCod)
-          MCard(
-              color: MC.tertiaryFixed.withValues(alpha: .4),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const MChip('Cash on delivery',
-                        bg: MC.tertiary, fg: Colors.white),
-                    const SizedBox(height: 8),
-                    Text('RIDER MUST COLLECT',
-                        style: MT.badge.copyWith(color: MC.onSurfaceVariant)),
-                    Text(peso(p.cod),
-                        style: MT.currency.copyWith(color: MC.tertiary)),
-                    Text('Count cash before handing over.',
-                        style: MT.bodySm.copyWith(color: MC.tertiary)),
-                  ]))
-        else
-          InfoBanner(Icons.verified, 'Paid online',
-              body: 'No cash to collect for this parcel.',
-              bg: MC.greenBg,
-              fg: MC.green),
+        DeliveryAddressCard(parcel: p),
+        if (p.landmark?.isNotEmpty == true) ...[
+          const SizedBox(height: 12),
+          DeliveryNoteBanner(parcel: p),
+        ],
+        const SizedBox(height: 12),
+        DeliveryParcelCard(parcel: p),
+        const SizedBox(height: 12),
+        DeliveryPaymentCard(parcel: p),
         const SizedBox(height: 12),
         CustodyTimeline(events: p.custody),
         const SizedBox(height: 16),
@@ -294,18 +220,46 @@ class DeliveryDetailScreen extends StatelessWidget {
                 etaMins: 12,
                 km: 4.2,
                 title: 'Navigate to Customer')),
-        if (canAct) ...[
+        if (atHub) ...[
+          const SizedBox(height: 8),
+          PillButton('Mark Out for Delivery',
+              icon: Icons.arrow_forward,
+              loading: _busy,
+              onPressed: _busy ? null : _markOut),
+          const SizedBox(height: 8),
+          const PillButton('Proof of Delivery',
+              icon: Icons.lock,
+              style: BtnStyle.tonal,
+              onPressed: null),
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Mark Out for Delivery first (Delivered cannot be skipped)',
+              textAlign: TextAlign.center,
+              style: ts(12, c: c.muted),
+            ),
+          ),
+        ],
+        if (canPod) ...[
           const SizedBox(height: 8),
           PillButton('Proof of Delivery',
+              icon: Icons.photo_camera,
               onPressed: () =>
                   Navigator.pushNamed(context, '/pod', arguments: p.tracking)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           TextButton.icon(
-            onPressed: () => _fail(context),
-            icon: const Icon(Icons.error, color: MC.tertiary, size: 18),
+            onPressed: _fail,
+            icon: Icon(Icons.error, color: c.coral, size: 18),
             label: Text('Delivery failed / Customer unavailable',
-                style: MT.labelMd.copyWith(color: MC.tertiary)),
+                style: ts(14, w: FontWeight.w600, c: c.coral)),
           ),
+        ],
+        if (delivered) ...[
+          const SizedBox(height: 8),
+          PillButton.secondary('View COD Balance',
+              leading: Icons.account_balance,
+              onPressed: () =>
+                  Navigator.pushNamed(context, '/cod-remittance')),
         ],
       ])),
     );

@@ -48,10 +48,18 @@ void main() {
       ]),
     );
     expect(repositories.parcels.parcels, isNotEmpty);
+    expect(
+      repositories.offers.offers.where((offer) => offer.state == 'pending'),
+      hasLength(8),
+    );
     await repositories.database.seedIfNeeded();
     final count = Sqflite.firstIntValue(await repositories.database.database
         .rawQuery('SELECT COUNT(*) FROM parcels'));
     expect(count, repositories.parcels.parcels.length);
+    final offerCount = Sqflite.firstIntValue(await repositories
+        .database.database
+        .rawQuery("SELECT COUNT(*) FROM job_offers WHERE state = 'pending'"));
+    expect(offerCount, 8);
   });
 
   test('transition table accepts only the defined edges', () {
@@ -73,9 +81,21 @@ void main() {
         canTransition(ParcelStatus.returned, ParcelStatus.delivered), isFalse);
   });
 
-  test('active-job count includes assigned, picked up, and out for delivery',
-      () {
+  test('accepts a pickup offer when three parcels are already active',
+      () async {
     expect(repositories.parcels.active.length, 3);
+
+    final offer = repositories.offers.offers
+        .firstWhere((offer) => offer.parcelId == 'TRK-0012450');
+    await repositories.offers.setState(offer.id!, 'accepted');
+
+    expect(repositories.parcels.active.length, 4);
+    expect(
+      repositories.offers.offers
+          .firstWhere((item) => item.id == offer.id)
+          .state,
+      'accepted',
+    );
   });
 
   test('earnings are derived from parcel fees', () {
@@ -101,6 +121,30 @@ void main() {
     );
     expect(repositories.parcels.pendingRemittance, before);
     expect(repositories.parcels.codOnHand, 0);
+  });
+
+  test('remitCollected clears the balance and records a confirmed remittance',
+      () async {
+    final before = repositories.parcels.codOnHand;
+    expect(before, greaterThan(0));
+    expect(repositories.parcels.unremitted, isNotEmpty);
+
+    await repositories.parcels.remitCollected(
+      method: 'gcash',
+      reference: 'GCASH-REMIT-001',
+    );
+    await repositories.remittances.refresh();
+
+    expect(repositories.parcels.codOnHand, 0);
+    expect(repositories.parcels.unremitted, isEmpty);
+    expect(repositories.parcels.outboxCount, 1);
+    final remittance = repositories.remittances.remittances
+        .firstWhere((r) => r.reference == 'GCASH-REMIT-001');
+    expect(remittance.method, 'gcash');
+    expect(remittance.reference, 'GCASH-REMIT-001');
+    expect(remittance.status, 'confirmed');
+    expect(remittance.confirmedAt, isNotNull);
+    expect(remittance.amount, closeTo(before, 0.001));
   });
 
   test('status changes write a log and enqueue an outbox entry', () async {

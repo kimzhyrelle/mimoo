@@ -824,6 +824,24 @@ abstract class AppLocalizations {
   /// **'Password updated.'**
   String get changePasswordUpdated;
 
+  /// No description provided for @changePasswordCurrentIncorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password is incorrect.'**
+  String get changePasswordCurrentIncorrect;
+
+  /// No description provided for @showPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get showPassword;
+
+  /// No description provided for @hidePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get hidePassword;
+
   /// No description provided for @emergencyAddTitle.
   ///
   /// In en, this message translates to:
@@ -1007,7 +1025,7 @@ abstract class AppLocalizations {
   /// No description provided for @permissionsChecking.
   ///
   /// In en, this message translates to:
-  /// **'Checkingâ€¦'**
+  /// **'Checking…'**
   String get permissionsChecking;
 
   /// No description provided for @permissionsAllowed.
@@ -1229,7 +1247,7 @@ abstract class AppLocalizations {
   /// No description provided for @helpReportScreenshotAttached.
   ///
   /// In en, this message translates to:
-  /// **'Screenshot attached Â· tap to replace'**
+  /// **'Screenshot attached · tap to replace'**
   String get helpReportScreenshotAttached;
 
   /// No description provided for @helpReportSubmit.

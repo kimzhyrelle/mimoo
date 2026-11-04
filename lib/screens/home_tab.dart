@@ -22,6 +22,7 @@ class HomeTab extends StatefulWidget {
 class _HomeTabState extends State<HomeTab> {
   @override
   Widget build(BuildContext context) {
+    final c = MC.of(context);
     final status = RiderStatusScope.of(context);
     final repositories = AppRepositoriesScope.of(context);
     final parcels = repositories.parcels;
@@ -32,7 +33,7 @@ class _HomeTabState extends State<HomeTab> {
         child:
             ListView(padding: const EdgeInsets.only(bottom: MS.xl), children: [
           Container(
-            color: MC.primary,
+            color: c.primary,
             padding: const EdgeInsets.fromLTRB(MS.lg, MS.lg, MS.lg, 20),
             child: Column(children: [
               // ── Profile header card — tappable → Edit Personal Info ──
@@ -76,13 +77,12 @@ class _HomeTabState extends State<HomeTab> {
                       const SizedBox(width: 12),
                       CircleAvatar(
                         radius: 24,
-                        backgroundColor: MC.highest,
+                        backgroundColor: c.highest,
                         backgroundImage:
                             hasPhoto ? FileImage(File(photoPath)) : null,
                         child: hasPhoto
                             ? null
-                            : const Icon(Icons.person,
-                                color: MC.primary),
+                            : Icon(Icons.person, color: c.primary),
                       ),
                       const SizedBox(width: 4),
                       const Icon(Icons.chevron_right,
@@ -167,10 +167,10 @@ class _HomeTabState extends State<HomeTab> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             MChip(parcel.status.label,
-                                bg: MC.tertiaryFixed, fg: MC.tertiary),
+                                bg: c.tertiaryFixed, fg: c.tertiary),
                             Text(parcel.trackingNo,
                                 style: MT.labelMd
-                                    .copyWith(color: MC.onSurfaceVariant)),
+                                    .copyWith(color: c.onSurfaceVariant)),
                           ]),
                       const SizedBox(height: 12),
                       RouteTimeline(
@@ -238,33 +238,36 @@ class _Stat extends StatelessWidget {
   const _Stat(this.label, this.value, this.suffix, this.sub,
       {this.warn = false, this.onTap});
   @override
-  Widget build(BuildContext context) => MCard(
-        color: warn ? MC.tertiaryFixed : MC.lowest,
-        onTap: onTap,
-        child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 80),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(label.toUpperCase(),
-                      style: MT.badge.copyWith(color: MC.onSurfaceVariant),
-                      overflow: TextOverflow.ellipsis),
-                  Text.rich(
-                      TextSpan(
-                          text: value,
-                          style: MT.currency
-                              .copyWith(color: warn ? MC.tertiary : MC.primary),
-                          children: [TextSpan(text: suffix, style: MT.bodyMd)]),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  Text(sub,
-                      style: MT.badge
-                          .copyWith(color: warn ? MC.tertiary : MC.secondary),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis),
-                ])),
-      );
+  Widget build(BuildContext context) {
+    final c = MC.of(context);
+    return MCard(
+      color: warn ? c.tertiaryFixed : c.lowest,
+      onTap: onTap,
+      child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 80),
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(label.toUpperCase(),
+                    style: MT.badge.copyWith(color: c.onSurfaceVariant),
+                    overflow: TextOverflow.ellipsis),
+                Text.rich(
+                    TextSpan(
+                        text: value,
+                        style:
+                            MT.currency.copyWith(color: warn ? c.tertiary : c.primary),
+                        children: [TextSpan(text: suffix, style: MT.bodyMd)]),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                Text(sub,
+                    style:
+                        MT.badge.copyWith(color: warn ? c.tertiary : c.secondary),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
+              ])),
+    );
+  }
 }
 
 /// Completed and failed jobs from the same dispatch store used by Jobs and
@@ -273,6 +276,7 @@ class _RecentActivityList extends StatelessWidget {
   const _RecentActivityList();
   @override
   Widget build(BuildContext context) {
+    final c = MC.of(context);
     final parcels = AppRepositoriesScope.of(context).parcels;
     return ListenableBuilder(
       listenable: parcels,
@@ -285,7 +289,7 @@ class _RecentActivityList extends StatelessWidget {
             .toList();
         if (items.isEmpty) {
           return MCard(
-              color: MC.container,
+              color: c.container,
               child: Text('No recent activity yet.', style: MT.bodySm));
         }
         return MCard(
@@ -300,11 +304,11 @@ class _RecentActivityList extends StatelessWidget {
                       ? Icons.check_circle
                       : Icons.error_outline,
                   bg: items[i].status == ParcelStatus.delivered
-                      ? MC.greenBg
-                      : MC.coralSoft,
+                      ? c.greenBg
+                      : c.coralSoft,
                   fg: items[i].status == ParcelStatus.delivered
-                      ? MC.green
-                      : MC.coral,
+                      ? c.green
+                      : c.coral,
                 ),
                 title: Text(
                     '${items[i].status == ParcelStatus.delivered ? 'Delivered' : 'Failed'} · ${items[i].buyer}',

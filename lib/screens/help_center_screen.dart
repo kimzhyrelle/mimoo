@@ -108,6 +108,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     final filtered = _filtered(l10n);
     return MScaffold(
       title: l10n.helpTitle,
+      onBack: () => Navigator.maybePop(context),
       drawer: const MimooDrawer(),
       body: ListView(padding: MS.pagePadding, children: [
         Text(l10n.helpHeading, style: ts(22, w: FontWeight.w700, c: c.text)),

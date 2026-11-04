@@ -20,6 +20,7 @@ class _EarningsTabState extends State<EarningsTab> {
     return ListenableBuilder(
       listenable: parcels,
       builder: (context, _) {
+        final c = MC.of(context);
         final now = DateTime.now();
         final today = DateTime(now.year, now.month, now.day);
         final from =
@@ -50,7 +51,7 @@ class _EarningsTabState extends State<EarningsTab> {
             child: ListView(padding: MS.pagePadding, children: [
               Text('Earnings', style: MT.headlineLg),
               Text('Money only. Open History for job details.',
-                  style: MT.bodySm.copyWith(color: MC.onSurfaceVariant)),
+                  style: MT.bodySm.copyWith(color: c.onSurfaceVariant)),
               const SizedBox(height: MS.md),
               MSegmentedControl(
                 segments: const ['Today', 'This Week'],
@@ -64,8 +65,8 @@ class _EarningsTabState extends State<EarningsTab> {
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const MChip('Net Payout Accrued',
-                            bg: MC.container, fg: MC.primaryContainer),
+                        MChip('Net Payout Accrued',
+                            bg: c.container, fg: c.primary),
                         const SizedBox(height: 8),
                         Text(peso(earnings),
                             style: MT.currency.copyWith(fontSize: 32)),
@@ -74,14 +75,14 @@ class _EarningsTabState extends State<EarningsTab> {
                                 ? 'This week · $jobs jobs completed'
                                 : 'Today · $jobs jobs completed',
                             style:
-                                MT.bodyMd.copyWith(color: MC.onSurfaceVariant)),
+                                MT.bodyMd.copyWith(color: c.onSurfaceVariant)),
                       ])),
               const SizedBox(height: MS.md),
               MCard(
-                  color: MC.low,
+                  color: c.low,
                   child: Row(children: [
-                    const IconDot(Icons.account_balance_wallet,
-                        bg: MC.secondaryContainer, fg: MC.onSecondaryContainer),
+                    IconDot(Icons.account_balance_wallet,
+                        bg: c.secondaryContainer, fg: c.onSecondaryContainer),
                     const SizedBox(width: 10),
                     Expanded(
                         child: Column(
@@ -89,7 +90,7 @@ class _EarningsTabState extends State<EarningsTab> {
                             children: [
                           Text('COD ON-HAND',
                               style: MT.badge
-                                  .copyWith(color: MC.onSurfaceVariant)),
+                                  .copyWith(color: c.onSurfaceVariant)),
                           Text('${peso(parcels.codOnHand)} to Remit',
                               style: MT.headlineMd),
                         ])),
@@ -117,7 +118,7 @@ class _EarningsTabState extends State<EarningsTab> {
                     margin: const EdgeInsets.only(top: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                        color: MC.low, borderRadius: BorderRadius.circular(12)),
+                        color: c.low, borderRadius: BorderRadius.circular(12)),
                     child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -128,13 +129,13 @@ class _EarningsTabState extends State<EarningsTab> {
                               style: MT.badge),
                           Text(peso(pickupPay + deliveryPay),
                               style: MT.headlineLg
-                                  .copyWith(color: MC.primaryContainer)),
+                                  .copyWith(color: c.primary)),
                         ])),
               ])),
               const SizedBox(height: MS.md),
               InfoBanner(Icons.info_outline,
                   'COD is collected cash, not rider pay. It must be remitted in full.',
-                  bg: MC.container, fg: MC.onSurfaceVariant),
+                  bg: c.container, fg: c.muted),
             ]),
           ),
         );
@@ -143,14 +144,15 @@ class _EarningsTabState extends State<EarningsTab> {
   }
 
   Widget _row(IconData i, String t, String s, String amt,
-          {bool muted = false}) =>
-      Padding(
+      {bool muted = false}) {
+    final c = MC.of(context);
+    return Padding(
         padding: const EdgeInsets.symmetric(vertical: MS.md),
         child: Row(children: [
           IconDot(i,
               size: 32,
-              bg: MC.container,
-              fg: muted ? MC.outline : MC.primaryContainer),
+              bg: c.container,
+              fg: muted ? c.outline : c.primary),
           const SizedBox(width: 10),
           Expanded(
               child: Column(
@@ -159,12 +161,13 @@ class _EarningsTabState extends State<EarningsTab> {
                 Text(t,
                     style: MT.bodyMd.copyWith(
                         fontWeight: FontWeight.w500,
-                        color: muted ? MC.onSurfaceVariant : MC.onSurface)),
+                        color: muted ? c.onSurfaceVariant : c.text)),
                 Text(s, style: MT.bodySm),
               ])),
           Text(amt,
               style: MT.headlineMd
-                  .copyWith(color: muted ? MC.outline : MC.primaryContainer)),
+                  .copyWith(color: muted ? c.outline : c.primary)),
         ]),
       );
+  }
 }

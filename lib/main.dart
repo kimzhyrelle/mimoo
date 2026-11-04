@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -46,6 +47,7 @@ abstract final class MimooRoutes {
   static const registrationApproved = '/registration/approved';
   static const registrationRejected = '/registration/rejected';
   static const suspended = '/suspended';
+  static const home = '/home';
   static const jobOffer = '/job-offer';
   static const pickupDetail = '/pickup-detail';
   static const scanWaybill = '/scan-waybill';
@@ -66,12 +68,23 @@ abstract final class MimooRoutes {
   static const historyJob = '/history-job';
 }
 
-RemitStatus _remitStatus(String? state) => switch (state) {
-      null => RemitStatus.none,
-      'pending' => RemitStatus.pending,
-      'confirmed' => RemitStatus.confirmed,
-      _ => RemitStatus.none,
-    };
+/// Keeps scrollbars hidden on every platform while allowing touch, mouse and
+/// stylus dragging.
+class MimooScrollBehavior extends MaterialScrollBehavior {
+  const MimooScrollBehavior();
+
+  @override
+  Widget buildScrollbar(
+          BuildContext context, Widget child, ScrollableDetails details) =>
+      child;
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.stylus,
+      };
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -146,6 +159,7 @@ class MimooRiderApp extends StatelessWidget {
                   title: 'Mimoo Rider',
                   debugShowCheckedModeBanner: false,
                   navigatorKey: mimooNavigatorKey,
+                  scrollBehavior: const MimooScrollBehavior(),
                   theme: mimooTheme(),
                   darkTheme: mimooTheme(brightness: Brightness.dark),
                   themeMode:
@@ -166,7 +180,7 @@ class MimooRiderApp extends StatelessWidget {
                     '/login': (_) => const LoginScreen(),
                     '/register': (_) => const RegistrationScreen(),
                     '/pending': (_) => const PendingApprovalScreen(),
-                    '/home': (_) => const MainShell(),
+                    MimooRoutes.home: (_) => const MainShell(),
                     '/delivery': (context) {
                       final parcel = repositories.parcels
                           .fromArgs(ModalRoute.of(context)?.settings.arguments);
@@ -320,7 +334,8 @@ class MimooRiderApp extends StatelessWidget {
                           });
                         },
                         onBackHome: () => Navigator.of(context)
-                            .popUntil((route) => route.isFirst),
+                            .pushNamedAndRemoveUntil(
+                                MimooRoutes.home, (_) => false),
                         onExpired: () {
                           repositories.offers
                               .setState(selectedOffer.id!, 'expired');
@@ -447,28 +462,19 @@ class MimooRiderApp extends StatelessWidget {
                             repositories.parcels,
                             repositories.remittances,
                           ]),
-                          builder: (context, _) {
-                            final records =
-                                repositories.remittances.remittances;
-                            final record =
-                                records.isEmpty ? null : records.first;
-                            return CodRemittanceScreen(
-                              parcels: repositories.parcels.unremitted,
-                              fleetName: 'Bilis Hatid Express Inc.',
-                              dueLabel: '10:00 PM',
-                              status: _remitStatus(record?.status),
-                              reference: record?.reference,
-                              outstanding: record?.difference ?? 0,
-                              onSubmit: (amount, method, reference) async {
-                                await repositories.parcels.submitRemittance(
-                                  amount: amount,
-                                  method: method.name,
-                                  reference: reference,
-                                );
-                                await repositories.remittances.refresh();
-                              },
-                            );
-                          },
+                          builder: (context, _) => CodRemittanceScreen(
+                            parcels: repositories.parcels.unremitted,
+                            history: repositories.remittances.remittances,
+                            fleetName: 'Bilis Hatid Express Inc.',
+                            cutoff: SettingsScope.of(context).remittanceCutoff,
+                            onRemit: (amount, method, reference) async {
+                              await repositories.parcels.remitCollected(
+                                method: method.name,
+                                reference: reference,
+                              );
+                              await repositories.remittances.refresh();
+                            },
+                          ),
                         ),
                     MimooRoutes.activationSetPassword: (context) =>
                         SetPasswordScreen(

@@ -13,7 +13,7 @@ abstract final class MS {
 }
 
 abstract final class MRadii {
-  static const card = 12.0;
+  static const card = 16.0;
   static const control = 10.0;
   static const field = 99.0;
   static const pill = 99.0;
@@ -35,20 +35,20 @@ class MC {
   }
 
   // Semantic palette (newer screens).
-  static const violet = Color(0xFF6D3FE0);
-  static const violetDark = Color(0xFF541CC7);
-  static const deep = Color(0xFF2E1065);
+  static const violet = Color(0xFF4B2E7E);
+  static const violetDark = Color(0xFF2A1B4D);
+  static const deep = violetDark;
   static const coral = Color(0xFFC1123E);
   static const coralDark = Color(0xFF98002C);
   static const coralSoft = Color(0xFFFFDADB);
   static const errorSoft = Color(0xFFFFDAD6);
-  static const bg = Color(0xFFFDF8FF);
-  static const tint = Color(0xFFF1EBFF);
-  static const tintLow = Color(0xFFF7F1FF);
-  static const tintHi = Color(0xFFEBE5FF);
-  static const text = Color(0xFF1C192C);
-  static const muted = Color(0xFF494455);
-  static const outline = Color(0xFF7A7486);
+  static const bg = Color(0xFFF6F5FA);
+  static const tint = Color(0xFFF0ECF8);
+  static const tintLow = Color(0xFFFAF9FC);
+  static const tintHi = Color(0xFFE9E2F3);
+  static const text = Color(0xFF241D30);
+  static const muted = Color(0xFF6E6570);
+  static const outline = Color(0xFF817985);
   static const green = Color(0xFF16A34A);
   static const greenSoft = Color(0xFFDCFCE7);
   static const amber = Color(0xFFB45309);
@@ -57,11 +57,11 @@ class MC {
   // Legacy aliases (older screens). Prefer the names above in new code.
   static const primary = violetDark;
   static const primaryContainer = violet;
-  static const primaryFixed = Color(0xFFE8DDFF);
-  static const secondary = Color(0xFF6950A2);
-  static const secondaryFixed = Color(0xFFEADDFF);
-  static const secondaryContainer = Color(0xFFC0A5FE);
-  static const onSecondaryContainer = Color(0xFF4F3687);
+  static const primaryFixed = Color(0xFFE9E2F3);
+  static const secondary = violet;
+  static const secondaryFixed = Color(0xFFE9E2F3);
+  static const secondaryContainer = Color(0xFFB9A6DE);
+  static const onSecondaryContainer = violetDark;
   static const tertiary = coralDark;
   static const tertiaryContainer = coral;
   static const tertiaryFixed = coralSoft;
@@ -72,11 +72,11 @@ class MC {
   static const low = tintLow;
   static const container = tint;
   static const high = tintHi;
-  static const highest = Color(0xFFE6DFFA);
+  static const highest = Color(0xFFE0DCE5);
   static const onSurface = text;
   static const onSurfaceVariant = muted;
-  static const outlineVariant = Color(0xFFCBC3D7);
-  static const inverseSurface = Color(0xFF312E42);
+  static const outlineVariant = Color(0xFFD8D3DD);
+  static const inverseSurface = Color(0xFF34303A);
   static const header = deep;
   static const greenBg = greenSoft;
   static const amberBg = amberSoft;
@@ -106,6 +106,14 @@ class MimooColors extends ThemeExtension<MimooColors> {
   final Color tertiaryContainer;
   final Color tint;
   final Color tintLow;
+  final Color amberSoft;
+  final Color amberText;
+  final Color coralSoft;
+  final Color greenBg;
+  final Color onSecondaryContainer;
+  final Color secondaryContainer;
+  final Color tertiary;
+  final Color tertiaryFixed;
 
   const MimooColors({
     required this.bg,
@@ -130,6 +138,14 @@ class MimooColors extends ThemeExtension<MimooColors> {
     required this.tertiaryContainer,
     required this.tint,
     required this.tintLow,
+    required this.amberSoft,
+    required this.amberText,
+    required this.coralSoft,
+    required this.greenBg,
+    required this.onSecondaryContainer,
+    required this.secondaryContainer,
+    required this.tertiary,
+    required this.tertiaryFixed,
   });
 
   static const light = MimooColors(
@@ -155,31 +171,47 @@ class MimooColors extends ThemeExtension<MimooColors> {
     tertiaryContainer: MC.tertiaryContainer,
     tint: MC.tint,
     tintLow: MC.tintLow,
+    amberSoft: MC.amberSoft,
+    amberText: MC.amberText,
+    coralSoft: MC.coralSoft,
+    greenBg: MC.greenBg,
+    onSecondaryContainer: MC.onSecondaryContainer,
+    secondaryContainer: MC.secondaryContainer,
+    tertiary: MC.tertiary,
+    tertiaryFixed: MC.tertiaryFixed,
   );
 
   static const dark = MimooColors(
-    bg: Color(0xFF15111D),
+    bg: Color(0xFF18151D),
     coral: Color(0xFFFF8A9B),
-    container: Color(0xFF332D40),
+    container: Color(0xFF332D3D),
     errorContainer: Color(0xFF5A1C26),
     green: Color(0xFF5CD17C),
     greenSoft: Color(0xFF163D28),
-    highest: Color(0xFF40394D),
-    low: Color(0xFF292535),
-    lowest: Color(0xFF201C29),
-    muted: Color(0xFFD0C8D9),
-    onSurfaceVariant: Color(0xFFD0C8D9),
-    outline: Color(0xFF9A91A6),
-    outlineVariant: Color(0xFF51495D),
-    primary: Color(0xFF9A7AFF),
-    primaryContainer: Color(0xFF8056EF),
-    primaryFixed: Color(0xFF4B3380),
-    secondary: Color(0xFFCEB8FF),
-    surface: Color(0xFF15111D),
-    text: Color(0xFFF4EFFA),
+    highest: Color(0xFF48414F),
+    low: Color(0xFF29252F),
+    lowest: Color(0xFF211D26),
+    muted: Color(0xFFC9C1CD),
+    onSurfaceVariant: Color(0xFFC9C1CD),
+    outline: Color(0xFF9A919F),
+    outlineVariant: Color(0xFF514A59),
+    primary: Color(0xFFD0BEEF),
+    primaryContainer: Color(0xFF4B2E7E),
+    primaryFixed: Color(0xFF47365F),
+    secondary: Color(0xFFB9A6DE),
+    surface: Color(0xFF18151D),
+    text: Color(0xFFF5F0F8),
     tertiaryContainer: Color(0xFFFF8DA4),
-    tint: Color(0xFF302747),
-    tintLow: Color(0xFF262138),
+    tint: Color(0xFF382E47),
+    tintLow: Color(0xFF28232F),
+    amberSoft: Color(0xFF4A3A14),
+    amberText: Color(0xFFF6D98A),
+    coralSoft: Color(0xFF5A2A35),
+    greenBg: Color(0xFF163D28),
+    onSecondaryContainer: Color(0xFFEADDFF),
+    secondaryContainer: Color(0xFF4B3B66),
+    tertiary: Color(0xFFFF8DA4),
+    tertiaryFixed: Color(0xFF5A2A35),
   );
 
   @override
@@ -206,6 +238,14 @@ class MimooColors extends ThemeExtension<MimooColors> {
     Color? tertiaryContainer,
     Color? tint,
     Color? tintLow,
+    Color? amberSoft,
+    Color? amberText,
+    Color? coralSoft,
+    Color? greenBg,
+    Color? onSecondaryContainer,
+    Color? secondaryContainer,
+    Color? tertiary,
+    Color? tertiaryFixed,
   }) =>
       MimooColors(
         bg: bg ?? this.bg,
@@ -230,6 +270,15 @@ class MimooColors extends ThemeExtension<MimooColors> {
         tertiaryContainer: tertiaryContainer ?? this.tertiaryContainer,
         tint: tint ?? this.tint,
         tintLow: tintLow ?? this.tintLow,
+        amberSoft: amberSoft ?? this.amberSoft,
+        amberText: amberText ?? this.amberText,
+        coralSoft: coralSoft ?? this.coralSoft,
+        greenBg: greenBg ?? this.greenBg,
+        onSecondaryContainer:
+            onSecondaryContainer ?? this.onSecondaryContainer,
+        secondaryContainer: secondaryContainer ?? this.secondaryContainer,
+        tertiary: tertiary ?? this.tertiary,
+        tertiaryFixed: tertiaryFixed ?? this.tertiaryFixed,
       );
 
   @override
@@ -267,11 +316,72 @@ class MimooColors extends ThemeExtension<MimooColors> {
               tertiaryContainer,
       tint: Color.lerp(tint, other.tint, t) ?? tint,
       tintLow: Color.lerp(tintLow, other.tintLow, t) ?? tintLow,
+      amberSoft: Color.lerp(amberSoft, other.amberSoft, t) ?? amberSoft,
+      amberText: Color.lerp(amberText, other.amberText, t) ?? amberText,
+      coralSoft: Color.lerp(coralSoft, other.coralSoft, t) ?? coralSoft,
+      greenBg: Color.lerp(greenBg, other.greenBg, t) ?? greenBg,
+      onSecondaryContainer:
+          Color.lerp(onSecondaryContainer, other.onSecondaryContainer, t) ??
+              onSecondaryContainer,
+      secondaryContainer:
+          Color.lerp(secondaryContainer, other.secondaryContainer, t) ??
+              secondaryContainer,
+      tertiary: Color.lerp(tertiary, other.tertiary, t) ?? tertiary,
+      tertiaryFixed:
+          Color.lerp(tertiaryFixed, other.tertiaryFixed, t) ?? tertiaryFixed,
     );
   }
 }
 
 String peso(num v) => '₱${NumberFormat('#,##0.00', 'en_PH').format(v)}';
+
+/// Middle-dot separator used across UI copy. Kept as a constant so source
+/// strings never regress to a double-encoded separator.
+const String kDot = ' · ';
+
+/// Maps the legacy static palette onto the active light/dark palette. This lets
+/// older widgets keep their `MC.*` arguments while still adapting to the theme.
+Color themedColor(MimooColors palette, Color color) {
+  if (color == MC.bg || color == MC.surface) return palette.bg;
+  if (color == MC.low) return palette.low;
+  if (color == MC.tintLow) return palette.tintLow;
+  if (color == MC.tint) return palette.tint;
+  if (color == MC.container) return palette.container;
+  if (color == MC.high || color == MC.tintHi || color == MC.highest) {
+    return palette.highest;
+  }
+  if (color == MC.text || color == MC.onSurface) return palette.text;
+  if (color == MC.muted || color == MC.onSurfaceVariant) return palette.muted;
+  if (color == MC.primary) return palette.primary;
+  if (color == MC.primaryContainer ||
+      color == MC.secondary ||
+      color == MC.secondaryFixed ||
+      color == MC.primaryFixed) {
+    return palette.primaryContainer;
+  }
+  if (color == MC.coral ||
+      color == MC.coralDark ||
+      color == MC.tertiary ||
+      color == MC.tertiaryContainer ||
+      color == MC.error) {
+    return palette.coral;
+  }
+  if (color == MC.tertiaryFixed || color == MC.coralSoft) {
+    return palette.tertiaryFixed;
+  }
+  if (color == MC.amberSoft || color == MC.amberBg) return palette.amberSoft;
+  if (color == MC.amberText) return palette.amberText;
+  if (color == MC.green) return palette.green;
+  if (color == MC.greenSoft || color == MC.greenBg) return palette.greenBg;
+  if (color == MC.errorSoft || color == MC.errorContainer) {
+    return palette.errorContainer;
+  }
+  if (color == MC.secondaryContainer) return palette.secondaryContainer;
+  if (color == MC.onSecondaryContainer) return palette.onSecondaryContainer;
+  if (color == MC.outline) return palette.outline;
+  if (color == MC.outlineVariant) return palette.outlineVariant;
+  return color;
+}
 
 ThemeData mimooTheme({Brightness brightness = Brightness.light}) {
   final dark = brightness == Brightness.dark;
@@ -280,7 +390,7 @@ ThemeData mimooTheme({Brightness brightness = Brightness.light}) {
     useMaterial3: true,
     brightness: brightness,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: MC.violet,
+      seedColor: MC.violetDark,
       brightness: brightness,
       primary: palette.primary,
       surface: palette.bg,
@@ -325,7 +435,7 @@ TextStyle ts(double size,
         fontSize: size, fontWeight: w, color: c, height: h);
 
 TextStyle _t(double s, FontWeight w,
-        {double? h, double ls = 0, Color c = MC.onSurface}) =>
+        {double? h, double ls = 0, Color? c}) =>
     GoogleFonts.plusJakartaSans(
         fontSize: s,
         fontWeight: w,
@@ -341,7 +451,7 @@ class MT {
   static final currency = _t(24, FontWeight.w800, h: 28, ls: -0.48);
   static final bodyLg = _t(16, FontWeight.w500, h: 24);
   static final bodyMd = _t(14, FontWeight.w400, h: 20);
-  static final bodySm = _t(12, FontWeight.w400, h: 16, c: MC.onSurfaceVariant);
+  static final bodySm = _t(12, FontWeight.w400, h: 16);
   static final labelLg = _t(14, FontWeight.w700, h: 18, ls: 0.14);
   static final labelMd = _t(12, FontWeight.w600, h: 16);
   static final badge = _t(12, FontWeight.w800, h: 16, ls: 0.66);
@@ -350,7 +460,7 @@ class MT {
 class MCard extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
-  final Color color;
+  final Color? color;
   final double radius;
   final VoidCallback? onTap;
 
@@ -358,24 +468,32 @@ class MCard extends StatelessWidget {
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(16),
-    this.color = Colors.white,
+    this.color,
     this.radius = MRadii.card,
     this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    final palette = MC.of(context);
+    final cardColor = color == null || color == MC.lowest
+        ? palette.lowest
+        : themedColor(palette, color!);
+    return Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: color,
+          color: cardColor,
           borderRadius: BorderRadius.circular(radius),
-          boxShadow: const [
+          border: Border.all(color: palette.outlineVariant),
+          boxShadow: [
             BoxShadow(
-                color: Color(0x0F2E1065), blurRadius: 8, offset: Offset(0, 2))
+                color: palette.text.withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2))
           ],
         ),
         child: Material(
-          color: Colors.transparent,
+          color: cardColor,
           borderRadius: BorderRadius.circular(radius),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
@@ -383,8 +501,8 @@ class MCard extends StatelessWidget {
             onTap: onTap,
             child: Padding(padding: padding, child: child),
           ),
-        ),
-      );
+        ));
+  }
 }
 
 class Pill extends StatelessWidget {
@@ -394,19 +512,24 @@ class Pill extends StatelessWidget {
   const Pill(this.text,
       {super.key, this.bg = MC.tintHi, this.fg = MC.violetDark, this.icon});
   @override
-  Widget build(BuildContext context) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-          color: bg, borderRadius: BorderRadius.circular(MRadii.pill)),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (icon != null) ...[
-          Icon(icon, size: 14, color: fg),
-          const SizedBox(width: 4)
-        ],
-        Flexible(
-            child: Text(text.toUpperCase(),
-                style: ts(12, w: FontWeight.w800, c: fg))),
-      ]));
+  Widget build(BuildContext context) {
+    final palette = MC.of(context);
+    final background = themedColor(palette, bg);
+    final foreground = themedColor(palette, fg);
+    return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+            color: background, borderRadius: BorderRadius.circular(MRadii.pill)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: foreground),
+            const SizedBox(width: 4)
+          ],
+          Flexible(
+              child: Text(text.toUpperCase(),
+                  style: ts(12, w: FontWeight.w800, c: foreground))),
+        ]));
+  }
 }
 
 enum BtnStyle { primary, outline, danger, tonal }
@@ -466,14 +589,16 @@ class PillButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = MC.of(context);
     final (styleBg, styleFg) = switch (style) {
-      BtnStyle.primary => (MC.violet, Colors.white),
-      BtnStyle.danger => (MC.coral, Colors.white),
-      BtnStyle.tonal => (MC.tintHi, MC.violetDark),
-      BtnStyle.outline => (Colors.white, MC.violetDark),
+      BtnStyle.primary => (palette.primary, palette.lowest),
+      BtnStyle.danger => (palette.coral, palette.lowest),
+      BtnStyle.tonal => (palette.tint, palette.primary),
+      BtnStyle.outline => (palette.lowest, palette.primary),
     };
-    final background = bg ?? styleBg;
-    final foreground = fg ?? styleFg;
+    final background = bg == null ? styleBg : themedColor(palette, bg!);
+    final foreground = fg == null ? styleFg : themedColor(palette, fg!);
+    final disabled = onPressed == null;
     final endIcon = icon ?? trailing;
     return SizedBox(
       width: double.infinity,
@@ -483,12 +608,12 @@ class PillButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: background,
           foregroundColor: foreground,
-          disabledBackgroundColor: MC.highest,
+          disabledBackgroundColor: palette.highest,
           elevation:
               style == BtnStyle.primary || style == BtnStyle.danger ? 2 : 0,
           shape: MRadii.stadium,
           side: style == BtnStyle.outline
-              ? const BorderSide(color: MC.tintHi, width: 1.5)
+              ? BorderSide(color: palette.outlineVariant, width: 1.5)
               : null,
         ),
         child: loading
@@ -500,20 +625,18 @@ class PillButton extends StatelessWidget {
             : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 if (leading != null) ...[
                   Icon(leading,
-                      size: 20,
-                      color: onPressed == null ? MC.muted : foreground),
+                      size: 20, color: disabled ? palette.muted : foreground),
                   const SizedBox(width: 8)
                 ],
                 Flexible(
                     child: Text(label,
                         style: ts(14,
                             w: FontWeight.w700,
-                            c: onPressed == null ? MC.muted : foreground))),
+                            c: disabled ? palette.muted : foreground))),
                 if (endIcon != null) ...[
                   const SizedBox(width: 8),
                   Icon(endIcon,
-                      size: 20,
-                      color: onPressed == null ? MC.muted : foreground)
+                      size: 20, color: disabled ? palette.muted : foreground)
                 ],
               ]),
       ),
@@ -548,21 +671,35 @@ class MSubAppBar extends StatelessWidget implements PreferredSizeWidget {
       Size.fromHeight(toolbarHeight + (bottom?.preferredSize.height ?? 0));
 
   @override
-  Widget build(BuildContext context) => AppBar(
-        backgroundColor: backgroundColor,
-        foregroundColor: foregroundColor,
-        toolbarHeight: toolbarHeight,
-        title: title,
-        actions: actions,
-        leading: leading ??
-            (onBack == null
-                ? null
-                : IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: onBack,
-                  )),
-        bottom: bottom,
-      );
+  Widget build(BuildContext context) {
+    final usesBrandHeader = backgroundColor == MC.header;
+    return AppBar(
+      backgroundColor: backgroundColor,
+      foregroundColor: foregroundColor,
+      flexibleSpace: usesBrandHeader
+          ? const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [MC.violetDark, MC.violet],
+                ),
+              ),
+            )
+          : null,
+      toolbarHeight: toolbarHeight,
+      title: title,
+      actions: actions,
+      leading: leading ??
+          (onBack == null
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: onBack,
+                )),
+      bottom: bottom,
+    );
+  }
 }
 
 class MScaffold extends StatelessWidget {
@@ -622,11 +759,16 @@ class IconCircle extends StatelessWidget {
       this.fg = MC.violetDark,
       this.size = 40});
   @override
-  Widget build(BuildContext context) => Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-      child: Icon(icon, size: size * .5, color: fg));
+  Widget build(BuildContext context) {
+    final palette = MC.of(context);
+    return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+            color: themedColor(palette, bg), shape: BoxShape.circle),
+        child: Icon(icon,
+            size: size * .5, color: themedColor(palette, fg)));
+  }
 }
 
 class InfoBanner extends StatelessWidget {
@@ -637,18 +779,26 @@ class InfoBanner extends StatelessWidget {
   const InfoBanner(this.icon, this.title,
       {super.key, this.body, this.bg = MC.tint, this.fg = MC.violetDark});
   @override
-  Widget build(BuildContext context) => Container(
-      padding: const EdgeInsets.all(12),
-      decoration:
-          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(icon, color: fg, size: 20),
-        const SizedBox(width: 10),
-        Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: ts(13, w: FontWeight.w700, c: fg)),
-          if (body != null) Text(body!, style: ts(12, c: MC.muted, h: 1.4)),
-        ])),
-      ]));
+  Widget build(BuildContext context) {
+    final palette = MC.of(context);
+    final background = themedColor(palette, bg);
+    final foreground = themedColor(palette, fg);
+    return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: background, borderRadius: BorderRadius.circular(12)),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(icon, color: foreground, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text(title, style: ts(13, w: FontWeight.w700, c: foreground)),
+                if (body != null)
+                  Text(body!,
+                      style: ts(12, c: palette.muted, h: 1.4)),
+              ])),
+        ]));
+  }
 }

@@ -42,6 +42,13 @@ abstract interface class ParcelRepository implements Listenable {
     required String method,
     required String reference,
   });
+
+  /// Confirms the collected COD immediately: marks every unremitted parcel as
+  /// remitted and records a confirmed remittance for [method]/[reference].
+  Future<CodRemittance> remitCollected({
+    required String method,
+    required String reference,
+  });
 }
 
 abstract interface class RiderProfileRepository implements Listenable {

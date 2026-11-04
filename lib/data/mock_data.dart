@@ -41,7 +41,7 @@ JobOffer mockJobOffer({String id = 'OFFER-1001'}) => JobOffer(
       pickupPay: 30,
       cod: 500,
       km: 7.4,
-      expiresAt: DateTime.now().add(const Duration(seconds: 60)),
+      expiresAt: DateTime.now().add(const Duration(minutes: 3)),
     );
 
 const PickupJob mockPickupJob = PickupJob(
@@ -114,7 +114,7 @@ const List<AppNotification> mockNotifications = [
   AppNotification(
     NotifKind.jobOffer,
     'New job offer near you',
-    'Maria Clara Handicrafts · ₱30 pickup pay · Expires in 40s',
+    'Maria Clara Handicrafts · ₱30 pickup pay · Expires in 3m',
     'Just now',
     tag: 'Offer',
     unread: true,

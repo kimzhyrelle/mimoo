@@ -33,6 +33,8 @@ class SettingsController extends ChangeNotifier {
     _notifyAnnouncements = _prefs.getBool(_kNotifyAnnouncements) ?? true;
     _biometric = _prefs.getBool(_kBiometric) ?? false;
     _passkeySetUp = _prefs.getBool(_kPasskey) ?? false;
+    _remittanceCutoff =
+        _prefs.getString(_kRemittanceCutoff) ?? '10:00 PM';
     _emergencyContacts = _readEmergencyContacts();
   }
 
@@ -50,12 +52,14 @@ class SettingsController extends ChangeNotifier {
   static const _kBiometric = 'settings.biometric';
   static const _kPasskey = 'settings.passkey';
   static const _kEmergencyContacts = 'settings.emergencyContacts';
+  static const _kRemittanceCutoff = 'settings.remittanceCutoff';
 
   late ThemeMode _themeMode;
   late String? _locale;
   late NavAppPreference _navApp;
   late bool _notifyJobOffers, _notifyJobOfferSound, _notifyMessages, _notifyRemittance, _notifyAnnouncements;
   late bool _biometric, _passkeySetUp;
+  late String _remittanceCutoff;
   late List<EmergencyContact> _emergencyContacts;
 
   ThemeMode get themeMode => _themeMode;
@@ -68,6 +72,7 @@ class SettingsController extends ChangeNotifier {
   bool get notifyAnnouncements => _notifyAnnouncements;
   bool get biometric => _biometric;
   bool get passkeySetUp => _passkeySetUp;
+  String get remittanceCutoff => _remittanceCutoff;
   List<EmergencyContact> get emergencyContacts => List.unmodifiable(_emergencyContacts);
 
   ThemeMode _readThemeMode() => switch (_prefs.getString(_kThemeMode)) {
@@ -160,6 +165,12 @@ class SettingsController extends ChangeNotifier {
     _passkeySetUp = value;
     notifyListeners();
     await _prefs.setBool(_kPasskey, value);
+  }
+
+  Future<void> setRemittanceCutoff(String value) async {
+    _remittanceCutoff = value;
+    notifyListeners();
+    await _prefs.setString(_kRemittanceCutoff, value);
   }
 
   // TODO(api): sync the emergency contacts with the rider profile endpoint.

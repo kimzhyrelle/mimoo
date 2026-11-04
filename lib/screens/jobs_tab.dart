@@ -17,45 +17,46 @@ class _JobsTabState extends State<JobsTab> {
   int seg = 0; // 0 = For Pickup, 1 = For Delivery
   ParcelStatus? _filter;
 
-  Widget _segment(int pickupCount, int deliveryCount) => Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-            color: MC.container, borderRadius: BorderRadius.circular(99)),
-        child: Row(children: [
-          for (final e in [
-            (0, Icons.inventory_2, 'For Pickup ($pickupCount)'),
-            (1, Icons.local_shipping, 'For Delivery ($deliveryCount)')
-          ])
-            Expanded(
-                child: GestureDetector(
-              onTap: () => setState(() => seg = e.$1),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                    color:
-                        seg == e.$1 ? MC.primaryContainer : Colors.transparent,
-                    borderRadius: BorderRadius.circular(99)),
-                child:
-                    Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(e.$2,
-                      size: 18,
-                      color: seg == e.$1 ? Colors.white : MC.onSurfaceVariant),
-                  const SizedBox(width: 6),
-                  Text(e.$3,
-                      style: MT.labelLg.copyWith(
-                          color: seg == e.$1
-                              ? Colors.white
-                              : MC.onSurfaceVariant)),
-                ]),
-              ),
-            )),
-        ]),
-      );
+  Widget _segment(int pickupCount, int deliveryCount) {
+    final c = MC.of(context);
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+          color: c.container, borderRadius: BorderRadius.circular(99)),
+      child: Row(children: [
+        for (final e in [
+          (0, Icons.inventory_2, 'For Pickup ($pickupCount)'),
+          (1, Icons.local_shipping, 'For Delivery ($deliveryCount)')
+        ])
+          Expanded(
+              child: GestureDetector(
+            onTap: () => setState(() => seg = e.$1),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                  color: seg == e.$1 ? c.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(99)),
+              child:
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(e.$2,
+                    size: 18,
+                    color: seg == e.$1 ? c.lowest : c.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text(e.$3,
+                    style: MT.labelLg.copyWith(
+                        color: seg == e.$1 ? c.lowest : c.onSurfaceVariant)),
+              ]),
+            ),
+          )),
+      ]),
+    );
+  }
 
   Widget _pickupCard(db.JobOffer offer, db.Parcel parcel) {
+    final c = MC.of(context);
     final secondsLeft =
-        offer.expiresAt.difference(DateTime.now()).inSeconds.clamp(0, 60);
+        offer.expiresAt.difference(DateTime.now()).inSeconds.clamp(0, 180);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: MCard(
@@ -64,7 +65,7 @@ class _JobsTabState extends State<JobsTab> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Row(children: [
-              const MChip('New', bg: MC.tertiaryContainer, fg: Colors.white),
+              MChip('New', bg: c.tertiaryContainer, fg: c.lowest),
             ]),
             Text('Expires in ${secondsLeft}s', style: MT.bodySm),
           ]),
@@ -72,19 +73,19 @@ class _JobsTabState extends State<JobsTab> {
           Text(parcel.sellerName, style: MT.headlineMd),
           const SizedBox(height: 4),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Icon(Icons.location_on, size: 18, color: MC.primary),
+            Icon(Icons.location_on, size: 18, color: c.primary),
             const SizedBox(width: 6),
             Expanded(
                 child: Text(parcel.sellerAddress,
-                    style: MT.bodyMd.copyWith(color: MC.onSurfaceVariant)))
+                    style: MT.bodyMd.copyWith(color: c.onSurfaceVariant)))
           ]),
           const SizedBox(height: 10),
           Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                  color: MC.container, borderRadius: BorderRadius.circular(8)),
+                  color: c.container, borderRadius: BorderRadius.circular(8)),
               child: Row(children: [
-                const Icon(Icons.inventory, size: 20, color: MC.primary),
+                Icon(Icons.inventory, size: 20, color: c.primary),
                 const SizedBox(width: 8),
                 Text(parcel.item ?? 'Parcel ready for dispatch',
                     style: MT.labelMd)
@@ -94,7 +95,7 @@ class _JobsTabState extends State<JobsTab> {
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Payout Rate', style: MT.bodySm),
               Text(peso(offer.payout),
-                  style: MT.currency.copyWith(color: MC.primary))
+                  style: MT.currency.copyWith(color: c.primary))
             ]),
             SizedBox(
                 width: 170,
@@ -113,11 +114,11 @@ class _JobsTabState extends State<JobsTab> {
       {required bool selected,
       required VoidCallback onTap,
       bool danger = false}) {
+    final c = MC.of(context);
     final bg = selected
-        ? (danger ? MC.coral : MC.primaryContainer)
-        : (danger ? MC.coralSoft : MC.container);
-    final fg =
-        selected ? Colors.white : (danger ? MC.coral : MC.onSurfaceVariant);
+        ? (danger ? c.coral : c.primary)
+        : (danger ? c.coralSoft : c.container);
+    final fg = selected ? c.lowest : (danger ? c.coral : c.onSurfaceVariant);
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: InkWell(
@@ -135,19 +136,20 @@ class _JobsTabState extends State<JobsTab> {
   }
 
   Widget _deliveryCard(DispatchParcel p) {
+    final c = MC.of(context);
     final (bg, fg) = switch (p.status) {
       ParcelStatus.assigned || ParcelStatus.readyForPickup => (
-          MC.tertiaryFixed,
-          MC.tertiary
+          c.tertiaryFixed,
+          c.tertiary
         ),
       ParcelStatus.pickedUp ||
       ParcelStatus.atHub ||
       ParcelStatus.outForDelivery =>
-        (MC.primary, Colors.white),
-      ParcelStatus.delivered || ParcelStatus.returned => (MC.greenBg, MC.green),
+        (c.primary, c.lowest),
+      ParcelStatus.delivered || ParcelStatus.returned => (c.greenBg, c.green),
       ParcelStatus.failedDelivery || ParcelStatus.returnToSender => (
-          MC.coral,
-          Colors.white
+          c.coral,
+          c.lowest
         ),
     };
     return Padding(
@@ -175,7 +177,7 @@ class _JobsTabState extends State<JobsTab> {
           ]),
           const SizedBox(height: 10),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Icon(Icons.pin_drop, size: 18, color: MC.tertiaryContainer),
+            Icon(Icons.pin_drop, size: 18, color: c.tertiaryContainer),
             const SizedBox(width: 6),
             Expanded(
                 child: Text(p.address,
@@ -184,10 +186,9 @@ class _JobsTabState extends State<JobsTab> {
           const SizedBox(height: 10),
           Wrap(spacing: 6, runSpacing: 6, children: [
             Text(p.isCod ? 'COD ${peso(p.cod)}' : 'Paid online',
-                style: MT.bodySm
-                    .copyWith(color: p.isCod ? MC.tertiary : MC.green)),
-            MChip(p.weightLabel,
-                bg: MC.highest, fg: MC.muted, icon: Icons.scale),
+                style:
+                    MT.bodySm.copyWith(color: p.isCod ? c.tertiary : c.green)),
+            MChip(p.weightLabel, bg: c.highest, fg: c.muted, icon: Icons.scale),
           ]),
         ]),
       ),
@@ -195,6 +196,7 @@ class _JobsTabState extends State<JobsTab> {
   }
 
   Widget _deliverySegment(List<DispatchParcel> all, bool isOnline) {
+    final c = MC.of(context);
     int count(ParcelStatus? status) => status == null
         ? all.length
         : all.where((p) => p.status == status).length;
@@ -207,8 +209,8 @@ class _JobsTabState extends State<JobsTab> {
         InfoBanner(
           Icons.pause_circle_outline,
           "You're off shift. The hub only dispatches parcels to active riders.",
-          bg: MC.amberSoft,
-          fg: MC.amberText,
+          bg: c.amberSoft,
+          fg: c.amberText,
         ),
         const SizedBox(height: 12),
       ],
@@ -233,7 +235,7 @@ class _JobsTabState extends State<JobsTab> {
       const SizedBox(height: 14),
       if (filtered.isEmpty)
         MCard(
-            color: MC.container,
+            color: c.container,
             child: Column(children: [
               const IconDot(Icons.inbox_outlined, size: 56),
               const SizedBox(height: 8),
@@ -277,6 +279,7 @@ class _JobsTabState extends State<JobsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final c = MC.of(context);
     final status = RiderStatusScope.of(context);
     final repositories = AppRepositoriesScope.of(context);
     final offers = repositories.offers;
@@ -290,7 +293,6 @@ class _JobsTabState extends State<JobsTab> {
         final deliveryJobs = parcels.parcels
             .where((parcel) => parcel.jobType == db.ParcelJobType.delivery)
             .toList(growable: false);
-        final activeJobs = parcels.active.length;
         return Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),
@@ -303,8 +305,8 @@ class _JobsTabState extends State<JobsTab> {
                   InfoBanner(
                     Icons.wifi_off_rounded,
                     "You're offline. Go Active to see and accept new job offers.",
-                    bg: MC.amberSoft,
-                    fg: MC.amberText,
+                    bg: c.amberSoft,
+                    fg: c.amberText,
                   ),
                   const SizedBox(height: 12),
                 ],
@@ -316,11 +318,6 @@ class _JobsTabState extends State<JobsTab> {
                     if (parcels.byTracking(offer.parcelId) case final parcel?)
                       _pickupCard(offer, parcel),
               ] else ...[
-                InfoBanner(Icons.backpack, 'Active Jobs: $activeJobs/3',
-                    body: 'You can accept ${3 - activeJobs} more pickup',
-                    bg: MC.secondaryFixed,
-                    fg: const Color(0xFF24005B)),
-                const SizedBox(height: 14),
                 _deliverySegment(deliveryJobs, status.isOnline),
               ],
             ]),

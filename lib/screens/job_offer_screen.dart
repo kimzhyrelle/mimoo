@@ -7,7 +7,7 @@ class JobOffer {
   final String id, tracking, merchant, pickupArea, dropArea, parcelLabel; final double pickupPay, cod, km;
   final DateTime expiresAt; final int totalSeconds;
   const JobOffer({required this.id, required this.tracking, required this.merchant, required this.pickupArea, required this.dropArea,
-    required this.parcelLabel, required this.pickupPay, required this.cod, required this.km, required this.expiresAt, this.totalSeconds = 60});
+    required this.parcelLabel, required this.pickupPay, required this.cod, required this.km, required this.expiresAt, this.totalSeconds = 180});
 }
 
 enum OfferResult { accepted, taken, expired }
