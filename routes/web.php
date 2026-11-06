@@ -117,17 +117,15 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::post('/api/courier/shipments/{id}/accept', [\App\Http\Controllers\Courier\IncomingShipmentsController::class, 'accept']);
     Route::post('/api/courier/shipments/{id}/reject', [\App\Http\Controllers\Courier\IncomingShipmentsController::class, 'reject']);
     
-    // Courier - Pickup Management
-    Route::get('/courier/pickup-management', function () {
-        $user = auth()->user();
-        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
-            abort(403);
-        }
-        return Inertia::render('courier/PickupManagement', [
-            'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
-            'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
-        ]);
-    })->name('courier.pickup-management');
+    // Courier - Pickup Management (with full functionality)
+    Route::get('/courier/pickup-management', [\App\Http\Controllers\Courier\PickupManagementController::class, 'index'])->name('courier.pickup-management');
+    Route::get('/api/courier/pickups/{id}', [\App\Http\Controllers\Courier\PickupManagementController::class, 'show']);
+    Route::post('/api/courier/pickups/{id}/schedule', [\App\Http\Controllers\Courier\PickupManagementController::class, 'schedule']);
+    Route::post('/api/courier/pickups/{id}/assign-personnel', [\App\Http\Controllers\Courier\PickupManagementController::class, 'assignPersonnel']);
+    Route::post('/api/courier/pickups/{id}/reschedule', [\App\Http\Controllers\Courier\PickupManagementController::class, 'reschedule']);
+    Route::post('/api/courier/pickups/{id}/cancel', [\App\Http\Controllers\Courier\PickupManagementController::class, 'cancel']);
+    Route::post('/api/courier/pickups/{id}/record-failed', [\App\Http\Controllers\Courier\PickupManagementController::class, 'recordFailed']);
+    Route::post('/api/courier/pickups/{id}/confirm', [\App\Http\Controllers\Courier\PickupManagementController::class, 'confirmPickup']);
     
     // Courier - Parcel Scanning
     Route::get('/courier/parcel-scanning', function () {

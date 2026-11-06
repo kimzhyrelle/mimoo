@@ -149,7 +149,8 @@ incomingShipments.head = (options?: RouteQueryOptions): RouteDefinition<'head'> 
     
     incomingShipments.form = incomingShipmentsForm
 /**
- * @see routes/web.php:121
+* @see \App\Http\Controllers\Courier\PickupManagementController::pickupManagement
+ * @see app/Http/Controllers/Courier/PickupManagementController.php:18
  * @route '/courier/pickup-management'
  */
 export const pickupManagement = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -163,7 +164,8 @@ pickupManagement.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:121
+* @see \App\Http\Controllers\Courier\PickupManagementController::pickupManagement
+ * @see app/Http/Controllers/Courier/PickupManagementController.php:18
  * @route '/courier/pickup-management'
  */
 pickupManagement.url = (options?: RouteQueryOptions) => {
@@ -171,7 +173,8 @@ pickupManagement.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:121
+* @see \App\Http\Controllers\Courier\PickupManagementController::pickupManagement
+ * @see app/Http/Controllers/Courier/PickupManagementController.php:18
  * @route '/courier/pickup-management'
  */
 pickupManagement.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -179,7 +182,8 @@ pickupManagement.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => 
     method: 'get',
 })
 /**
- * @see routes/web.php:121
+* @see \App\Http\Controllers\Courier\PickupManagementController::pickupManagement
+ * @see app/Http/Controllers/Courier/PickupManagementController.php:18
  * @route '/courier/pickup-management'
  */
 pickupManagement.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -188,7 +192,8 @@ pickupManagement.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =
 })
 
     /**
- * @see routes/web.php:121
+* @see \App\Http\Controllers\Courier\PickupManagementController::pickupManagement
+ * @see app/Http/Controllers/Courier/PickupManagementController.php:18
  * @route '/courier/pickup-management'
  */
     const pickupManagementForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -197,7 +202,8 @@ pickupManagement.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =
     })
 
             /**
- * @see routes/web.php:121
+* @see \App\Http\Controllers\Courier\PickupManagementController::pickupManagement
+ * @see app/Http/Controllers/Courier/PickupManagementController.php:18
  * @route '/courier/pickup-management'
  */
         pickupManagementForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -205,7 +211,8 @@ pickupManagement.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =
             method: 'get',
         })
             /**
- * @see routes/web.php:121
+* @see \App\Http\Controllers\Courier\PickupManagementController::pickupManagement
+ * @see app/Http/Controllers/Courier/PickupManagementController.php:18
  * @route '/courier/pickup-management'
  */
         pickupManagementForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -220,7 +227,7 @@ pickupManagement.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =
     
     pickupManagement.form = pickupManagementForm
 /**
- * @see routes/web.php:133
+ * @see routes/web.php:131
  * @route '/courier/parcel-scanning'
  */
 export const parcelScanning = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -234,7 +241,7 @@ parcelScanning.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:133
+ * @see routes/web.php:131
  * @route '/courier/parcel-scanning'
  */
 parcelScanning.url = (options?: RouteQueryOptions) => {
@@ -242,7 +249,7 @@ parcelScanning.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:133
+ * @see routes/web.php:131
  * @route '/courier/parcel-scanning'
  */
 parcelScanning.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -250,7 +257,7 @@ parcelScanning.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     method: 'get',
 })
 /**
- * @see routes/web.php:133
+ * @see routes/web.php:131
  * @route '/courier/parcel-scanning'
  */
 parcelScanning.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -259,7 +266,7 @@ parcelScanning.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => 
 })
 
     /**
- * @see routes/web.php:133
+ * @see routes/web.php:131
  * @route '/courier/parcel-scanning'
  */
     const parcelScanningForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -268,7 +275,7 @@ parcelScanning.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => 
     })
 
             /**
- * @see routes/web.php:133
+ * @see routes/web.php:131
  * @route '/courier/parcel-scanning'
  */
         parcelScanningForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -276,7 +283,7 @@ parcelScanning.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => 
             method: 'get',
         })
             /**
- * @see routes/web.php:133
+ * @see routes/web.php:131
  * @route '/courier/parcel-scanning'
  */
         parcelScanningForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -291,7 +298,7 @@ parcelScanning.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => 
     
     parcelScanning.form = parcelScanningForm
 /**
- * @see routes/web.php:145
+ * @see routes/web.php:143
  * @route '/courier/sorting-transfers'
  */
 export const sortingTransfers = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -305,7 +312,7 @@ sortingTransfers.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:145
+ * @see routes/web.php:143
  * @route '/courier/sorting-transfers'
  */
 sortingTransfers.url = (options?: RouteQueryOptions) => {
@@ -313,7 +320,7 @@ sortingTransfers.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:145
+ * @see routes/web.php:143
  * @route '/courier/sorting-transfers'
  */
 sortingTransfers.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -321,7 +328,7 @@ sortingTransfers.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => 
     method: 'get',
 })
 /**
- * @see routes/web.php:145
+ * @see routes/web.php:143
  * @route '/courier/sorting-transfers'
  */
 sortingTransfers.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -330,7 +337,7 @@ sortingTransfers.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =
 })
 
     /**
- * @see routes/web.php:145
+ * @see routes/web.php:143
  * @route '/courier/sorting-transfers'
  */
     const sortingTransfersForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -339,7 +346,7 @@ sortingTransfers.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =
     })
 
             /**
- * @see routes/web.php:145
+ * @see routes/web.php:143
  * @route '/courier/sorting-transfers'
  */
         sortingTransfersForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -347,7 +354,7 @@ sortingTransfers.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =
             method: 'get',
         })
             /**
- * @see routes/web.php:145
+ * @see routes/web.php:143
  * @route '/courier/sorting-transfers'
  */
         sortingTransfersForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -362,7 +369,7 @@ sortingTransfers.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =
     
     sortingTransfers.form = sortingTransfersForm
 /**
- * @see routes/web.php:157
+ * @see routes/web.php:155
  * @route '/courier/branch-facility'
  */
 export const branchFacility = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -376,7 +383,7 @@ branchFacility.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:157
+ * @see routes/web.php:155
  * @route '/courier/branch-facility'
  */
 branchFacility.url = (options?: RouteQueryOptions) => {
@@ -384,7 +391,7 @@ branchFacility.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:157
+ * @see routes/web.php:155
  * @route '/courier/branch-facility'
  */
 branchFacility.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -392,7 +399,7 @@ branchFacility.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     method: 'get',
 })
 /**
- * @see routes/web.php:157
+ * @see routes/web.php:155
  * @route '/courier/branch-facility'
  */
 branchFacility.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -401,7 +408,7 @@ branchFacility.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => 
 })
 
     /**
- * @see routes/web.php:157
+ * @see routes/web.php:155
  * @route '/courier/branch-facility'
  */
     const branchFacilityForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -410,7 +417,7 @@ branchFacility.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => 
     })
 
             /**
- * @see routes/web.php:157
+ * @see routes/web.php:155
  * @route '/courier/branch-facility'
  */
         branchFacilityForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -418,7 +425,7 @@ branchFacility.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => 
             method: 'get',
         })
             /**
- * @see routes/web.php:157
+ * @see routes/web.php:155
  * @route '/courier/branch-facility'
  */
         branchFacilityForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -433,7 +440,7 @@ branchFacility.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => 
     
     branchFacility.form = branchFacilityForm
 /**
- * @see routes/web.php:169
+ * @see routes/web.php:167
  * @route '/courier/rider-management'
  */
 export const riderManagement = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -447,7 +454,7 @@ riderManagement.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:169
+ * @see routes/web.php:167
  * @route '/courier/rider-management'
  */
 riderManagement.url = (options?: RouteQueryOptions) => {
@@ -455,7 +462,7 @@ riderManagement.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:169
+ * @see routes/web.php:167
  * @route '/courier/rider-management'
  */
 riderManagement.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -463,7 +470,7 @@ riderManagement.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => (
     method: 'get',
 })
 /**
- * @see routes/web.php:169
+ * @see routes/web.php:167
  * @route '/courier/rider-management'
  */
 riderManagement.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -472,7 +479,7 @@ riderManagement.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =>
 })
 
     /**
- * @see routes/web.php:169
+ * @see routes/web.php:167
  * @route '/courier/rider-management'
  */
     const riderManagementForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -481,7 +488,7 @@ riderManagement.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =>
     })
 
             /**
- * @see routes/web.php:169
+ * @see routes/web.php:167
  * @route '/courier/rider-management'
  */
         riderManagementForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -489,7 +496,7 @@ riderManagement.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =>
             method: 'get',
         })
             /**
- * @see routes/web.php:169
+ * @see routes/web.php:167
  * @route '/courier/rider-management'
  */
         riderManagementForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -504,7 +511,7 @@ riderManagement.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =>
     
     riderManagement.form = riderManagementForm
 /**
- * @see routes/web.php:181
+ * @see routes/web.php:179
  * @route '/courier/delivery-management'
  */
 export const deliveryManagement = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -518,7 +525,7 @@ deliveryManagement.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:181
+ * @see routes/web.php:179
  * @route '/courier/delivery-management'
  */
 deliveryManagement.url = (options?: RouteQueryOptions) => {
@@ -526,7 +533,7 @@ deliveryManagement.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:181
+ * @see routes/web.php:179
  * @route '/courier/delivery-management'
  */
 deliveryManagement.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -534,7 +541,7 @@ deliveryManagement.get = (options?: RouteQueryOptions): RouteDefinition<'get'> =
     method: 'get',
 })
 /**
- * @see routes/web.php:181
+ * @see routes/web.php:179
  * @route '/courier/delivery-management'
  */
 deliveryManagement.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -543,7 +550,7 @@ deliveryManagement.head = (options?: RouteQueryOptions): RouteDefinition<'head'>
 })
 
     /**
- * @see routes/web.php:181
+ * @see routes/web.php:179
  * @route '/courier/delivery-management'
  */
     const deliveryManagementForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -552,7 +559,7 @@ deliveryManagement.head = (options?: RouteQueryOptions): RouteDefinition<'head'>
     })
 
             /**
- * @see routes/web.php:181
+ * @see routes/web.php:179
  * @route '/courier/delivery-management'
  */
         deliveryManagementForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -560,7 +567,7 @@ deliveryManagement.head = (options?: RouteQueryOptions): RouteDefinition<'head'>
             method: 'get',
         })
             /**
- * @see routes/web.php:181
+ * @see routes/web.php:179
  * @route '/courier/delivery-management'
  */
         deliveryManagementForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -575,7 +582,7 @@ deliveryManagement.head = (options?: RouteQueryOptions): RouteDefinition<'head'>
     
     deliveryManagement.form = deliveryManagementForm
 /**
- * @see routes/web.php:193
+ * @see routes/web.php:191
  * @route '/courier/cod-remittance'
  */
 export const codRemittance = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -589,7 +596,7 @@ codRemittance.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:193
+ * @see routes/web.php:191
  * @route '/courier/cod-remittance'
  */
 codRemittance.url = (options?: RouteQueryOptions) => {
@@ -597,7 +604,7 @@ codRemittance.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:193
+ * @see routes/web.php:191
  * @route '/courier/cod-remittance'
  */
 codRemittance.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -605,7 +612,7 @@ codRemittance.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     method: 'get',
 })
 /**
- * @see routes/web.php:193
+ * @see routes/web.php:191
  * @route '/courier/cod-remittance'
  */
 codRemittance.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -614,7 +621,7 @@ codRemittance.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => (
 })
 
     /**
- * @see routes/web.php:193
+ * @see routes/web.php:191
  * @route '/courier/cod-remittance'
  */
     const codRemittanceForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -623,7 +630,7 @@ codRemittance.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => (
     })
 
             /**
- * @see routes/web.php:193
+ * @see routes/web.php:191
  * @route '/courier/cod-remittance'
  */
         codRemittanceForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -631,7 +638,7 @@ codRemittance.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => (
             method: 'get',
         })
             /**
- * @see routes/web.php:193
+ * @see routes/web.php:191
  * @route '/courier/cod-remittance'
  */
         codRemittanceForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -646,7 +653,7 @@ codRemittance.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => (
     
     codRemittance.form = codRemittanceForm
 /**
- * @see routes/web.php:205
+ * @see routes/web.php:203
  * @route '/courier/reports'
  */
 export const reports = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -660,7 +667,7 @@ reports.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:205
+ * @see routes/web.php:203
  * @route '/courier/reports'
  */
 reports.url = (options?: RouteQueryOptions) => {
@@ -668,7 +675,7 @@ reports.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:205
+ * @see routes/web.php:203
  * @route '/courier/reports'
  */
 reports.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -676,7 +683,7 @@ reports.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     method: 'get',
 })
 /**
- * @see routes/web.php:205
+ * @see routes/web.php:203
  * @route '/courier/reports'
  */
 reports.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -685,7 +692,7 @@ reports.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
     /**
- * @see routes/web.php:205
+ * @see routes/web.php:203
  * @route '/courier/reports'
  */
     const reportsForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -694,7 +701,7 @@ reports.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     })
 
             /**
- * @see routes/web.php:205
+ * @see routes/web.php:203
  * @route '/courier/reports'
  */
         reportsForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -702,7 +709,7 @@ reports.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             method: 'get',
         })
             /**
- * @see routes/web.php:205
+ * @see routes/web.php:203
  * @route '/courier/reports'
  */
         reportsForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -717,7 +724,7 @@ reports.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     
     reports.form = reportsForm
 /**
- * @see routes/web.php:217
+ * @see routes/web.php:215
  * @route '/courier/support'
  */
 export const support = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -731,7 +738,7 @@ support.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:217
+ * @see routes/web.php:215
  * @route '/courier/support'
  */
 support.url = (options?: RouteQueryOptions) => {
@@ -739,7 +746,7 @@ support.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:217
+ * @see routes/web.php:215
  * @route '/courier/support'
  */
 support.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -747,7 +754,7 @@ support.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     method: 'get',
 })
 /**
- * @see routes/web.php:217
+ * @see routes/web.php:215
  * @route '/courier/support'
  */
 support.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -756,7 +763,7 @@ support.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
     /**
- * @see routes/web.php:217
+ * @see routes/web.php:215
  * @route '/courier/support'
  */
     const supportForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -765,7 +772,7 @@ support.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     })
 
             /**
- * @see routes/web.php:217
+ * @see routes/web.php:215
  * @route '/courier/support'
  */
         supportForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -773,7 +780,7 @@ support.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             method: 'get',
         })
             /**
- * @see routes/web.php:217
+ * @see routes/web.php:215
  * @route '/courier/support'
  */
         supportForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -788,7 +795,7 @@ support.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     
     support.form = supportForm
 /**
- * @see routes/web.php:229
+ * @see routes/web.php:227
  * @route '/courier/messages'
  */
 export const messages = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -802,7 +809,7 @@ messages.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:229
+ * @see routes/web.php:227
  * @route '/courier/messages'
  */
 messages.url = (options?: RouteQueryOptions) => {
@@ -810,7 +817,7 @@ messages.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:229
+ * @see routes/web.php:227
  * @route '/courier/messages'
  */
 messages.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -818,7 +825,7 @@ messages.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     method: 'get',
 })
 /**
- * @see routes/web.php:229
+ * @see routes/web.php:227
  * @route '/courier/messages'
  */
 messages.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -827,7 +834,7 @@ messages.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
     /**
- * @see routes/web.php:229
+ * @see routes/web.php:227
  * @route '/courier/messages'
  */
     const messagesForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -836,7 +843,7 @@ messages.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     })
 
             /**
- * @see routes/web.php:229
+ * @see routes/web.php:227
  * @route '/courier/messages'
  */
         messagesForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -844,7 +851,7 @@ messages.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             method: 'get',
         })
             /**
- * @see routes/web.php:229
+ * @see routes/web.php:227
  * @route '/courier/messages'
  */
         messagesForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -859,7 +866,7 @@ messages.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     
     messages.form = messagesForm
 /**
- * @see routes/web.php:241
+ * @see routes/web.php:239
  * @route '/courier/settings'
  */
 export const settings = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -873,7 +880,7 @@ settings.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see routes/web.php:241
+ * @see routes/web.php:239
  * @route '/courier/settings'
  */
 settings.url = (options?: RouteQueryOptions) => {
@@ -881,7 +888,7 @@ settings.url = (options?: RouteQueryOptions) => {
 }
 
 /**
- * @see routes/web.php:241
+ * @see routes/web.php:239
  * @route '/courier/settings'
  */
 settings.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -889,7 +896,7 @@ settings.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     method: 'get',
 })
 /**
- * @see routes/web.php:241
+ * @see routes/web.php:239
  * @route '/courier/settings'
  */
 settings.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -898,7 +905,7 @@ settings.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
     /**
- * @see routes/web.php:241
+ * @see routes/web.php:239
  * @route '/courier/settings'
  */
     const settingsForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -907,7 +914,7 @@ settings.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     })
 
             /**
- * @see routes/web.php:241
+ * @see routes/web.php:239
  * @route '/courier/settings'
  */
         settingsForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -915,7 +922,7 @@ settings.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             method: 'get',
         })
             /**
- * @see routes/web.php:241
+ * @see routes/web.php:239
  * @route '/courier/settings'
  */
         settingsForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
