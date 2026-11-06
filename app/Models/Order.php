@@ -66,6 +66,14 @@ class Order extends Model
     }
 
     /**
+     * Get the shipment assignment for this order.
+     */
+    public function shipmentAssignment()
+    {
+        return $this->hasOne(ShipmentAssignment::class);
+    }
+
+    /**
      * Generate unique waybill number for this order.
      */
     public function generateWaybillNumber(): string

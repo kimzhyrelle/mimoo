@@ -1,4 +1,5 @@
 import SellerDashboardController from './SellerDashboardController'
+import Courier from './Courier'
 import Auth from './Auth'
 import OrderController from './OrderController'
 import WaybillController from './WaybillController'
@@ -12,6 +13,7 @@ import Api from './Api'
 import Settings from './Settings'
 const Controllers = {
     SellerDashboardController: Object.assign(SellerDashboardController, SellerDashboardController),
+Courier: Object.assign(Courier, Courier),
 Auth: Object.assign(Auth, Auth),
 OrderController: Object.assign(OrderController, OrderController),
 WaybillController: Object.assign(WaybillController, WaybillController),

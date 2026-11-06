@@ -121,4 +121,12 @@ class User extends Authenticatable
             'password'          => 'hashed',
         ];
     }
+
+    /**
+     * Get the shipment assignments for this courier.
+     */
+    public function shipmentAssignments()
+    {
+        return $this->hasMany(ShipmentAssignment::class, 'courier_id');
+    }
 }

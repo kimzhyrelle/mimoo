@@ -51,9 +51,7 @@ class LoginResponse implements LoginResponseContract
         // Redirect based on account type
         $home = match ($user->account_type) {
             'seller' => '/seller/dashboard',
-            'logistics' => $user->company_name 
-                ? '/courier/dashboard'  // Courier companies go to courier dashboard
-                : '/logistics/dashboard', // Logistics staff go to logistics dashboard
+            'logistics' => '/courier/dashboard', // All logistics accounts are courier companies
             default => '/homepage',
         };
 

@@ -111,6 +111,144 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
         ]);
     })->name('courier.dashboard');
     
+    // Courier - Incoming Shipments (with full functionality)
+    Route::get('/courier/incoming-shipments', [\App\Http\Controllers\Courier\IncomingShipmentsController::class, 'index'])->name('courier.incoming-shipments');
+    Route::get('/api/courier/shipments/{id}', [\App\Http\Controllers\Courier\IncomingShipmentsController::class, 'show']);
+    Route::post('/api/courier/shipments/{id}/accept', [\App\Http\Controllers\Courier\IncomingShipmentsController::class, 'accept']);
+    Route::post('/api/courier/shipments/{id}/reject', [\App\Http\Controllers\Courier\IncomingShipmentsController::class, 'reject']);
+    
+    // Courier - Pickup Management
+    Route::get('/courier/pickup-management', function () {
+        $user = auth()->user();
+        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
+            abort(403);
+        }
+        return Inertia::render('courier/PickupManagement', [
+            'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
+            'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
+        ]);
+    })->name('courier.pickup-management');
+    
+    // Courier - Parcel Scanning
+    Route::get('/courier/parcel-scanning', function () {
+        $user = auth()->user();
+        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
+            abort(403);
+        }
+        return Inertia::render('courier/ParcelScanning', [
+            'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
+            'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
+        ]);
+    })->name('courier.parcel-scanning');
+    
+    // Courier - Sorting & Transfers
+    Route::get('/courier/sorting-transfers', function () {
+        $user = auth()->user();
+        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
+            abort(403);
+        }
+        return Inertia::render('courier/SortingTransfers', [
+            'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
+            'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
+        ]);
+    })->name('courier.sorting-transfers');
+    
+    // Courier - Branch & Facility
+    Route::get('/courier/branch-facility', function () {
+        $user = auth()->user();
+        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
+            abort(403);
+        }
+        return Inertia::render('courier/BranchFacility', [
+            'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
+            'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
+        ]);
+    })->name('courier.branch-facility');
+    
+    // Courier - Rider Management
+    Route::get('/courier/rider-management', function () {
+        $user = auth()->user();
+        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
+            abort(403);
+        }
+        return Inertia::render('courier/RiderManagement', [
+            'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
+            'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
+        ]);
+    })->name('courier.rider-management');
+    
+    // Courier - Delivery Management
+    Route::get('/courier/delivery-management', function () {
+        $user = auth()->user();
+        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
+            abort(403);
+        }
+        return Inertia::render('courier/DeliveryManagement', [
+            'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
+            'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
+        ]);
+    })->name('courier.delivery-management');
+    
+    // Courier - COD & Remittance
+    Route::get('/courier/cod-remittance', function () {
+        $user = auth()->user();
+        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
+            abort(403);
+        }
+        return Inertia::render('courier/CODRemittance', [
+            'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
+            'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
+        ]);
+    })->name('courier.cod-remittance');
+    
+    // Courier - Reports
+    Route::get('/courier/reports', function () {
+        $user = auth()->user();
+        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
+            abort(403);
+        }
+        return Inertia::render('courier/Reports', [
+            'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
+            'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
+        ]);
+    })->name('courier.reports');
+    
+    // Courier - Support
+    Route::get('/courier/support', function () {
+        $user = auth()->user();
+        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
+            abort(403);
+        }
+        return Inertia::render('courier/Support', [
+            'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
+            'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
+        ]);
+    })->name('courier.support');
+    
+    // Courier - Messages
+    Route::get('/courier/messages', function () {
+        $user = auth()->user();
+        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
+            abort(403);
+        }
+        return Inertia::render('courier/Messages', [
+            'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
+            'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
+        ]);
+    })->name('courier.messages');
+    
+    // Courier - Company Settings
+    Route::get('/courier/settings', function () {
+        $user = auth()->user();
+        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
+            abort(403);
+        }
+        return Inertia::render('courier/CompanySettings', [
+            'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
+            'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
+        ]);
+    })->name('courier.settings');
+    
     // Logistics Incoming Parcels
     Route::get('/logistics/incoming-parcels', function () {
         $user = auth()->user();
