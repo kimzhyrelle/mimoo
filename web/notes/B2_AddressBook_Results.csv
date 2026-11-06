@@ -1,0 +1,10 @@
+Test Case ID,Actual Result,Status,Remarks
+BUY-ADDR-001,"Only single address per user stored in users table (region, province_district, city, barangay, street_address). No separate addresses table.",Fail,"Cannot add multiple addresses. PSGC API cascade works in checkout modal but limited functionality. Need addresses table for full address book."
+BUY-ADDR-002,"PSGC API integration implemented in Checkout.tsx address modal. Cascading dropdowns work: Region → Province/District → City → Barangay.",Pass,"NCR regions fully supported. Location cascade working correctly."
+BUY-ADDR-003,"No dedicated address form. Only checkout modal has address fields.",Blocked,"Cannot test comprehensive field validation without address management page."
+BUY-ADDR-004,"Phone format validation exists but not in address context.",Blocked,"Phone validation not specific to address book."
+BUY-ADDR-005,"Only one address allowed per user.",Blocked,"N/A - no multiple address support to test limit."
+BUY-ADDR-006,"Only one address exists per user.",Blocked,"N/A - cannot test default address switching without multiple addresses."
+BUY-ADDR-007,"Cannot delete user's only address.",Blocked,"N/A - default address protection not applicable with single address."
+BUY-ADDR-008,"Orders copy shipping_* fields at creation time so changes don't affect existing orders.",Blocked,"Order address immutability works but cannot test multiple addresses scenario."
+BUY-ADDR-009,"No address detail/edit routes to test authorization.",Blocked,"No dedicated address routes exist for security testing."

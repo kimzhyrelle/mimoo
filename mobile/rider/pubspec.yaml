@@ -1,0 +1,34 @@
+name: mimoo_rider
+description: Mimoo Rider app (converted from Stitch HTML designs)
+publish_to: none
+version: 1.0.0+1
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  google_fonts: ^6.2.1
+  url_launcher: ^6.3.0
+  permission_handler: ^11.3.1
+  mobile_scanner: ^5.2.3
+  flutter_local_notifications: ^18.0.1
+  connectivity_plus: ^6.0.5
+  image_picker: ^1.1.2
+  shared_preferences: ^2.5.6
+  intl: ^0.20.3
+  local_auth: ^3.0.2
+  crypto: ^3.0.6
+  flutter_localizations:
+    sdk: flutter
+  sqflite: ^2.4.5
+  sqflite_common_ffi_web: ^1.2.0
+  path: ^1.9.1
+  path_provider: ^2.1.4
+dev_dependencies:
+  flutter_lints: ^5.0.0
+  flutter_test:
+    sdk: flutter
+  sqflite_common_ffi: ^2.4.5
+flutter:
+  uses-material-design: true
+  generate: true

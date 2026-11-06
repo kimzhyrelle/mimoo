@@ -1,0 +1,15 @@
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    avoid_print: true
+    # Disabled — these are style hints, not errors
+    prefer_const_constructors: false
+    prefer_const_literals_to_create_immutables: false
+    curly_braces_in_flow_control_structures: true

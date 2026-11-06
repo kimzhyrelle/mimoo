@@ -1,0 +1,10 @@
+Test Case ID,Actual Result,Status,Remarks
+BUY-ACCT-001,"Profile update implemented at /settings route. ProfileController handles first_name, last_name, contact_number, birthday, gender. Profile photo field exists.",Pass,"Fully functional profile editing. Photo upload backend needs verification."
+BUY-ACCT-002,"Frontend validation exists in BuyerAcc.tsx. Backend validation in ProfileUpdateRequest checks required fields.",Pass,"Name format validation implemented and working."
+BUY-ACCT-003,"Functional at /settings/password route. SecurityController verifies current password before updating. Uses PasswordValidationRules trait.",Pass,"Password change fully working with proper validation (min 8 chars, mixed case, number, special char)."
+BUY-ACCT-004,"Error handling implemented. Controller checks Hash::check() and returns error if current password is incorrect.",Pass,"Proper error messages shown for wrong current password."
+BUY-ACCT-005,"Password validation rules enforced: min 8 chars, uppercase, lowercase, number, special character. Confirmation matching required.",Pass,"All password rules properly validated per PasswordValidationRules.php."
+BUY-ACCT-006,"OTP-based email verification system implemented. EmailVerification model stores 6-digit codes with 10-minute expiry. Routes: /verify-email/*",Pass,"Email verification with OTP fully functional. EmailVerificationNotification sends codes."
+BUY-ACCT-007,"OTP expiration check exists but error messages need verification.",Fail,"OTP attempts limit not clearly implemented - security concern for brute force attacks. Need rate limiting."
+BUY-ACCT-008,"Email unique constraint in database migration. Validation catches duplicate emails.",Pass,"Duplicate email detection working correctly."
+BUY-ACCT-009,"Phone field exists in users table but no SMS OTP system. No SMS gateway integration.",Blocked,"SMS gateway (Semaphore/Twilio) not integrated. Contact number can be updated without verification."

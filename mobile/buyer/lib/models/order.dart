@@ -1,0 +1,177 @@
+/// Status values that the server returns (must match the DB enum).
+enum OrderStatus {
+  pending,
+  paid,
+  packed,
+  shipped,
+  completed,
+  cancelled,
+  failed,
+  // Legacy values kept so OrderState does not break; not returned by server.
+  toShip,
+  inTransit,
+  outForDelivery,
+  delivered,
+}
+
+/// Map a raw server status string to [OrderStatus].
+OrderStatus orderStatusFromString(String s) {
+  switch (s) {
+    case 'pending':
+      return OrderStatus.pending;
+    case 'paid':
+      return OrderStatus.paid;
+    case 'packed':
+      return OrderStatus.packed;
+    case 'shipped':
+      return OrderStatus.shipped;
+    case 'completed':
+      return OrderStatus.completed;
+    case 'cancelled':
+      return OrderStatus.cancelled;
+    case 'failed':
+      return OrderStatus.failed;
+    default:
+      return OrderStatus.pending;
+  }
+}
+
+/// Client-side tab mapping (decision §6).
+///
+/// pending + paid + packed → To Ship
+/// shipped                 → To Receive
+/// completed               → Completed
+/// cancelled + failed      → Cancelled
+enum OrderTab { toShip, toReceive, completed, cancelled }
+
+OrderTab orderTabFromStatus(OrderStatus s) {
+  switch (s) {
+    case OrderStatus.pending:
+    case OrderStatus.paid:
+    case OrderStatus.packed:
+      return OrderTab.toShip;
+    case OrderStatus.shipped:
+      return OrderTab.toReceive;
+    case OrderStatus.completed:
+      return OrderTab.completed;
+    case OrderStatus.cancelled:
+    case OrderStatus.failed:
+    default:
+      return OrderTab.cancelled;
+  }
+}
+
+/// A single line-item on an order as returned by the API.
+class OrderItem {
+  const OrderItem({
+    required this.id,
+    required this.productId,
+    required this.productName,
+    required this.imageUrl,
+    required this.quantity,
+    required this.unitPrice,
+    required this.subtotal,
+    this.variantId,
+    this.variantSnapshot,
+    // Legacy fields kept for backward-compat with OrderState
+    this.price = 0.0,
+    this.variation,
+    this.variation2,
+  });
+
+  final int id;
+  final int productId;
+  final String productName;
+  final String? imageUrl;
+  final int quantity;
+  final double unitPrice;
+  final double subtotal;
+  final String? variantId;
+  final Map<String, dynamic>? variantSnapshot;
+
+  // Legacy
+  final double price;
+  final String? variation;
+  final String? variation2;
+
+  factory OrderItem.fromJson(Map<String, dynamic> j) => OrderItem(
+        id: (j['id'] as num).toInt(),
+        productId: (j['product_id'] as num).toInt(),
+        productName: j['product_name'] as String? ?? '',
+        imageUrl: j['image_url'] as String?,
+        quantity: (j['quantity'] as num).toInt(),
+        unitPrice: (j['unit_price'] as num?)?.toDouble() ?? 0.0,
+        subtotal: (j['subtotal'] as num?)?.toDouble() ?? 0.0,
+        variantId: j['variant_id'] as String?,
+        variantSnapshot: j['variant_snapshot'] as Map<String, dynamic>?,
+        price: (j['unit_price'] as num?)?.toDouble() ?? 0.0,
+      );
+}
+
+/// An order as returned by GET /api/buyer/orders or /api/buyer/orders/{id}.
+class Order {
+  const Order({
+    required this.id,
+    required this.orderNumber,
+    required this.status,
+    required this.paymentStatus,
+    required this.paymentMethod,
+    required this.total,
+    required this.itemCount,
+    required this.canCancel,
+    required this.createdAt,
+    required this.shippingName,
+    required this.shippingAddress,
+    required this.shippingPhone,
+    required this.items,
+    // Legacy
+    this.totalAmount = 0.0,
+    this.placedAt,
+    this.voucherCode,
+    this.discount = 0.0,
+    this.rating,
+    this.feedback,
+  });
+
+  final int id;
+  final String orderNumber;
+  final OrderStatus status;
+  final String paymentStatus;
+  final String paymentMethod;
+  final double total;
+  final int itemCount;
+  final bool canCancel;
+  final String createdAt;
+  final String? shippingName;
+  final String? shippingAddress;
+  final String? shippingPhone;
+  final List<OrderItem> items;
+
+  // Legacy fields kept for OrderState compatibility
+  final double totalAmount;
+  final DateTime? placedAt;
+  final String? voucherCode;
+  final double discount;
+  final int? rating;
+  final String? feedback;
+
+  factory Order.fromJson(Map<String, dynamic> j) => Order(
+        id: (j['id'] as num).toInt(),
+        orderNumber: j['order_number'] as String? ?? '',
+        status: orderStatusFromString(j['status'] as String? ?? ''),
+        paymentStatus: j['payment_status'] as String? ?? '',
+        paymentMethod: j['payment_method'] as String? ?? '',
+        total: (j['total'] as num?)?.toDouble() ?? 0.0,
+        itemCount: (j['item_count'] as num?)?.toInt() ?? 0,
+        canCancel: j['can_cancel'] as bool? ?? false,
+        createdAt: j['created_at'] as String? ?? '',
+        shippingName: j['shipping_name'] as String?,
+        shippingAddress: j['shipping_address'] as String?,
+        shippingPhone: j['shipping_phone'] as String?,
+        items: (j['items'] as List<dynamic>? ?? [])
+            .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        totalAmount: (j['total'] as num?)?.toDouble() ?? 0.0,
+        placedAt: DateTime.tryParse(j['created_at'] as String? ?? ''),
+      );
+}

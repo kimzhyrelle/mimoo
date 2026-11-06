@@ -1,0 +1,17 @@
+tunnel: 2b841f45-763a-4fd8-bf13-8dea926e0950
+credentials-file: C:\Users\janine\.cloudflared\2b841f45-763a-4fd8-bf13-8dea926e0950.json
+
+ingress:
+  - hostname: mimoo.bond
+    service: http://127.0.0.1:8000
+    originRequest:
+      noTLSVerify: true
+      connectTimeout: 30s
+      httpHostHeader: mimoo.bond
+  - hostname: "*.mimoo.bond"
+    service: http://127.0.0.1:8000
+    originRequest:
+      noTLSVerify: true
+      connectTimeout: 30s
+      httpHostHeader: mimoo.bond
+  - service: http_status:404

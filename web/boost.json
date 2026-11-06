@@ -1,0 +1,16 @@
+{
+    "agents": [
+        "kiro"
+    ],
+    "cloud": false,
+    "skills": [
+        "infer-conventions",
+        "fortify-development",
+        "laravel-best-practices",
+        "testing-best-practices",
+        "socialite-development",
+        "wayfinder-development",
+        "inertia-react-development",
+        "tailwindcss-development"
+    ]
+}

@@ -1,0 +1,6 @@
+Test Case ID,Actual Result,Status,Remarks
+BUY-WISH-001,"No wishlists table exists. No wishlist API routes.",Blocked,"Wishlist heart icon may exist in UI but non-functional. Need wishlists table and API implementation."
+BUY-WISH-002,"Wishlist system not implemented.",Blocked,"Cannot test duplicate prevention without wishlist functionality."
+BUY-WISH-003,"Wishlist system not implemented.",Blocked,"Cannot test stock changes on wishlist items."
+BUY-WISH-004,"No store_follows table. ViewSeller.tsx shows '+ Follow' button (placeholder only). Seller stats show followers: 0 (hardcoded).",Blocked,"Store follow system completely missing. Need store_follows table and API."
+BUY-WISH-005,"Cannot test - features not implemented.",Blocked,"Login gate cannot be tested without wishlist/follow functionality."

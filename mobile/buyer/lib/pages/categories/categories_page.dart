@@ -1,0 +1,829 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../models/product.dart';
+import '../../services/product_repository.dart';
+import '../../state/auth_service.dart';
+import '../../state/wishlist_provider.dart';
+import '../auth/login_page.dart';
+import '../home/product_detail_page.dart';
+import '../../state/cart_provider.dart';
+import '../../utils/animations.dart';
+import '../notifications/notifications_page.dart';
+import '../account/account_settings_page.dart';
+import '../search/search_page.dart';
+
+// ── Color tokens ──────────────────────────────────────────────────────────────
+const _kPrimary = Color(0xFF34175B);
+const _kSecondary = Color(0xFF6B38D4);
+const _kFlash = Color(0xFFFF3B5C);
+const _kSurface = Color(0xFFF5F4FC);
+const _kCard = Color(0xFFFFFFFF);
+const _kChip = Color(0xFFEFE9FD);
+const _kText = Color(0xFF1A1035);
+const _kSubtext = Color(0xFF8A84A3);
+
+TextStyle _pjs({
+  double size = 14,
+  FontWeight weight = FontWeight.w400,
+  Color color = _kText,
+  double? height,
+  TextDecoration? decoration,
+}) =>
+    GoogleFonts.plusJakartaSans(
+        fontSize: size,
+        fontWeight: weight,
+        color: color,
+        height: height,
+        decoration: decoration);
+
+// ── Category grid data ────────────────────────────────────────────────────────
+class _CatItem {
+  const _CatItem(
+      {required this.label, required this.icon, required this.color});
+  final String label;
+  final IconData icon;
+  final Color color;
+}
+
+const _cats = [
+  _CatItem(
+      label: "Women's\nFashion",
+      icon: Icons.woman_outlined,
+      color: Color(0xFF6B38D4)),
+  _CatItem(
+      label: "Men's\nStreetwear",
+      icon: Icons.man_outlined,
+      color: Color(0xFF34175B)),
+  _CatItem(
+      label: "Electronics &\nAudio",
+      icon: Icons.headphones_outlined,
+      color: Color(0xFF0066CC)),
+  _CatItem(
+      label: "Shoes & Kicks",
+      icon: Icons.sports_hockey_outlined,
+      color: Color(0xFFFF3B5C)),
+  _CatItem(
+      label: "Beauty & Care",
+      icon: Icons.spa_outlined,
+      color: Color(0xFFE91E8C)),
+  _CatItem(
+      label: "Home & Living",
+      icon: Icons.chair_outlined,
+      color: Color(0xFF1DB966)),
+  _CatItem(
+      label: "Bags & Packs",
+      icon: Icons.shopping_bag_outlined,
+      color: Color(0xFF8B5CF6)),
+  _CatItem(
+      label: "Sports Gear",
+      icon: Icons.sports_soccer_outlined,
+      color: Color(0xFFFF6B00)),
+];
+
+// ── Categories Page ───────────────────────────────────────────────────────────
+class CategoriesPage extends StatefulWidget {
+  const CategoriesPage({super.key});
+
+  @override
+  State<CategoriesPage> createState() => _CategoriesPageState();
+}
+
+class _CategoriesPageState extends State<CategoriesPage> {
+  String _selectedSort = 'Newest';
+  final _sorts = ['Newest', 'Price: Low to High', 'Price: High to Low'];
+
+  // ── API state ────────────────────────────────────────────────────────────
+  List<Product> _products = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  String get _apiSort {
+    switch (_selectedSort) {
+      case 'Price: Low to High':
+        return 'price_asc';
+      case 'Price: High to Low':
+        return 'price_desc';
+      default:
+        return 'newest';
+    }
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final page = await ProductRepository.instance.fetchProducts(
+        perPage: 30,
+        sort: _apiSort,
+      );
+      if (!mounted) return;
+      setState(() {
+        _products = page.products;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Could not load products. Tap to retry.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _kSurface,
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _buildHeader()),
+            SliverToBoxAdapter(child: _buildSortRow()),
+            SliverToBoxAdapter(child: _buildExploreCats()),
+            SliverToBoxAdapter(child: _buildTrendingHeader()),
+            _buildProductGrid(),
+            SliverToBoxAdapter(child: _buildVoucherBanner()),
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      color: const Color(0xFF34175B),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // mimoo logo text + MARKET sub
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('mimoo',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.5)),
+                  Text('MARKET',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white60,
+                          letterSpacing: 0.5)),
+                ],
+              ),
+              const Spacer(),
+              Text('Categories',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white70)),
+              const Spacer(),
+              // Notification bell
+              GestureDetector(
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const NotificationsPage())),
+                child: Stack(
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.notifications_none_outlined,
+                          color: Colors.white, size: 22),
+                    ),
+                    Positioned(
+                      right: 2,
+                      top: 2,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                            color: Color(0xFFFF3B5C), shape: BoxShape.circle),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Avatar → Account Settings
+              GestureDetector(
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const AccountSettingsPage())),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child:
+                      const Icon(Icons.person, color: Colors.white, size: 18),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Search bar — matches homepage style
+          GestureDetector(
+            onTap: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const SearchPage())),
+            child: Container(
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(9999),
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(width: 12),
+                  const Icon(Icons.search, size: 16, color: Colors.white70),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Search in All Categories, items, or brands...',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13, color: Colors.white70),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(right: 12),
+                    child: Icon(Icons.mic_outlined,
+                        size: 16, color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Sort row (Wrap-based — no overflow) ──────────────────────────────────────
+  Widget _buildSortRow() {
+    return Container(
+      color: _kCard,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: List.generate(_sorts.length, (i) {
+          final sel = _selectedSort == _sorts[i];
+          return GestureDetector(
+            onTap: () {
+              if (_selectedSort != _sorts[i]) {
+                setState(() => _selectedSort = _sorts[i]);
+                _load();
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: sel ? _kPrimary : _kSurface,
+                borderRadius: BorderRadius.circular(9999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_sorts[i],
+                      style: _pjs(
+                          size: 13,
+                          weight: FontWeight.w600,
+                          color: sel ? Colors.white : _kText)),
+                  if (i == 0) ...[
+                    const SizedBox(width: 4),
+                    Icon(Icons.keyboard_arrow_down,
+                        size: 15, color: sel ? Colors.white : _kSubtext),
+                  ],
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  // ── Explore categories grid ──────────────────────────────────────────────────
+  Widget _buildExploreCats() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Text('Explore Categories',
+                      style: _pjs(size: 15, weight: FontWeight.w800)),
+                  const SizedBox(width: 6),
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                        color: _kSecondary, shape: BoxShape.circle),
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: () {},
+                child: Row(
+                  children: [
+                    Text('View All',
+                        style: _pjs(
+                            size: 13,
+                            weight: FontWeight.w600,
+                            color: _kSecondary)),
+                    Icon(Icons.chevron_right, size: 16, color: _kSecondary),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          GridView.count(
+            crossAxisCount: 4,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 14,
+            crossAxisSpacing: 8,
+            childAspectRatio: 0.85,
+            children: _cats.map((c) => _CatChip(cat: c)).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Trending header ──────────────────────────────────────────────────────────
+  Widget _buildTrendingHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('All Products',
+                  style: _pjs(size: 15, weight: FontWeight.w800)),
+              const SizedBox(width: 8),
+              if (!_loading && _error == null)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: _kChip,
+                    borderRadius: BorderRadius.circular(9999),
+                  ),
+                  child: Text('${_products.length} Items',
+                      style: _pjs(
+                          size: 11,
+                          weight: FontWeight.w700,
+                          color: _kSecondary)),
+                ),
+              const Spacer(),
+              Icon(Icons.tune, size: 18, color: _kSubtext),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text('Sorted by: $_selectedSort',
+              style: _pjs(size: 12, color: _kSubtext)),
+        ],
+      ),
+    );
+  }
+
+  // ── Product grid (live from API) ─────────────────────────────────────────────
+  Widget _buildProductGrid() {
+    if (_loading) {
+      return SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        sliver: SliverGrid(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 0.60,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (_, i) => Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(children: [
+                Expanded(
+                    flex: 5,
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEFE9FD),
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(12)),
+                      ),
+                    )),
+                Expanded(
+                    flex: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                              height: 10,
+                              width: double.infinity,
+                              color: const Color(0xFFEFE9FD)),
+                          const SizedBox(height: 6),
+                          Container(
+                              height: 10,
+                              width: 80,
+                              color: const Color(0xFFEFE9FD)),
+                        ],
+                      ),
+                    )),
+              ]),
+            ),
+            childCount: 6,
+          ),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+          child: Column(children: [
+            const Icon(Icons.wifi_off_outlined,
+                size: 40, color: Color(0xFF7B7580)),
+            const SizedBox(height: 10),
+            Text(_error!,
+                textAlign: TextAlign.center,
+                style: _pjs(size: 13, color: _kSubtext)),
+            const SizedBox(height: 12),
+            FilledButton.tonal(
+              onPressed: _load,
+              child:
+                  Text('Retry', style: _pjs(size: 13, weight: FontWeight.w700)),
+            ),
+          ]),
+        ),
+      );
+    }
+
+    if (_products.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+          child: Column(children: [
+            const Icon(Icons.storefront_outlined,
+                size: 40, color: Color(0xFF7B7580)),
+            const SizedBox(height: 10),
+            Text('No products available yet.',
+                style: _pjs(size: 13, color: _kSubtext)),
+          ]),
+        ),
+      );
+    }
+
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.60,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (ctx, i) {
+            final p = _products[i];
+            return StaggeredItem(
+              index: i,
+              child: _CatProductCard(
+                product: p,
+                onTap: () {
+                  final cart = CartProvider.of(ctx);
+                  final wish = WishlistProvider.of(ctx);
+                  Navigator.push(
+                      ctx,
+                      MimooPageRoute(
+                        builder: (_) => WishlistProvider(
+                          wishlist: wish,
+                          child: CartProvider(
+                              cart: cart, child: ProductDetailPage(product: p)),
+                        ),
+                      ));
+                },
+                onAddToCart: () {
+                  if (!AuthService.instance.isLoggedIn) {
+                    Navigator.push(
+                        ctx,
+                        MaterialPageRoute(
+                          builder: (_) => LoginPage(
+                            onLoginSuccess: () => CartProvider.of(ctx).add(p),
+                          ),
+                        ));
+                    return;
+                  }
+                  CartProvider.of(ctx).add(p);
+                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                    content: Text('Added to cart!',
+                        style: _pjs(
+                            size: 13,
+                            color: Colors.white,
+                            weight: FontWeight.w600)),
+                    backgroundColor: _kPrimary,
+                    duration: const Duration(seconds: 1),
+                  ));
+                },
+              ),
+            );
+          },
+          childCount: _products.length,
+        ),
+      ),
+    );
+  }
+
+  // ── Voucher banner ───────────────────────────────────────────────────────────
+  Widget _buildVoucherBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4A1C8A), Color(0xFF6B38D4)],
+        ),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.local_offer_outlined,
+                color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('₱150 OFF Voucher',
+                    style: _pjs(
+                        size: 14,
+                        weight: FontWeight.w800,
+                        color: Colors.white)),
+                Text('Applicable on all Fashion orders',
+                    style: _pjs(size: 12, color: Colors.white70)),
+              ],
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {},
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: _kPrimary,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(9999)),
+              minimumSize: const Size(0, 36),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+            child: Text('Claim',
+                style:
+                    _pjs(size: 13, weight: FontWeight.w700, color: _kPrimary)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Category chip ─────────────────────────────────────────────────────────────
+class _CatChip extends StatelessWidget {
+  const _CatChip({required this.cat});
+  final _CatItem cat;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {},
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: cat.color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(cat.icon, size: 26, color: cat.color),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            cat.label,
+            style: _pjs(
+                size: 10, weight: FontWeight.w600, color: _kText, height: 1.3),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Real-product card for API-backed grid ─────────────────────────────────────
+class _CatProductCard extends StatelessWidget {
+  const _CatProductCard({
+    required this.product,
+    required this.onTap,
+    required this.onAddToCart,
+  });
+  final Product product;
+  final VoidCallback onTap;
+  final VoidCallback onAddToCart;
+
+  @override
+  Widget build(BuildContext context) {
+    final wishlist = WishlistProvider.of(context);
+    final wished = wishlist.contains(product);
+    final hasImage = product.imageUrl.isNotEmpty;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: _kCard,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
+            BoxShadow(
+                color: Color(0x0D34175B), blurRadius: 8, offset: Offset(0, 2)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 5,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(12)),
+                    child: hasImage
+                        ? Image.network(
+                            product.imageUrl,
+                            fit: BoxFit.cover,
+                            headers: const {'Accept': 'image/*'},
+                            errorBuilder: (_, __, ___) =>
+                                Container(color: _kChip),
+                          )
+                        : Container(color: _kChip),
+                  ),
+                  if (product.isOnSale)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: _kFlash,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Text('SALE',
+                            style: _pjs(
+                                size: 9,
+                                weight: FontWeight.w800,
+                                color: Colors.white)),
+                      ),
+                    ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: GestureDetector(
+                      onTap: () {
+                        if (!AuthService.instance.isLoggedIn) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => LoginPage(
+                                onLoginSuccess: () => wishlist.toggle(product),
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        wishlist.toggle(product);
+                      },
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          wished ? Icons.favorite : Icons.favorite_border,
+                          size: 15,
+                          color: wished ? _kFlash : _kSubtext,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(product.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: _pjs(
+                            size: 12, weight: FontWeight.w600, height: 1.3)),
+                    const SizedBox(height: 3),
+                    if (product.sellerName != null)
+                      Text(product.sellerName!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: _pjs(size: 10, color: _kSubtext)),
+                    const Spacer(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '₱${product.effectivePrice.toStringAsFixed(0)}',
+                              style: _pjs(
+                                  size: 16,
+                                  weight: FontWeight.w800,
+                                  color: _kPrimary),
+                            ),
+                            if (product.isOnSale)
+                              Text(
+                                '₱${product.price.toStringAsFixed(0)}',
+                                style: _pjs(
+                                    size: 10,
+                                    color: _kSubtext,
+                                    decoration: TextDecoration.lineThrough),
+                              ),
+                          ],
+                        ),
+                        GestureDetector(
+                          onTap: onAddToCart,
+                          child: Container(
+                            width: 30,
+                            height: 30,
+                            decoration: const BoxDecoration(
+                                color: _kPrimary, shape: BoxShape.circle),
+                            child: const Icon(Icons.add,
+                                size: 18, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
