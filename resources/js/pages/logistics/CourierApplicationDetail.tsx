@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
 interface Application {
@@ -185,10 +185,85 @@ const ChipList = ({ items, emptyMessage }: { items: string[]; emptyMessage?: str
 };
 
 export default function CourierApplicationDetail({ auth, application }: Props) {
+    const [isApproving, setIsApproving] = useState(false);
+    const [isRejecting, setIsRejecting] = useState(false);
+    
     // Parse delivery services
     const deliveryServicesList = application.delivery_services 
         ? application.delivery_services.split(',').map(s => s.trim()).filter(Boolean)
         : [];
+    
+    const handleApprove = async () => {
+        if (!confirm(`Are you sure you want to APPROVE ${application.company_name}?\n\nThis will give them access to the courier dashboard.`)) {
+            return;
+        }
+        
+        setIsApproving(true);
+        
+        try {
+            const response = await fetch(`/api/logistics/courier-applications/${application.id}/approve`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                alert('✅ Courier application approved successfully!');
+                router.visit('/logistics/courier-applications');
+            } else {
+                alert('❌ ' + (data.error || 'Failed to approve application'));
+            }
+        } catch (error) {
+            console.error('Error approving courier:', error);
+            alert('❌ Network error. Please try again.');
+        } finally {
+            setIsApproving(false);
+        }
+    };
+    
+    const handleReject = async () => {
+        const reason = prompt(`Enter rejection reason for ${application.company_name}:\n\n(This will be sent to them via email)`);
+        
+        if (reason === null) {
+            return; // User cancelled
+        }
+        
+        if (!reason.trim()) {
+            alert('Please enter a rejection reason.');
+            return;
+        }
+        
+        setIsRejecting(true);
+        
+        try {
+            const response = await fetch(`/api/logistics/courier-applications/${application.id}/reject`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({ reason: reason.trim() }),
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                alert('✅ Courier application rejected.');
+                router.visit('/logistics/courier-applications');
+            } else {
+                alert('❌ ' + (data.error || 'Failed to reject application'));
+            }
+        } catch (error) {
+            console.error('Error rejecting courier:', error);
+            alert('❌ Network error. Please try again.');
+        } finally {
+            setIsRejecting(false);
+        }
+    };
     
     return (
         <>
@@ -217,7 +292,28 @@ export default function CourierApplicationDetail({ auth, application }: Props) {
                                     </p>
                                 </div>
                             </div>
-                            <StatusBadge status={application.status} />
+                            <div className="flex items-center gap-3">
+                                <StatusBadge status={application.status} />
+                                
+                                {application.status === 'pending' && (
+                                    <>
+                                        <button
+                                            onClick={handleReject}
+                                            disabled={isRejecting || isApproving}
+                                            className="px-4 py-2 border border-red-300 text-red-700 bg-white hover:bg-red-50 rounded-lg font-semibold text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {isRejecting ? 'Rejecting...' : 'Reject'}
+                                        </button>
+                                        <button
+                                            onClick={handleApprove}
+                                            disabled={isApproving || isRejecting}
+                                            className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg font-semibold text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {isApproving ? 'Approving...' : 'Approve'}
+                                        </button>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

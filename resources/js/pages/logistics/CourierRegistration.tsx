@@ -650,6 +650,17 @@ export default function CourierRegistration() {
 
     const goNext = () => {
         console.log('🚀 goNext called, current step:', step);
+        console.log('📋 Current data state:', {
+            company_name: data.company_name,
+            trade_name: data.trade_name,
+            rep_full_name: data.rep_full_name,
+            rep_position: data.rep_position,
+            regions_served: data.regions_served,
+            provinces_served: data.provinces_served,
+            cities_served: data.cities_served,
+            delivery_services: data.delivery_services,
+            pickup_available: data.pickup_available,
+        });
         const e = validate(step, data);
         console.log('📋 Validation result:', e);
         if (Object.keys(e).length) {
@@ -675,9 +686,41 @@ export default function CourierRegistration() {
             const email = data.rep_email.trim();
             
             console.log('=== STARTING REGISTRATION ===');
+            console.log('Step:', step);
             console.log('Email:', email);
             console.log('Company:', data.company_name);
+            console.log('Trade Name:', data.trade_name);
             console.log('Rep Name:', data.rep_full_name);
+            console.log('Rep Position:', data.rep_position);
+            console.log('Regions:', data.regions_served);
+            console.log('Provinces:', data.provinces_served);
+            console.log('Cities:', data.cities_served);
+            console.log('Delivery Services:', data.delivery_services);
+            console.log('Pickup:', data.pickup_available);
+            console.log('===');
+            
+            // SAFETY CHECK: Validate critical fields before submission
+            const criticalFields = {
+                company_name: data.company_name,
+                trade_name: data.trade_name,
+                rep_full_name: data.rep_full_name,
+                rep_position: data.rep_position,
+                regions_served: data.regions_served,
+                provinces_served: data.provinces_served,
+                cities_served: data.cities_served,
+                delivery_services: data.delivery_services,
+                pickup_available: data.pickup_available,
+            };
+            
+            const missingFields = Object.entries(criticalFields)
+                .filter(([key, value]) => !value || value.toString().trim() === '')
+                .map(([key]) => key);
+            
+            if (missingFields.length > 0) {
+                console.error('❌ CRITICAL: Missing required fields:', missingFields);
+                alert(`Error: The following required fields are empty:\n\n${missingFields.join('\n')}\n\nPlease go back and fill them in.`);
+                return;
+            }
             
             // Create FormData manually
             const formData = new FormData();

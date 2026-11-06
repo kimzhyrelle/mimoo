@@ -18,8 +18,8 @@ class LoginResponse implements LoginResponseContract
     {
         $user = $request->user();
         
-        // Check if email is verified
-        if ($user->verification_status === 'unverified') {
+        // Check if email is verified (skip for logistics/courier accounts)
+        if ($user->account_type !== 'logistics' && $user->verification_status === 'unverified') {
             auth()->logout();
             return redirect()->route('otp.show', ['email' => $user->email])
                 ->withErrors(['email' => 'Please verify your email address before logging in.']);
@@ -45,12 +45,15 @@ class LoginResponse implements LoginResponseContract
             'user_email' => $user->email,
             'account_type' => $user->account_type,
             'status' => $user->status,
+            'company_name' => $user->company_name ?? null,
         ]);
 
         // Redirect based on account type
         $home = match ($user->account_type) {
             'seller' => '/seller/dashboard',
-            'logistics' => '/logistics/dashboard',
+            'logistics' => $user->company_name 
+                ? '/courier/dashboard'  // Courier companies go to courier dashboard
+                : '/logistics/dashboard', // Logistics staff go to logistics dashboard
             default => '/homepage',
         };
 

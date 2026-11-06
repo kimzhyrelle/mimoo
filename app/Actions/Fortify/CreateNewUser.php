@@ -149,10 +149,21 @@ class CreateNewUser implements CreatesNewUsers
             'bir_form_2303.required_if' => 'BIR Form 2303 is required for logistics companies.',
         ]);
         
-        $validator->validate();
+        try {
+            $validator->validate();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('=== VALIDATION FAILED ===', [
+                'errors' => $e->errors(),
+                'email' => $input['email'] ?? 'no email',
+            ]);
+            throw $e;
+        }
+        
+        \Log::info('=== VALIDATION PASSED ===');
 
         // Use transaction for atomicity
-        $result = DB::transaction(function () use ($input) {
+        try {
+            $result = DB::transaction(function () use ($input) {
             // ── Store uploaded files ───────────────────────────────────────────
             $idDocumentPath    = $this->storeFile($input['id_document'], 'id_documents');
             $businessPermitPath = isset($input['business_permit']) && $input['business_permit'] instanceof UploadedFile
@@ -236,6 +247,15 @@ class CreateNewUser implements CreatesNewUsers
 
             return [$user, $verification->code];
         });
+        } catch (\Throwable $e) {
+            \Log::error('=== DATABASE TRANSACTION FAILED ===', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'email' => $input['email'] ?? 'no email',
+            ]);
+            throw $e;
+        }
 
         [$user, $otpCode] = $result;
 
