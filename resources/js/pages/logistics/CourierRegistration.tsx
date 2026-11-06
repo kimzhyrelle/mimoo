@@ -799,6 +799,27 @@ export default function CourierRegistration() {
             }
             console.log('=== SUBMITTING TO /register ===');
             
+            // Also log the actual form data state
+            console.log('=== FORM DATA STATE ===');
+            console.log('company_name:', data.company_name);
+            console.log('trade_name:', data.trade_name);
+            console.log('business_registration_number:', data.business_registration_number);
+            console.log('business_address:', data.business_address);
+            console.log('business_email:', data.business_email);
+            console.log('company_contact_number:', data.company_contact_number);
+            console.log('company_website:', data.company_website);
+            console.log('rep_full_name:', data.rep_full_name);
+            console.log('rep_position:', data.rep_position);
+            console.log('rep_email:', data.rep_email);
+            console.log('rep_contact_number:', data.rep_contact_number);
+            console.log('regions_served:', data.regions_served);
+            console.log('provinces_served:', data.provinces_served);
+            console.log('cities_served:', data.cities_served);
+            console.log('delivery_services:', data.delivery_services);
+            console.log('pickup_available:', data.pickup_available);
+            console.log('estimated_delivery_time:', data.estimated_delivery_time);
+            console.log('=== END FORM DATA STATE ===');
+            
             // Use native fetch to ensure it goes through
             fetch('/register', {
                 method: 'POST',

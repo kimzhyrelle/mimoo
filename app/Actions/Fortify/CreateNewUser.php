@@ -32,6 +32,22 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
+        // DEBUG: Log RAW received input
+        \Log::info('=== RAW INPUT RECEIVED ===', [
+            'all_keys' => array_keys($input),
+            'company_name_raw' => $input['company_name'] ?? 'KEY_NOT_SET',
+            'trade_name_raw' => $input['trade_name'] ?? 'KEY_NOT_SET',
+            'company_website_raw' => $input['company_website'] ?? 'KEY_NOT_SET',
+            'sec_registration_no_raw' => $input['sec_registration_no'] ?? 'KEY_NOT_SET',
+            'contact_first_name_raw' => $input['contact_first_name'] ?? 'KEY_NOT_SET',
+            'contact_last_name_raw' => $input['contact_last_name'] ?? 'KEY_NOT_SET',
+            'contact_position_raw' => $input['contact_position'] ?? 'KEY_NOT_SET',
+            'delivery_services_raw' => $input['delivery_services'] ?? 'KEY_NOT_SET',
+            'pickup_available_raw' => $input['pickup_available'] ?? 'KEY_NOT_SET',
+            'estimated_delivery_time_raw' => $input['estimated_delivery_time'] ?? 'KEY_NOT_SET',
+            'service_areas_raw' => isset($input['service_areas']) ? json_encode($input['service_areas']) : 'KEY_NOT_SET',
+        ]);
+        
         // DEBUG: Log received input - show actual values including empty strings
         \Log::info('=== REGISTRATION INPUT ===', [
             'account_type' => $input['account_type'] ?? 'NOT SET',
@@ -160,6 +176,21 @@ class CreateNewUser implements CreatesNewUsers
         }
         
         \Log::info('=== VALIDATION PASSED ===');
+        
+        // DEBUG: Log PROCESSED values that will be saved
+        \Log::info('=== PROCESSED VALUES TO SAVE ===', [
+            'company_name_processed' => $input['company_name'] ?? 'NOT_SET',
+            'trade_name_processed' => $input['trade_name'] ?? 'NOT_SET',
+            'company_website_processed' => $input['company_website'] ?? 'NOT_SET',
+            'sec_registration_no_processed' => $input['sec_registration_no'] ?? 'NOT_SET',
+            'contact_first_name_processed' => $input['contact_first_name'] ?? 'NOT_SET',
+            'contact_last_name_processed' => $input['contact_last_name'] ?? 'NOT_SET',
+            'contact_position_processed' => $input['contact_position'] ?? 'NOT_SET',
+            'delivery_services_processed' => $input['delivery_services'] ?? 'NOT_SET',
+            'pickup_available_processed' => $input['pickup_available'] ?? 'NOT_SET',
+            'estimated_delivery_time_processed' => $input['estimated_delivery_time'] ?? 'NOT_SET',
+            'service_areas_processed' => isset($input['service_areas']) ? json_encode($input['service_areas']) : 'NOT_SET',
+        ]);
 
         // Use transaction for atomicity
         try {
