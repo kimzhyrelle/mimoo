@@ -10,6 +10,9 @@ interface MultiSelectChipsProps {
     helperText?: string;
     error?: string;
     allowCustom?: boolean;
+    loading?: boolean;
+    loadingMessage?: string;
+    errorMessage?: string;
 }
 
 export default function MultiSelectChips({
@@ -22,6 +25,9 @@ export default function MultiSelectChips({
     helperText,
     error,
     allowCustom = true,
+    loading = false,
+    loadingMessage = 'Loading...',
+    errorMessage,
 }: MultiSelectChipsProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -135,7 +141,8 @@ export default function MultiSelectChips({
                         <button
                             type="button"
                             onClick={handleSelectAll}
-                            className="text-xs font-medium text-[#3B1F6B] hover:underline"
+                            disabled={loading}
+                            className="text-xs font-medium text-[#3B1F6B] hover:underline disabled:opacity-50"
                         >
                             Select All
                         </button>
@@ -153,26 +160,52 @@ export default function MultiSelectChips({
                         )}
                     </div>
 
+                    {/* Loading state */}
+                    {loading && (
+                        <div className="px-4 py-8 flex flex-col items-center gap-2">
+                            <div className="w-6 h-6 border-2 border-[#3B1F6B] border-t-transparent rounded-full animate-spin"></div>
+                            <span className="text-sm text-gray-500">{loadingMessage}</span>
+                        </div>
+                    )}
+
+                    {/* Error message */}
+                    {!loading && errorMessage && (
+                        <div className="px-4 py-3 bg-yellow-50 border-b border-yellow-200">
+                            <p className="text-xs text-yellow-800">
+                                ⚠️ {errorMessage}
+                            </p>
+                            <p className="text-xs text-yellow-600 mt-1">
+                                You can type manually using "Add custom" below.
+                            </p>
+                        </div>
+                    )}
+
                     {/* Options */}
-                    {filteredOptions.length > 0 ? (
-                        filteredOptions.map((option) => (
-                            <button
-                                key={option}
-                                type="button"
-                                onClick={() => handleSelect(option)}
-                                className="w-full text-left px-4 py-2 hover:bg-[#F1EDFB] text-sm text-gray-900 transition"
-                            >
-                                {option}
-                            </button>
-                        ))
-                    ) : searchTerm ? (
-                        <div className="px-4 py-3 text-sm text-gray-500">No matches found</div>
-                    ) : (
-                        <div className="px-4 py-3 text-sm text-gray-500">All options selected</div>
+                    {!loading && (
+                        <>
+                            {filteredOptions.length > 0 ? (
+                                filteredOptions.map((option) => (
+                                    <button
+                                        key={option}
+                                        type="button"
+                                        onClick={() => handleSelect(option)}
+                                        className="w-full text-left px-4 py-2 hover:bg-[#F1EDFB] text-sm text-gray-900 transition"
+                                    >
+                                        {option}
+                                    </button>
+                                ))
+                            ) : searchTerm ? (
+                                <div className="px-4 py-3 text-sm text-gray-500">No matches found</div>
+                            ) : options.length === 0 && !errorMessage ? (
+                                <div className="px-4 py-3 text-sm text-gray-500">No options available</div>
+                            ) : (
+                                <div className="px-4 py-3 text-sm text-gray-500">All options selected</div>
+                            )}
+                        </>
                     )}
 
                     {/* Custom input */}
-                    {allowCustom && (
+                    {allowCustom && !loading && (
                         <div className="border-t border-gray-200 p-2">
                             {!showCustomInput ? (
                                 <button

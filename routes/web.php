@@ -356,15 +356,29 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($courier) {
+                // Build full name
+                $fullName = trim(($courier->first_name ?? '') . ' ' . ($courier->last_name ?? ''));
+                if (empty($fullName)) {
+                    $fullName = $courier->name;
+                }
+                
+                // Get company name with fallbacks
+                $companyName = $courier->company_name 
+                    ?? $courier->trade_name 
+                    ?? $courier->business_name 
+                    ?? $fullName 
+                    ?? 'Unnamed Company';
+                
                 return [
                     'id' => $courier->id,
-                    'company_name' => $courier->company_name ?? $courier->business_name ?? $courier->name,
-                    'trade_name' => $courier->company_name ?? $courier->business_name ?? $courier->name,
+                    'company_name' => $companyName,
+                    'trade_name' => $courier->trade_name ?? $courier->company_name ?? $companyName,
                     'business_email' => $courier->email,
-                    'rep_full_name' => trim($courier->first_name . ' ' . $courier->last_name),
-                    'rep_position' => 'Representative', // Can add a field for this later
+                    'rep_full_name' => $fullName,
+                    'rep_position' => $courier->contact_position ?? 'Representative',
                     'status' => $courier->status, // pending, approved, rejected
                     'submitted_at' => $courier->created_at->format('M d, Y'),
+                    'contact_number' => $courier->contact_number,
                 ];
             });
         
@@ -384,6 +398,114 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
             ],
         ]);
     })->name('logistics.courier-applications');
+    
+    // View single courier application details
+    Route::get('/logistics/courier-applications/{id}', function ($id) {
+        $user = auth()->user();
+        
+        $courier = \App\Models\User::where('account_type', 'logistics')
+            ->where('id', $id)
+            ->firstOrFail();
+        
+        // Decode service_areas JSON
+        $serviceAreas = [];
+        if ($courier->service_areas) {
+            $decoded = json_decode($courier->service_areas, true);
+            $serviceAreas = is_array($decoded) ? $decoded : [];
+        }
+        
+        // Parse service areas into regions, provinces, cities
+        $regions = [];
+        $provinces = [];
+        $cities = [];
+        
+        foreach ($serviceAreas as $area) {
+            // Simple heuristic: regions have "Region" in name, cities have "City" or common city names
+            if (stripos($area, 'Region') !== false || stripos($area, 'NCR') !== false || stripos($area, 'CAR') !== false || stripos($area, 'BARMM') !== false || stripos($area, 'MIMAROPA') !== false) {
+                $regions[] = $area;
+            } elseif (stripos($area, 'City') !== false || stripos($area, 'Municipality') !== false || stripos($area, 'Manila') !== false || stripos($area, 'Quezon') !== false || stripos($area, 'Makati') !== false || stripos($area, 'Taguig') !== false || stripos($area, 'Pasig') !== false) {
+                $cities[] = $area;
+            } else {
+                // Likely a province
+                $provinces[] = $area;
+            }
+        }
+        
+        // Build full name
+        $fullName = trim(($courier->first_name ?? '') . ' ' . ($courier->last_name ?? ''));
+        if (empty($fullName)) {
+            $fullName = $courier->name ?? 'Unknown';
+        }
+        
+        $application = [
+            // Basic info
+            'id' => $courier->id,
+            'status' => $courier->status ?? 'pending',
+            'submitted_at' => $courier->created_at->format('F d, Y g:i A'),
+            'updated_at' => $courier->updated_at->format('F d, Y g:i A'),
+            'approved_at' => $courier->approved_at ? $courier->approved_at->format('F d, Y g:i A') : null,
+            
+            // Step 1: Company Information
+            'company_name' => $courier->company_name ?? $courier->trade_name ?? $fullName,
+            'trade_name' => $courier->trade_name ?? $courier->company_name,
+            'business_registration_number' => $courier->sec_registration_no,
+            'business_address' => $courier->street_address,
+            'business_email' => $courier->email,
+            'company_contact_number' => $courier->contact_number,
+            'company_website' => $courier->company_website,
+            'company_logo' => $courier->company_logo,
+            
+            // Step 2: Authorized Representative
+            'rep_full_name' => $fullName,
+            'rep_first_name' => $courier->first_name ?? $courier->contact_first_name,
+            'rep_last_name' => $courier->last_name ?? $courier->contact_last_name,
+            'rep_position' => $courier->contact_position ?? 'Representative',
+            'rep_email' => $courier->email,
+            'rep_contact_number' => $courier->contact_number,
+            'rep_sex' => $courier->sex ?? 'Not specified',
+            'rep_birthday' => $courier->birthday,
+            
+            // Step 3: Business Documents
+            'dti_sec_certificate' => $courier->sec_certificate,
+            'mayors_permit' => $courier->business_permit,
+            'operating_permits' => $courier->bir_2303,
+            'rep_valid_id' => $courier->valid_id,
+            'id_document' => $courier->id_document,
+            'proof_of_address' => $courier->proof_of_address,
+            
+            // Step 4: Service Coverage
+            'regions_served' => $regions,
+            'provinces_served' => $provinces,
+            'cities_served' => $cities,
+            'service_areas_raw' => $serviceAreas,
+            'delivery_services' => $courier->delivery_services,
+            'pickup_available' => $courier->pickup_available,
+            'estimated_delivery_time' => $courier->estimated_delivery_time,
+            
+            // Address details
+            'region' => $courier->region ?? 'Not specified',
+            'province' => $courier->province,
+            'municipality_city' => $courier->municipality_city ?? 'Not specified',
+            'barangay' => $courier->barangay ?? 'Not specified',
+            'postal_code' => $courier->postal_code,
+            
+            // Other
+            'privacy_policy_accepted' => $courier->privacy_policy_accepted ?? false,
+            'verification_status' => $courier->verification_status ?? 'unverified',
+        ];
+        
+        return Inertia::render('logistics/CourierApplicationDetail', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'application' => $application,
+        ]);
+    })->name('logistics.courier-application-detail');
     
     // API: Approve courier application
     Route::post('/api/logistics/courier-applications/{id}/approve', function ($id) {

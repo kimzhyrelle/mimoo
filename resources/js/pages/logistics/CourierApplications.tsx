@@ -412,12 +412,12 @@ export default function CourierApplications({ auth, applications = [] }: Props) 
                                                         {getStatusBadge(app.status)}
                                                     </td>
                                                     <td className="px-4 py-4 text-right">
-                                                        <button
-                                                            onClick={() => setSelectedApp(app)}
+                                                        <Link
+                                                            href={`/logistics/courier-applications/${app.id}`}
                                                             className="text-xs font-semibold text-[#3B1F6B] hover:underline"
                                                         >
                                                             View Details
-                                                        </button>
+                                                        </Link>
                                                     </td>
                                                 </tr>
                                             ))}

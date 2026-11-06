@@ -32,11 +32,20 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
-        // DEBUG: Log received input
+        // DEBUG: Log received input - show actual values including empty strings
         \Log::info('=== REGISTRATION INPUT ===', [
-            'company_name' => $input['company_name'] ?? 'NOT SET',
-            'sec_registration_no' => $input['sec_registration_no'] ?? 'NOT SET',
-            'contact_first_name' => $input['contact_first_name'] ?? 'NOT SET',
+            'account_type' => $input['account_type'] ?? 'NOT SET',
+            'company_name' => isset($input['company_name']) ? "'{$input['company_name']}'" : 'NOT SET',
+            'trade_name' => isset($input['trade_name']) ? "'{$input['trade_name']}'" : 'NOT SET',
+            'company_website' => isset($input['company_website']) ? "'{$input['company_website']}'" : 'NOT SET',
+            'sec_registration_no' => isset($input['sec_registration_no']) ? "'{$input['sec_registration_no']}'" : 'NOT SET',
+            'contact_first_name' => isset($input['contact_first_name']) ? "'{$input['contact_first_name']}'" : 'NOT SET',
+            'contact_last_name' => isset($input['contact_last_name']) ? "'{$input['contact_last_name']}'" : 'NOT SET',
+            'contact_position' => isset($input['contact_position']) ? "'{$input['contact_position']}'" : 'NOT SET',
+            'delivery_services' => isset($input['delivery_services']) ? "'{$input['delivery_services']}'" : 'NOT SET',
+            'pickup_available' => isset($input['pickup_available']) ? "'{$input['pickup_available']}'" : 'NOT SET',
+            'estimated_delivery_time' => isset($input['estimated_delivery_time']) ? "'{$input['estimated_delivery_time']}'" : 'NOT SET',
+            'service_areas' => isset($input['service_areas']) ? json_encode($input['service_areas']) : 'NOT SET',
             'all_keys' => array_keys($input),
         ]);
         
@@ -48,6 +57,18 @@ class CreateNewUser implements CreatesNewUsers
         $input['first_name'] = trim($input['first_name'] ?? '');
         $input['last_name'] = trim($input['last_name'] ?? '');
         $input['tin'] = trim($input['tin'] ?? '');
+        
+        // Trim logistics fields and convert empty strings to null
+        $input['company_name'] = !empty($input['company_name']) ? trim($input['company_name']) : null;
+        $input['trade_name'] = !empty($input['trade_name']) ? trim($input['trade_name']) : null;
+        $input['company_website'] = !empty($input['company_website']) ? trim($input['company_website']) : null;
+        $input['sec_registration_no'] = !empty($input['sec_registration_no']) ? trim($input['sec_registration_no']) : null;
+        $input['contact_first_name'] = !empty($input['contact_first_name']) ? trim($input['contact_first_name']) : null;
+        $input['contact_last_name'] = !empty($input['contact_last_name']) ? trim($input['contact_last_name']) : null;
+        $input['contact_position'] = !empty($input['contact_position']) ? trim($input['contact_position']) : null;
+        $input['delivery_services'] = !empty($input['delivery_services']) ? trim($input['delivery_services']) : null;
+        $input['pickup_available'] = !empty($input['pickup_available']) ? trim($input['pickup_available']) : null;
+        $input['estimated_delivery_time'] = !empty($input['estimated_delivery_time']) ? trim($input['estimated_delivery_time']) : null;
         
         $validator = Validator::make($input, [
             // ── Personal details ──────────────────────────────────────────
@@ -86,15 +107,22 @@ class CreateNewUser implements CreatesNewUsers
 
             // ── Logistics-only fields ─────────────────────────────────────
             'company_name'        => ['required_if:account_type,logistics', 'nullable', 'string', 'max:255'],
+            'trade_name'          => ['nullable', 'string', 'max:255'],
+            'company_website'     => ['nullable', 'string', 'url', 'max:255'],
+            'company_logo'        => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'sec_registration_no' => ['required_if:account_type,logistics', 'nullable', 'string', 'max:50'],
             'contact_first_name'  => ['required_if:account_type,logistics', 'nullable', 'string', 'max:100'],
             'contact_last_name'   => ['required_if:account_type,logistics', 'nullable', 'string', 'max:100'],
             'contact_position'    => ['required_if:account_type,logistics', 'nullable', 'string', 'max:100'],
             'service_areas'       => ['required_if:account_type,logistics', 'nullable', 'array'],
             'service_areas.*'     => ['string', 'max:100'],
+            'delivery_services'   => ['nullable', 'string', 'max:500'],
+            'pickup_available'    => ['nullable', 'string', 'max:50'],
+            'estimated_delivery_time' => ['nullable', 'string', 'max:255'],
             'sec_certificate'     => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'bir_form_2303'       => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'valid_id'            => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'proof_of_address'    => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
 
             // ── Security ──────────────────────────────────────────────────
             'password'        => ['required', 'string', new StrongPassword(), 'confirmed'],
@@ -145,6 +173,9 @@ class CreateNewUser implements CreatesNewUsers
             $validIdPath = isset($input['valid_id']) && $input['valid_id'] instanceof UploadedFile
                 ? $this->storeFile($input['valid_id'], 'valid_ids')
                 : null;
+            $proofOfAddressPath = isset($input['proof_of_address']) && $input['proof_of_address'] instanceof UploadedFile
+                ? $this->storeFile($input['proof_of_address'], 'proof_of_address')
+                : null;
 
             // ── Create user ────────────────────────────────────────────────────
             $user = User::create([
@@ -176,12 +207,21 @@ class CreateNewUser implements CreatesNewUsers
                 'sec_certificate'   => $secCertificatePath,
                 // Logistics fields
                 'company_name'      => $input['company_name'] ?? null,
+                'trade_name'        => $input['trade_name'] ?? $input['company_name'] ?? null,
+                'company_website'   => $input['company_website'] ?? null,
+                'company_logo'      => isset($input['company_logo']) && $input['company_logo'] instanceof UploadedFile
+                    ? $this->storeFile($input['company_logo'], 'company_logos')
+                    : null,
                 'sec_registration_no' => $input['sec_registration_no'] ?? null,
                 'contact_first_name' => $input['contact_first_name'] ?? null,
                 'contact_last_name'  => $input['contact_last_name'] ?? null,
                 'contact_position'   => $input['contact_position'] ?? null,
                 'service_areas'      => isset($input['service_areas']) ? json_encode($input['service_areas']) : null,
+                'delivery_services'  => $input['delivery_services'] ?? null,
+                'pickup_available'   => $input['pickup_available'] ?? null,
+                'estimated_delivery_time' => $input['estimated_delivery_time'] ?? null,
                 'valid_id'           => $validIdPath,
+                'proof_of_address'   => $proofOfAddressPath,
                 'privacy_policy_accepted' => filter_var($input['privacy_policy_accepted'] ?? false, FILTER_VALIDATE_BOOLEAN),
                 'password'          => $input['password'],
                 // All accounts start as pending and unverified

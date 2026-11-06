@@ -4,7 +4,7 @@ import StepProgress from '../../components/registration/StepProgress';
 import MultiSelectChips from '../../components/registration/MultiSelectChips';
 import ServiceChips from '../../components/registration/ServiceChips';
 import RadioCards from '../../components/registration/RadioCards';
-import phLocations from '../../data/ph-locations.json';
+import * as psgcApi from '../../services/psgcApi';
 
 const fontSyncopate = { fontFamily: 'Syncopate, sans-serif' };
 const fontCalibri = { fontFamily: 'Calibri, sans-serif' };
@@ -155,59 +155,178 @@ function requiredFileError(f: File | null): string | undefined {
 }
 
 function validate(step: number, d: FormShape): Errs {
-    // TEMPORARILY DISABLE VALIDATION FOR TESTING
-    return {};
-    
     const e: Errs = {};
+    
     if (step === 1) {
-        if (!d.company_name.trim()) e.company_name = 'Enter company name.';
-        if (!d.trade_name.trim()) e.trade_name = 'Enter trade name.';
-        if (!d.business_registration_number.trim()) e.business_registration_number = 'Enter registration number.';
-        if (!d.business_address.trim()) e.business_address = 'Enter business address.';
-        if (!EMAIL_RE.test(d.business_email.trim())) e.business_email = 'Enter a valid email address.';
-        if (!PH_MOBILE_RE.test(d.company_contact_number.trim())) e.company_contact_number = 'Enter a valid PH mobile number (09XXXXXXXXX).';
+        // Company name
+        if (!d.company_name.trim()) {
+            e.company_name = 'Enter your courier company name.';
+        }
+        
+        // Trade name
+        if (!d.trade_name.trim()) {
+            e.trade_name = 'Enter your business or trade name.';
+        }
+        
+        // Registration number
+        if (!d.business_registration_number.trim()) {
+            e.business_registration_number = 'Enter your DTI/SEC registration number.';
+        }
+        
+        // Business address
+        const address = d.business_address.trim();
+        if (!address) {
+            e.business_address = 'Enter your complete business address.';
+        } else if (address.length < 10) {
+            e.business_address = 'Enter a complete address (at least 10 characters).';
+        }
+        
+        // Business email
+        const bizEmail = d.business_email.trim();
+        if (!bizEmail) {
+            e.business_email = 'Enter your business email address.';
+        } else if (!EMAIL_RE.test(bizEmail)) {
+            e.business_email = 'Enter a valid email address, like company@example.com';
+        }
+        
+        // Contact number
+        const contactNum = d.company_contact_number.trim();
+        if (!contactNum) {
+            e.company_contact_number = 'Enter your company contact number.';
+        } else if (!PH_MOBILE_RE.test(contactNum.replace(/[\s\-+]/g, ''))) {
+            e.company_contact_number = 'Enter a valid PH mobile number, like 09123456789 or +639123456789';
+        }
+        
+        // Website (optional but validate format if provided)
+        const website = d.company_website.trim();
+        if (website && !website.match(/^https?:\/\/.+\..+/i)) {
+            e.company_website = 'Enter a valid website URL starting with http:// or https://';
+        }
+        
+        // Logo (optional)
         const logoErr = optionalFileError(d.company_logo);
         if (logoErr) e.company_logo = logoErr;
     }
+    
     if (step === 2) {
-        if (!d.rep_full_name.trim()) e.rep_full_name = 'Enter full name.';
-        if (!d.rep_position.trim()) e.rep_position = 'Enter position/designation.';
-        if (!EMAIL_RE.test(d.rep_email.trim())) e.rep_email = 'Enter a valid email address.';
-        if (!PH_MOBILE_RE.test(d.rep_contact_number.trim())) e.rep_contact_number = 'Enter a valid PH mobile number (09XXXXXXXXX).';
-        if (!d.username.trim()) e.username = 'Enter username.';
-        else if (d.username.length < 4) e.username = 'Username must be at least 4 characters.';
-        if (d.password.length < 8) e.password = 'Use at least 8 characters.';
-        const hasUpper = /[A-Z]/.test(d.password);
-        const hasLower = /[a-z]/.test(d.password);
-        const hasNumber = /\d/.test(d.password);
-        const hasSpecial = /[^A-Za-z0-9]/.test(d.password);
-        if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
-            e.password = 'Password must include uppercase, lowercase, number, and special character.';
+        // Full name
+        const fullName = d.rep_full_name.trim();
+        if (!fullName) {
+            e.rep_full_name = 'Enter the representative\'s full name.';
+        } else if (!/^[a-zA-Z\s\-'.]+$/.test(fullName)) {
+            e.rep_full_name = 'Name can only contain letters, spaces, hyphens, apostrophes, and periods.';
+        } else if (fullName.length < 3) {
+            e.rep_full_name = 'Enter a valid full name (at least 3 characters).';
         }
-        if (!d.password_confirmation || d.password_confirmation !== d.password)
-            e.password_confirmation = "Passwords don't match.";
+        
+        // Position
+        if (!d.rep_position.trim()) {
+            e.rep_position = 'Enter the representative\'s position or designation.';
+        }
+        
+        // Email
+        const repEmail = d.rep_email.trim();
+        if (!repEmail) {
+            e.rep_email = 'Enter the representative\'s email address.';
+        } else if (!EMAIL_RE.test(repEmail)) {
+            e.rep_email = 'Enter a valid email address, like name@example.com';
+        }
+        
+        // Contact number
+        const repContact = d.rep_contact_number.trim();
+        if (!repContact) {
+            e.rep_contact_number = 'Enter the representative\'s contact number.';
+        } else if (!PH_MOBILE_RE.test(repContact.replace(/[\s\-+]/g, ''))) {
+            e.rep_contact_number = 'Enter a valid PH mobile number, like 09123456789 or +639123456789';
+        }
+        
+        // Username
+        const username = d.username.trim();
+        if (!username) {
+            e.username = 'Enter a username for login.';
+        } else if (username.length < 4) {
+            e.username = 'Username must be at least 4 characters long.';
+        } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+            e.username = 'Username can only contain letters, numbers, and underscores.';
+        }
+        
+        // Password
+        if (!d.password) {
+            e.password = 'Enter a password.';
+        } else if (d.password.length < 8) {
+            e.password = 'Password must be at least 8 characters long.';
+        } else {
+            const hasUpper = /[A-Z]/.test(d.password);
+            const hasLower = /[a-z]/.test(d.password);
+            const hasNumber = /\d/.test(d.password);
+            const hasSpecial = /[^A-Za-z0-9]/.test(d.password);
+            if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
+                e.password = 'Password must include uppercase, lowercase, number, and special character.';
+            }
+        }
+        
+        // Password confirmation
+        if (!d.password_confirmation) {
+            e.password_confirmation = 'Confirm your password.';
+        } else if (d.password_confirmation !== d.password) {
+            e.password_confirmation = 'Passwords don\'t match. Please re-enter.';
+        }
     }
+    
     if (step === 3) {
-        // Make files optional for testing - can be uploaded later
-        const dtiErr = optionalFileError(d.dti_sec_certificate);
+        // DTI/SEC certificate (required)
+        const dtiErr = requiredFileError(d.dti_sec_certificate);
         if (dtiErr) e.dti_sec_certificate = dtiErr;
-        const mayorErr = optionalFileError(d.mayors_permit);
+        
+        // Mayor's permit (required)
+        const mayorErr = requiredFileError(d.mayors_permit);
         if (mayorErr) e.mayors_permit = mayorErr;
+        
+        // Operating permits (optional)
         const operatingErr = optionalFileError(d.operating_permits);
         if (operatingErr) e.operating_permits = operatingErr;
-        const idErr = optionalFileError(d.rep_valid_id);
+        
+        // Representative valid ID (required)
+        const idErr = requiredFileError(d.rep_valid_id);
         if (idErr) e.rep_valid_id = idErr;
+        
+        // Proof of address (optional)
         const proofErr = optionalFileError(d.proof_of_address);
         if (proofErr) e.proof_of_address = proofErr;
     }
+    
     if (step === 4) {
-        if (!d.regions_served.trim()) e.regions_served = 'Enter regions served.';
-        if (!d.provinces_served.trim()) e.provinces_served = 'Enter provinces served.';
-        if (!d.cities_served.trim()) e.cities_served = 'Enter cities/municipalities served.';
-        if (!d.delivery_services.trim()) e.delivery_services = 'Enter available delivery services.';
-        if (!d.pickup_available) e.pickup_available = 'Select pickup availability.';
-        if (!d.privacy_policy_accepted) e.privacy_policy_accepted = 'You must accept the Privacy Policy.';
+        // Regions served
+        if (!d.regions_served.trim()) {
+            e.regions_served = 'Select at least one region you serve.';
+        }
+        
+        // Provinces served
+        if (!d.provinces_served.trim()) {
+            e.provinces_served = 'Select at least one province you serve, or add custom if not listed.';
+        }
+        
+        // Cities served
+        if (!d.cities_served.trim()) {
+            e.cities_served = 'Select at least one city or municipality you serve.';
+        }
+        
+        // Delivery services
+        if (!d.delivery_services.trim()) {
+            e.delivery_services = 'Select at least one delivery service you offer.';
+        }
+        
+        // Pickup availability
+        if (!d.pickup_available) {
+            e.pickup_available = 'Select whether you offer pickup service.';
+        }
+        
+        // Privacy policy
+        if (!d.privacy_policy_accepted) {
+            e.privacy_policy_accepted = 'You must accept the Privacy Policy to continue.';
+        }
     }
+    
     return e;
 }
 
@@ -368,6 +487,123 @@ export default function CourierRegistration() {
     const err = (f: FieldName) => allErrors[f];
     const summary = (Object.keys(clientErrors) as FieldName[]).filter((f) => clientErrors[f]);
 
+    // PSGC API State
+    const [psgcRegions, setPsgcRegions] = useState<Array<{ name: string; code: string }>>([]);
+    const [psgcProvinces, setPsgcProvinces] = useState<Array<{ name: string; code: string }>>([]);
+    const [psgcCities, setPsgcCities] = useState<Array<{ name: string; code: string }>>([]);
+    const [regionsLoading, setRegionsLoading] = useState(false);
+    const [provincesLoading, setProvincesLoading] = useState(false);
+    const [citiesLoading, setCitiesLoading] = useState(false);
+    const [regionsError, setRegionsError] = useState<string>();
+    const [provincesError, setProvincesError] = useState<string>();
+    const [citiesError, setCitiesError] = useState<string>();
+
+    // Map to store code lookups
+    const regionNameToCodeMap = useRef(new Map<string, string>());
+    const provinceNameToCodeMap = useRef(new Map<string, string>());
+
+    // Load regions when Step 4 opens
+    useEffect(() => {
+        if (step === 4 && psgcRegions.length === 0 && !regionsLoading) {
+            setRegionsLoading(true);
+            psgcApi.fetchRegions().then(({ data, error }) => {
+                setPsgcRegions(data);
+                setRegionsError(error);
+                // Build name-to-code map
+                data.forEach(r => regionNameToCodeMap.current.set(r.name, r.code));
+                setRegionsLoading(false);
+            });
+        }
+    }, [step]);
+
+    // Load provinces when regions are selected
+    useEffect(() => {
+        if (step === 4 && data.regions_served) {
+            const selectedRegionNames = data.regions_served.split(',').map(s => s.trim()).filter(Boolean);
+            const selectedRegionCodes = selectedRegionNames
+                .map(name => regionNameToCodeMap.current.get(name))
+                .filter((code): code is string => !!code);
+
+            if (selectedRegionCodes.length > 0) {
+                setProvincesLoading(true);
+                setPsgcProvinces([]);
+                setProvincesError(undefined);
+
+                Promise.all([
+                    psgcApi.fetchProvinces(selectedRegionCodes),
+                    psgcApi.fetchCitiesByRegion(selectedRegionCodes) // For NCR and similar
+                ]).then(([provincesResult, citiesResult]) => {
+                    setPsgcProvinces(provincesResult.data);
+                    setProvincesError(provincesResult.error);
+                    
+                    // Build name-to-code map for provinces
+                    provincesResult.data.forEach(p => provinceNameToCodeMap.current.set(p.name, p.code));
+                    
+                    // Store direct cities for regions without provinces
+                    if (citiesResult.data.length > 0) {
+                        // We'll merge these with province-based cities later
+                    }
+                    
+                    setProvincesLoading(false);
+                });
+            } else {
+                setPsgcProvinces([]);
+                setProvincesError(undefined);
+            }
+        }
+    }, [step, data.regions_served]);
+
+    // Load cities when provinces are selected OR when regions without provinces are selected
+    useEffect(() => {
+        if (step === 4) {
+            const selectedRegionNames = data.regions_served.split(',').map(s => s.trim()).filter(Boolean);
+            const selectedProvinceNames = data.provinces_served.split(',').map(s => s.trim()).filter(Boolean);
+            
+            const selectedRegionCodes = selectedRegionNames
+                .map(name => regionNameToCodeMap.current.get(name))
+                .filter((code): code is string => !!code);
+            
+            const selectedProvinceCodes = selectedProvinceNames
+                .map(name => provinceNameToCodeMap.current.get(name))
+                .filter((code): code is string => !!code);
+
+            if (selectedProvinceCodes.length > 0 || selectedRegionCodes.length > 0) {
+                setCitiesLoading(true);
+                setPsgcCities([]);
+                setCitiesError(undefined);
+
+                const promises = [];
+                
+                // Fetch cities by province
+                if (selectedProvinceCodes.length > 0) {
+                    promises.push(psgcApi.fetchCitiesByProvince(selectedProvinceCodes));
+                }
+                
+                // Fetch cities by region (for NCR, etc.)
+                if (selectedRegionCodes.length > 0) {
+                    promises.push(psgcApi.fetchCitiesByRegion(selectedRegionCodes));
+                }
+
+                Promise.all(promises).then((results) => {
+                    const allCities = results.flatMap(r => r.data);
+                    const errors = results.map(r => r.error).filter(Boolean);
+                    
+                    // Remove duplicates by code
+                    const uniqueCities = Array.from(
+                        new Map(allCities.map(city => [city.code, city])).values()
+                    );
+                    
+                    setPsgcCities(uniqueCities);
+                    setCitiesError(errors.length > 0 ? errors.join('; ') : undefined);
+                    setCitiesLoading(false);
+                });
+            } else {
+                setPsgcCities([]);
+                setCitiesError(undefined);
+            }
+        }
+    }, [step, data.regions_served, data.provinces_served]);
+
     // Return to step with first error
     useEffect(() => {
         const steps = (Object.keys(errors) as FieldName[]).map((f) => FIELD_STEP[f]).filter(Boolean) as number[];
@@ -392,9 +628,9 @@ export default function CourierRegistration() {
             username: 'jdelacruz_mimoo',
             password: 'MimooTest123!@#',
             password_confirmation: 'MimooTest123!@#',
-            regions_served: 'NCR, Region III, Region IV-A',
-            provinces_served: 'Metro Manila, Bulacan, Cavite, Laguna',
-            cities_served: 'Manila, Quezon City, Makati, Taguig, Pasig, San Jose Del Monte, Bacoor, Santa Rosa',
+            regions_served: 'National Capital Region (NCR), Region III (Central Luzon), Region IV-A (CALABARZON)',
+            provinces_served: 'Bulacan, Cavite, Laguna',
+            cities_served: 'City of Manila, Quezon City, City of Makati, City of Taguig, City of Pasig, City of San Jose Del Monte, Bacoor, Santa Rosa',
             delivery_services: 'Same-Day Delivery, Next-Day Delivery, Standard Delivery, Express Delivery, COD Service',
             pickup_available: 'yes',
             estimated_delivery_time: '1-3 business days (Standard), Same day (Express)',
@@ -474,10 +710,18 @@ export default function CourierRegistration() {
             
             // Logistics fields
             formData.append('company_name', data.company_name);
+            formData.append('trade_name', data.trade_name);
+            formData.append('company_website', data.company_website || '');
+            if (data.company_logo) formData.append('company_logo', data.company_logo);
             formData.append('sec_registration_no', data.business_registration_number);
             formData.append('contact_first_name', data.rep_full_name.split(' ')[0] || 'Representative');
             formData.append('contact_last_name', data.rep_full_name.split(' ').slice(1).join(' ') || 'Name');
             formData.append('contact_position', data.rep_position);
+            
+            // Step 4 fields
+            formData.append('delivery_services', data.delivery_services);
+            formData.append('pickup_available', data.pickup_available);
+            formData.append('estimated_delivery_time', data.estimated_delivery_time || '');
             
             // Service areas
             const areas = [];
@@ -497,10 +741,20 @@ export default function CourierRegistration() {
                 formData.append('valid_id', data.rep_valid_id);
                 formData.append('id_document', data.rep_valid_id);
             }
+            if (data.proof_of_address) formData.append('proof_of_address', data.proof_of_address);
             
             formData.append('privacy_policy_accepted', data.privacy_policy_accepted ? '1' : '0');
             
-            console.log('✅ FormData prepared, submitting...');
+            console.log('✅ FormData prepared');
+            console.log('=== FORMDATA CONTENTS ===');
+            for (const [key, value] of formData.entries()) {
+                if (value instanceof File) {
+                    console.log(`${key}: [FILE] ${value.name} (${value.size} bytes)`);
+                } else {
+                    console.log(`${key}: "${value}"`);
+                }
+            }
+            console.log('=== SUBMITTING TO /register ===');
             
             // Use native fetch to ensure it goes through
             fetch('/register', {
@@ -961,49 +1215,54 @@ export default function CourierRegistration() {
                                     <MultiSelectChips
                                         label="Regions Served"
                                         required
-                                        options={phLocations.regions.map(r => r.name)}
+                                        options={psgcRegions.map(r => r.name)}
                                         selected={data.regions_served ? data.regions_served.split(',').map(s => s.trim()) : []}
                                         onChange={(values) => set('regions_served', values.join(', '))}
                                         placeholder="Search or select regions..."
                                         helperText="Select the regions where you provide delivery services"
                                         error={err('regions_served')}
                                         allowCustom={true}
+                                        loading={regionsLoading}
+                                        loadingMessage="Loading Philippine regions..."
+                                        errorMessage={regionsError}
                                     />
 
                                     <MultiSelectChips
                                         label="Provinces Served"
                                         required
-                                        options={
-                                            data.regions_served
-                                                ? phLocations.regions
-                                                    .filter(r => data.regions_served.split(',').some(sel => sel.trim() === r.name))
-                                                    .flatMap(r => phLocations.provinces[r.code as keyof typeof phLocations.provinces] || [])
-                                                : Object.values(phLocations.provinces).flat()
-                                        }
+                                        options={psgcProvinces.map(p => p.name)}
                                         selected={data.provinces_served ? data.provinces_served.split(',').map(s => s.trim()) : []}
                                         onChange={(values) => set('provinces_served', values.join(', '))}
                                         placeholder="Search or select provinces..."
-                                        helperText="Select the provinces where you operate (filtered by selected regions)"
+                                        helperText={
+                                            psgcProvinces.length === 0 && !provincesLoading && data.regions_served
+                                                ? "Selected regions have no provinces (e.g., NCR). Cities will appear below."
+                                                : "Select the provinces where you operate (filtered by selected regions)"
+                                        }
                                         error={err('provinces_served')}
                                         allowCustom={true}
+                                        loading={provincesLoading}
+                                        loadingMessage="Loading provinces..."
+                                        errorMessage={provincesError}
                                     />
 
                                     <MultiSelectChips
                                         label="Cities / Municipalities Served"
                                         required
-                                        options={
-                                            data.provinces_served
-                                                ? data.provinces_served.split(',')
-                                                    .map(p => p.trim())
-                                                    .flatMap(prov => phLocations.cities[prov as keyof typeof phLocations.cities] || [])
-                                                : Object.values(phLocations.cities).flat()
-                                        }
+                                        options={psgcCities.map(c => c.name)}
                                         selected={data.cities_served ? data.cities_served.split(',').map(s => s.trim()) : []}
                                         onChange={(values) => set('cities_served', values.join(', '))}
                                         placeholder="Search or select cities/municipalities..."
-                                        helperText="Select the cities and municipalities you serve (filtered by selected provinces)"
+                                        helperText={
+                                            !data.regions_served
+                                                ? "Select regions first to see available cities"
+                                                : "Select the cities and municipalities you serve (filtered by selected regions/provinces)"
+                                        }
                                         error={err('cities_served')}
                                         allowCustom={true}
+                                        loading={citiesLoading}
+                                        loadingMessage="Loading cities and municipalities..."
+                                        errorMessage={citiesError}
                                     />
                                 </div>
 
