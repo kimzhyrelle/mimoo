@@ -5,6 +5,7 @@ import OrderController from './OrderController'
 import WaybillController from './WaybillController'
 import ProductController from './ProductController'
 import CartController from './CartController'
+import WishlistController from './WishlistController'
 import Admin from './Admin'
 import SellerAnalyticsController from './SellerAnalyticsController'
 import SellerOrderController from './SellerOrderController'
@@ -19,6 +20,7 @@ OrderController: Object.assign(OrderController, OrderController),
 WaybillController: Object.assign(WaybillController, WaybillController),
 ProductController: Object.assign(ProductController, ProductController),
 CartController: Object.assign(CartController, CartController),
+WishlistController: Object.assign(WishlistController, WishlistController),
 Admin: Object.assign(Admin, Admin),
 SellerAnalyticsController: Object.assign(SellerAnalyticsController, SellerAnalyticsController),
 SellerOrderController: Object.assign(SellerOrderController, SellerOrderController),

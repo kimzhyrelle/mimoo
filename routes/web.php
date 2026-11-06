@@ -1463,6 +1463,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/api/cart/items/{id}', [\App\Http\Controllers\CartController::class, 'updateItem']);
     Route::delete('/api/cart/items/{id}', [\App\Http\Controllers\CartController::class, 'removeItem']);
     
+    // Wishlist
+    Route::get('/wishlist', [\App\Http\Controllers\WishlistController::class, 'show'])->name('wishlist');
+    Route::get('/api/wishlist', [\App\Http\Controllers\WishlistController::class, 'index']);
+    Route::get('/api/wishlist/count', [\App\Http\Controllers\WishlistController::class, 'count']);
+    Route::post('/api/wishlist/check', [\App\Http\Controllers\WishlistController::class, 'check']);
+    Route::post('/api/wishlist/items', [\App\Http\Controllers\WishlistController::class, 'addItem']);
+    Route::delete('/api/wishlist/items/{id}', [\App\Http\Controllers\WishlistController::class, 'removeItem']);
+    Route::post('/api/wishlist/toggle', [\App\Http\Controllers\WishlistController::class, 'toggleItem']);
+    
     // Orders
     Route::post('/api/orders', [\App\Http\Controllers\OrderController::class, 'store']);
     Route::post('/api/orders/{id}/cancel', [\App\Http\Controllers\OrderController::class, 'cancel']);

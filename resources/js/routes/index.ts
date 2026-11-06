@@ -707,3 +707,81 @@ checkout.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
     
     checkout.form = checkoutForm
+/**
+* @see \App\Http\Controllers\WishlistController::wishlist
+ * @see app/Http/Controllers/WishlistController.php:18
+ * @route '/wishlist'
+ */
+export const wishlist = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: wishlist.url(options),
+    method: 'get',
+})
+
+wishlist.definition = {
+    methods: ["get","head"],
+    url: '/wishlist',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+* @see \App\Http\Controllers\WishlistController::wishlist
+ * @see app/Http/Controllers/WishlistController.php:18
+ * @route '/wishlist'
+ */
+wishlist.url = (options?: RouteQueryOptions) => {
+    return wishlist.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\WishlistController::wishlist
+ * @see app/Http/Controllers/WishlistController.php:18
+ * @route '/wishlist'
+ */
+wishlist.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: wishlist.url(options),
+    method: 'get',
+})
+/**
+* @see \App\Http\Controllers\WishlistController::wishlist
+ * @see app/Http/Controllers/WishlistController.php:18
+ * @route '/wishlist'
+ */
+wishlist.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: wishlist.url(options),
+    method: 'head',
+})
+
+    /**
+* @see \App\Http\Controllers\WishlistController::wishlist
+ * @see app/Http/Controllers/WishlistController.php:18
+ * @route '/wishlist'
+ */
+    const wishlistForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: wishlist.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\WishlistController::wishlist
+ * @see app/Http/Controllers/WishlistController.php:18
+ * @route '/wishlist'
+ */
+        wishlistForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: wishlist.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\WishlistController::wishlist
+ * @see app/Http/Controllers/WishlistController.php:18
+ * @route '/wishlist'
+ */
+        wishlistForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: wishlist.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    wishlist.form = wishlistForm
