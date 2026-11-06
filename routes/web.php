@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\ProductController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -75,12 +76,47 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
         ]);
     })->name('logistics.dashboard');
     
+    // Courier Dashboard - for approved courier/logistics users ONLY
+    Route::get('/courier/dashboard', function () {
+        $user = auth()->user();
+        
+        // Access control: Only approved courier/logistics accounts can access
+        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
+            abort(403, 'Access denied. Only approved courier companies can access this dashboard.');
+        }
+        
+        // Mock stats for now - replace with real data later
+        $stats = [
+            'incoming_shipments' => 15,
+            'pending_pickups' => 8,
+            'in_transit' => 42,
+            'deliveries_today' => 23,
+            'exceptions' => 3,
+        ];
+        
+        return Inertia::render('courier/CourierDashboard', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                ],
+            ],
+            'company' => [
+                'name' => $user->company_name ?? $user->business_name ?? 'Courier Company',
+                'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? '')),
+            ],
+            'stats' => $stats,
+        ]);
+    })->name('courier.dashboard');
+    
     // Logistics Incoming Parcels
     Route::get('/logistics/incoming-parcels', function () {
         $user = auth()->user();
         
-        // Fetch real orders with status "packed" from database (packed = ready for pickup)
-        $incomingOrders = \App\Models\Order::where('status', 'packed')
+        // Fetch orders with status "shipped" (scanned QR + confirmed, awaiting pickup from logistics)
+        $incomingOrders = \App\Models\Order::where('status', 'shipped')
             ->with(['items.product'])
             ->orderBy('updated_at', 'desc')
             ->get()
@@ -98,6 +134,21 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
                     }
                 }
                 
+                // Normalize payment method (database stores "cod", "gcash", etc. in lowercase)
+                $paymentMethod = strtolower($order->payment_method ?? 'cod');
+                $paymentMethodDisplay = match($paymentMethod) {
+                    'cod' => 'Cash on Delivery',
+                    'gcash' => 'GCash',
+                    'paymaya' => 'PayMaya',
+                    'card' => 'Credit/Debit Card',
+                    default => 'Cash on Delivery',
+                };
+                
+                // Compute estimated weight (0.3kg per item if no weight in database)
+                $estimatedWeight = $order->items->sum(function ($item) {
+                    return $item->quantity * 0.3; // Assume 0.3kg per item
+                });
+                
                 return [
                     'id' => $order->id,
                     'order_number' => 'MIM-' . str_pad($order->id, 8, '0', STR_PAD_LEFT),
@@ -107,11 +158,11 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
                     'buyer_address' => $order->shipping_address ?? 'N/A',
                     'seller_name' => $sellerName,
                     'total_amount' => $order->total ?? 0,
-                    'payment_method' => $order->payment_method ?? 'Cash on Delivery',
+                    'payment_method' => $paymentMethodDisplay,
                     'items_count' => $order->items->count(),
-                    'weight' => $order->weight ?? 0,
+                    'weight' => round($estimatedWeight, 1),
                     'shipped_at' => $order->updated_at->format('M d, Y H:i'),
-                    'status' => 'packed',
+                    'status' => 'shipped',
                 ];
             });
         
@@ -167,6 +218,21 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
             }
         }
         
+        // Normalize payment method (database stores "cod", "gcash", etc. in lowercase)
+        $paymentMethod = strtolower($order->payment_method ?? 'cod');
+        $paymentMethodDisplay = match($paymentMethod) {
+            'cod' => 'Cash on Delivery',
+            'gcash' => 'GCash',
+            'paymaya' => 'PayMaya',
+            'card' => 'Credit/Debit Card',
+            default => 'Cash on Delivery',
+        };
+        
+        // Compute estimated weight (0.3kg per item)
+        $estimatedWeight = $order->items->sum(function ($item) {
+            return $item->quantity * 0.3;
+        });
+        
         return response()->json([
             'parcel' => [
                 'id' => $order->id,
@@ -177,9 +243,9 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
                 'buyer_address' => $order->shipping_address ?? 'N/A',
                 'seller_name' => $sellerName,
                 'total_amount' => $order->total,
-                'payment_method' => $order->payment_method ?? 'Cash on Delivery',
+                'payment_method' => $paymentMethodDisplay,
                 'items_count' => $order->items->count(),
-                'weight' => $order->weight ?? 0,
+                'weight' => round($estimatedWeight, 1),
                 'shipped_at' => $order->updated_at->toISOString(),
                 'status' => $order->status,
             ],
@@ -208,7 +274,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
         ]);
     });
     
-    // API: Confirm parcel received at logistics hub (packed → in_transit)
+    // API: Confirm parcel received at logistics hub (packed → shipped)
     Route::post('/api/logistics/parcel/{id}/confirm', function ($id) {
         $order = \App\Models\Order::findOrFail($id);
         
@@ -220,8 +286,8 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
             ], 400);
         }
         
-        // Update order status to in_transit
-        $order->update(['status' => 'in_transit']);
+        // Update order status to shipped (in transit to buyer)
+        $order->update(['status' => 'shipped']);
         
         \Log::info('Parcel confirmed received at logistics hub', [
             'order_id' => $order->id,
@@ -284,29 +350,23 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::get('/logistics/courier-applications', function () {
         $user = auth()->user();
         
-        // Mock data for now - replace with real data later
-        $applications = [
-            [
-                'id' => 1,
-                'company_name' => 'Mimoo Express Courier Services Inc.',
-                'trade_name' => 'Mimoo Express',
-                'business_email' => 'info@mimooexpress.ph',
-                'rep_full_name' => 'Juan Dela Cruz',
-                'rep_position' => 'Operations Manager',
-                'status' => 'pending',
-                'submitted_at' => 'Nov 3, 2026',
-            ],
-            [
-                'id' => 2,
-                'company_name' => 'Swift Logistics Corporation',
-                'trade_name' => 'Swift Delivery',
-                'business_email' => 'contact@swiftlogistics.ph',
-                'rep_full_name' => 'Maria Santos',
-                'rep_position' => 'CEO',
-                'status' => 'approved',
-                'submitted_at' => 'Nov 1, 2026',
-            ],
-        ];
+        // Fetch real courier applications from users table
+        $applications = \App\Models\User::where('account_type', 'logistics')
+            ->orderByRaw("FIELD(status, 'pending', 'approved', 'rejected')")
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($courier) {
+                return [
+                    'id' => $courier->id,
+                    'company_name' => $courier->company_name ?? $courier->business_name ?? $courier->name,
+                    'trade_name' => $courier->company_name ?? $courier->business_name ?? $courier->name,
+                    'business_email' => $courier->email,
+                    'rep_full_name' => trim($courier->first_name . ' ' . $courier->last_name),
+                    'rep_position' => 'Representative', // Can add a field for this later
+                    'status' => $courier->status, // pending, approved, rejected
+                    'submitted_at' => $courier->created_at->format('M d, Y'),
+                ];
+            });
         
         return Inertia::render('logistics/CourierApplications', [
             'auth' => [
@@ -318,15 +378,110 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
                 ],
             ],
             'applications' => $applications,
+            'debug' => [
+                'total_count' => $applications->count(),
+                'timestamp' => now()->toDateTimeString(),
+            ],
         ]);
     })->name('logistics.courier-applications');
+    
+    // API: Approve courier application
+    Route::post('/api/logistics/courier-applications/{id}/approve', function ($id) {
+        $courier = \App\Models\User::findOrFail($id);
+        
+        // Validate that this is a logistics account
+        if ($courier->account_type !== 'logistics') {
+            return response()->json([
+                'error' => 'This account is not a courier/logistics account',
+            ], 400);
+        }
+        
+        // Validate that it's pending
+        if ($courier->status !== 'pending') {
+            return response()->json([
+                'error' => 'Application is not pending',
+                'current_status' => $courier->status,
+            ], 400);
+        }
+        
+        // Approve the courier
+        $courier->update([
+            'status' => 'approved',
+            'approved_at' => now(),
+        ]);
+        
+        \Log::info('Courier application approved', [
+            'courier_id' => $courier->id,
+            'company_name' => $courier->business_name ?? $courier->name,
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
+        ]);
+        
+        // TODO: Send email notification to courier about approval
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Courier application approved successfully',
+            'courier' => [
+                'id' => $courier->id,
+                'status' => $courier->status,
+                'approved_at' => $courier->approved_at,
+            ],
+        ]);
+    });
+    
+    // API: Reject courier application
+    Route::post('/api/logistics/courier-applications/{id}/reject', function (Illuminate\Http\Request $request, $id) {
+        $courier = \App\Models\User::findOrFail($id);
+        
+        // Validate that this is a logistics account
+        if ($courier->account_type !== 'logistics') {
+            return response()->json([
+                'error' => 'This account is not a courier/logistics account',
+            ], 400);
+        }
+        
+        // Validate that it's pending
+        if ($courier->status !== 'pending') {
+            return response()->json([
+                'error' => 'Application is not pending',
+                'current_status' => $courier->status,
+            ], 400);
+        }
+        
+        $reason = $request->input('reason', 'Application rejected by logistics team');
+        
+        // Reject the courier
+        $courier->update([
+            'status' => 'rejected',
+        ]);
+        
+        \Log::info('Courier application rejected', [
+            'courier_id' => $courier->id,
+            'company_name' => $courier->business_name ?? $courier->name,
+            'reason' => $reason,
+            'rejected_by' => auth()->id(),
+            'rejected_at' => now(),
+        ]);
+        
+        // TODO: Send email notification to courier about rejection with reason
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Courier application rejected',
+            'courier' => [
+                'id' => $courier->id,
+                'status' => $courier->status,
+            ],
+        ]);
+    });
     
     // Logistics Sort & Assign
     Route::get('/logistics/sort-assign', function () {
         $user = auth()->user();
         
-        // Fetch orders with status "in_transit" (confirmed at logistics hub, ready for sorting)
-        $transitOrders = \App\Models\Order::where('status', 'in_transit')
+        // Fetch orders with status "shipped" (confirmed at logistics hub, ready for sorting)
+        $transitOrders = \App\Models\Order::where('status', 'shipped')
             ->with(['items.product'])
             ->orderBy('updated_at', 'desc')
             ->get()
@@ -353,6 +508,21 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
                     $barangay = trim($matches[1]);
                 }
                 
+                // Normalize payment method (database stores "cod", "gcash", etc. in lowercase)
+                $paymentMethod = strtolower($order->payment_method ?? 'cod');
+                $paymentMethodDisplay = match($paymentMethod) {
+                    'cod' => 'Cash on Delivery',
+                    'gcash' => 'GCash',
+                    'paymaya' => 'PayMaya',
+                    'card' => 'Credit/Debit Card',
+                    default => 'Cash on Delivery',
+                };
+                
+                // Compute estimated weight (0.3kg per item)
+                $estimatedWeight = $order->items->sum(function ($item) {
+                    return $item->quantity * 0.3;
+                });
+                
                 return [
                     'id' => $order->id,
                     'order_number' => 'MIM-' . str_pad($order->id, 8, '0', STR_PAD_LEFT),
@@ -363,25 +533,37 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
                     'barangay' => $barangay,
                     'seller_name' => $sellerName,
                     'total_amount' => $order->total ?? 0,
-                    'payment_method' => $order->payment_method ?? 'Cash on Delivery',
+                    'payment_method' => $paymentMethodDisplay,
                     'items_count' => $order->items->count(),
-                    'weight' => $order->weight ?? 0,
+                    'weight' => round($estimatedWeight, 1),
                     'confirmed_at' => $order->updated_at->format('M d, Y H:i'),
-                    'status' => 'in_transit',
+                    'status' => 'shipped',
                 ];
             });
         
-        // Fetch approved courier/logistics companies
+        // Fetch approved courier/logistics companies with their service areas
         $approvedCouriers = \App\Models\User::where('account_type', 'logistics')
             ->where('status', 'approved')
             ->orderBy('company_name')
             ->get()
             ->map(function ($courier) {
+                // Parse service_areas JSON (array of barangays/municipalities the courier services)
+                $serviceAreas = [];
+                if ($courier->service_areas) {
+                    $serviceAreas = is_string($courier->service_areas) 
+                        ? json_decode($courier->service_areas, true) 
+                        : $courier->service_areas;
+                }
+                
                 return [
                     'id' => $courier->id,
                     'name' => $courier->company_name ?? $courier->business_name ?? $courier->name,
                     'contact_person' => trim(($courier->contact_first_name ?? '') . ' ' . ($courier->contact_last_name ?? '')),
                     'email' => $courier->email,
+                    'service_areas' => $serviceAreas ?? [], // Array of barangays/cities they service
+                    'region' => $courier->region,
+                    'province' => $courier->province,
+                    'municipality_city' => $courier->municipality_city,
                 ];
             });
         
@@ -738,6 +920,12 @@ Route::get('/register/logistics', function () {
 })->name('register.logistics');
 
 Route::get('/register/courier', function () {
+    // Force logout if already authenticated
+    if (Auth::check()) {
+        Auth::logout();
+        request()->session()->invalidate();
+        request()->session()->regenerateToken();
+    }
     return Inertia::render('logistics/CourierRegistration');
 })->name('register.courier');
 

@@ -32,6 +32,14 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
+        // DEBUG: Log received input
+        \Log::info('=== REGISTRATION INPUT ===', [
+            'company_name' => $input['company_name'] ?? 'NOT SET',
+            'sec_registration_no' => $input['sec_registration_no'] ?? 'NOT SET',
+            'contact_first_name' => $input['contact_first_name'] ?? 'NOT SET',
+            'all_keys' => array_keys($input),
+        ]);
+        
         // Trim email and normalize mobile number before validation
         $input['email'] = trim($input['email'] ?? '');
         $input['contact_number'] = PhilippineMobile::normalize($input['contact_number'] ?? '');
@@ -68,7 +76,7 @@ class CreateNewUser implements CreatesNewUsers
             'id_document'     => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
 
             // ── Seller-only fields ────────────────────────────────────────
-            'business_name'    => ['required_if:account_type,seller,logistics', 'nullable', 'string', 'max:255'],
+            'business_name'    => ['required_if:account_type,seller', 'nullable', 'string', 'max:255'],
             'business_type'    => ['required_if:account_type,seller', 'nullable', 'in:sole_proprietor,partnership,corporation'],
             'line_of_business' => ['required_if:account_type,seller', 'nullable', 'string', 'max:100'],
             'business_permit'  => ['required_if:account_type,seller,logistics', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
@@ -84,9 +92,9 @@ class CreateNewUser implements CreatesNewUsers
             'contact_position'    => ['required_if:account_type,logistics', 'nullable', 'string', 'max:100'],
             'service_areas'       => ['required_if:account_type,logistics', 'nullable', 'array'],
             'service_areas.*'     => ['string', 'max:100'],
-            'sec_certificate'     => ['required_if:account_type,logistics', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            'bir_form_2303'       => ['required_if:account_type,logistics', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            'valid_id'            => ['required_if:account_type,logistics', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'sec_certificate'     => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'bir_form_2303'       => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'valid_id'            => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
 
             // ── Security ──────────────────────────────────────────────────
             'password'        => ['required', 'string', new StrongPassword(), 'confirmed'],
@@ -152,7 +160,7 @@ class CreateNewUser implements CreatesNewUsers
                 'birthday'          => $input['birthday'],
                 'account_type'      => $input['account_type'],
                 'region'            => $input['region'],
-                'province'          => $input['province'],
+                'province'          => $input['province'] ?? null,
                 'district'          => $input['district'] ?? null,
                 'municipality_city' => $input['municipality_city'],
                 'barangay'          => $input['barangay'],

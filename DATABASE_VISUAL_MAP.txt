@@ -1,0 +1,253 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    MIMOO E-COMMERCE DATABASE STRUCTURE                       ║
+║                          MySQL 8.0.43 | 77 Tables                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  👥 USER MANAGEMENT SYSTEM                                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────────────────────────┐
+    │         users (45 columns)           │
+    │──────────────────────────────────────│
+    │ PK  id                               │
+    │     name, first_name, last_name      │
+    │     email, password                  │
+    │     google_id (OAuth)                │
+    │     account_type (buyer/seller/      │
+    │                   logistics)         │
+    │     status (pending/approved/        │
+    │            rejected)                 │
+    │     verification_status              │
+    │                                      │
+    │ [SELLER FIELDS]                      │
+    │     business_name, business_type     │
+    │     business_permit, dti, bir, sec   │
+    │     store_photos                     │
+    │                                      │
+    │ [LOGISTICS FIELDS]                   │
+    │     company_name                     │
+    │     contact_first_name/last_name     │
+    │     service_areas (JSON)             │
+    │     sec_registration_no              │
+    └──────────────────────────────────────┘
+                    │
+                    │ 1:N
+        ┌───────────┼───────────┐
+        │           │           │
+        ▼           ▼           ▼
+    [products]  [orders]    [carts]
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  🛍️ PRODUCT CATALOG SYSTEM                                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────────────────────────┐         ┌──────────────────────┐
+    │           products                   │         │    stock_logs        │
+    │──────────────────────────────────────│         │──────────────────────│
+    │ PK  id                               │◄────┐   │ PK  id               │
+    │ FK  seller_id → users                │     │   │ FK  product_id       │
+    │     name, description                │     └───┤     type (restock/   │
+    │     category, brand                  │         │          sale/       │
+    │     price, sale_price                │         │          adjustment) │
+    │     stock, sku                       │         │     quantity         │
+    │     weight                           │         │     previous_stock   │
+    │     images (JSON array)              │         │     new_stock        │
+    │     main_image_index                 │         │     reason           │
+    │     status (active/inactive)         │         │ FK  user_id          │
+    │     approval_status                  │         └──────────────────────┘
+    │     has_variants (boolean)           │
+    │     variant_options (JSON)           │         ┌──────────────────────┐
+    │     variants (JSON)                  │         │  product_reports     │
+    │     low_stock_threshold              │         │──────────────────────│
+    │     deleted_at (soft delete)         │◄────────┤ PK  id               │
+    └──────────────────────────────────────┘         │ FK  product_id       │
+                    │                                │ FK  reporter_id      │
+                    │ 1:N                            │     reason           │
+        ┌───────────┴───────────┐                    │     description      │
+        ▼                       ▼                    │     status           │
+    [order_items]          [cart_items]             │ FK  reviewed_by      │
+                                                     └──────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  🛒 SHOPPING CART SYSTEM                                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────────────────────────┐         ┌──────────────────────┐
+    │            carts                     │         │     cart_items       │
+    │──────────────────────────────────────│    1:N  │──────────────────────│
+    │ PK  id                               │◄────────┤ PK  id               │
+    │ FK  user_id → users                  │         │ FK  cart_id          │
+    │     session_id (for guests)          │         │ FK  product_id       │
+    │     created_at, updated_at           │         │     variant (JSON)   │
+    └──────────────────────────────────────┘         │     quantity         │
+                                                     └──────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  📦 ORDER MANAGEMENT SYSTEM                                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────────────────────────────────────────────────┐
+    │                        orders                                │
+    │──────────────────────────────────────────────────────────────│
+    │ PK  id                                                       │
+    │ FK  buyer_id → users                                         │
+    │     total                                                    │
+    │     status (pending/paid/packed/shipped/completed/           │
+    │            cancelled/failed)                                 │
+    │     payment_method (cod/gcash/paymaya/card)                  │
+    │     payment_status                                           │
+    │                                                              │
+    │ [SHIPPING INFO]                                              │
+    │     shipping_name, shipping_phone, shipping_email            │
+    │     shipping_address (full)                                  │
+    │     shipping_region, shipping_province                       │
+    │     shipping_municipality_city, shipping_barangay            │
+    │     shipping_postal_code, shipping_notes                     │
+    │                                                              │
+    │ [WAYBILL/TRACKING]                                           │
+    │     waybill_number (MIMWB-YYYYMMDD-XXXXXXXX-XXXX)           │
+    │     waybill_generated_at                                     │
+    │     waybill_printed_at                                       │
+    │                                                              │
+    │ [VOUCHER]                                                    │
+    │ FK  voucher_id → vouchers                                    │
+    │     voucher_discount                                         │
+    └──────────────────────────────────────────────────────────────┘
+                    │
+                    │ 1:N
+                    ▼
+    ┌──────────────────────────────────────────────────────────────┐
+    │                     order_items                              │
+    │──────────────────────────────────────────────────────────────│
+    │ PK  id                                                       │
+    │ FK  order_id → orders                                        │
+    │ FK  product_id → products                                    │
+    │ FK  seller_id → users (snapshot)                             │
+    │     product_name (snapshot)                                  │
+    │     product_image (snapshot)                                 │
+    │     variant (JSON)                                           │
+    │     quantity                                                 │
+    │     price (snapshot at time of order)                        │
+    │     subtotal (quantity × price)                              │
+    └──────────────────────────────────────────────────────────────┘
+
+    ORDER STATUS FLOW:
+    ┌─────────┐   ┌──────┐   ┌────────┐   ┌─────────┐   ┌───────────┐
+    │ pending ├──►│ paid ├──►│ packed ├──►│ shipped ├──►│ completed │
+    └─────────┘   └──────┘   └────────┘   └─────────┘   └───────────┘
+                                │
+                                ├──► cancelled
+                                └──► failed
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  💰 VOUCHER/PROMOTIONAL SYSTEM                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────────────────────────┐         ┌──────────────────────┐
+    │           vouchers                   │         │   voucher_usages     │
+    │──────────────────────────────────────│    1:N  │──────────────────────│
+    │ PK  id                               │◄────────┤ PK  id               │
+    │     code (unique)                    │         │ FK  voucher_id       │
+    │     type (percentage/fixed)          │         │ FK  user_id          │
+    │     value                            │         │ FK  order_id         │
+    │     min_purchase                     │         │     claimed_at       │
+    │     max_discount                     │         │     used_at          │
+    │     usage_limit                      │         └──────────────────────┘
+    │     usage_count                      │
+    │     per_user_limit                   │
+    │     valid_from, valid_until          │
+    │     is_active                        │
+    └──────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ⚙️ SYSTEM TABLES (Laravel Framework)                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────┐
+    │   email_verifications│  │     cache            │  │    sessions      │
+    └──────────────────────┘  └──────────────────────┘  └──────────────────┘
+
+    ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────┐
+    │   jobs               │  │   job_batches        │  │   failed_jobs    │
+    └──────────────────────┘  └──────────────────────┘  └──────────────────┘
+
+    ┌──────────────────────────────────┐  ┌─────────────────────────────────┐
+    │   password_reset_tokens          │  │       migrations                │
+    └──────────────────────────────────┘  └─────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          KEY RELATIONSHIPS                                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+    users (seller) ──1:N──► products
+    users (buyer)  ──1:N──► orders
+    users          ──1:1──► carts
+    
+    products       ──1:N──► order_items
+    products       ──1:N──► cart_items
+    products       ──1:N──► stock_logs
+    products       ──1:N──► product_reports
+    
+    orders         ──1:N──► order_items
+    orders         ──N:1──► vouchers
+    
+    carts          ──1:N──► cart_items
+    
+    vouchers       ──1:N──► voucher_usages
+    vouchers       ──1:N──► orders
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        DATABASE STATISTICS                                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+    Total Tables:              77
+    Core Application Tables:   12
+    System Tables:             7
+    Framework Tables:          58
+    
+    Largest Table:            users (45 columns)
+    
+    Tables with JSON:         products (variants, images)
+                              users (service_areas, store_photos)
+                              order_items (variant)
+                              cart_items (variant)
+    
+    Tables with Soft Delete:  products (deleted_at)
+    
+    Audit Trail Tables:       stock_logs
+                              voucher_usages
+                              migrations
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         SPECIAL FEATURES                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+    ✓ Multi-role user system (buyer/seller/logistics)
+    ✓ Product variant support (size, color, etc.)
+    ✓ Waybill tracking with QR codes
+    ✓ Flexible voucher/promotional system
+    ✓ Stock management with audit trail
+    ✓ Admin approval workflows
+    ✓ Email verification system
+    ✓ Google OAuth integration
+    ✓ Soft deletes for data recovery
+    ✓ Complete Philippine address format
+    ✓ Document upload/verification system
+    ✓ Service area tracking for logistics
+    ✓ Payment method flexibility
+    ✓ Order status flow management
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                      Generated: November 6, 2026                             ║
+╚══════════════════════════════════════════════════════════════════════════════╝

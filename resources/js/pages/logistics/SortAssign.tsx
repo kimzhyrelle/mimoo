@@ -26,6 +26,10 @@ interface CourierData {
     name: string;
     contact_person: string;
     email: string;
+    service_areas: string[]; // Array of barangays/cities they service
+    region: string;
+    province: string;
+    municipality_city: string;
 }
 
 interface Props {
@@ -50,6 +54,43 @@ export default function SortAssign({ auth, company, parcels = [], couriers = [] 
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [selectedParcels, setSelectedParcels] = useState<number[]>([]);
     const [selectedCourier, setSelectedCourier] = useState<string>('');
+
+    // Get eligible couriers based on selected parcels' barangays
+    const getEligibleCouriers = () => {
+        if (selectedParcels.length === 0) {
+            // No parcels selected - show all couriers
+            return couriers;
+        }
+
+        // Get barangays of selected parcels
+        const selectedBarangays = new Set<string>();
+        parcels.forEach(parcel => {
+            if (selectedParcels.includes(parcel.id)) {
+                selectedBarangays.add(parcel.barangay);
+            }
+        });
+
+        // Filter couriers that service at least one of the selected barangays
+        // If courier has no service_areas defined, they are eligible for all (fallback)
+        const eligible = couriers.filter(courier => {
+            if (!courier.service_areas || courier.service_areas.length === 0) {
+                // No service areas defined - courier services everywhere (temporary fallback)
+                return true;
+            }
+
+            // Check if courier services any of the selected barangays
+            return Array.from(selectedBarangays).some(barangay => 
+                courier.service_areas.some(area => 
+                    area.toLowerCase().includes(barangay.toLowerCase()) || 
+                    barangay.toLowerCase().includes(area.toLowerCase())
+                )
+            );
+        });
+
+        return eligible;
+    };
+
+    const eligibleCouriers = getEligibleCouriers();
 
     const handleLogout = () => {
         router.post('/logout');
@@ -448,6 +489,9 @@ export default function SortAssign({ auth, company, parcels = [], couriers = [] 
                                                 <div className="text-sm font-medium text-blue-900">
                                                     {selectedParcels.length} parcel(s) selected
                                                 </div>
+                                                <div className="text-xs text-blue-700 mt-1">
+                                                    {eligibleCouriers.length} eligible courier(s) for selected destinations
+                                                </div>
                                             </div>
                                         )}
 
@@ -459,14 +503,19 @@ export default function SortAssign({ auth, company, parcels = [], couriers = [] 
                                                 onChange={(e) => setSelectedCourier(e.target.value)}
                                             >
                                                 <option value="" className="text-gray-900">-- Select Courier --</option>
-                                                {couriers.length > 0 ? (
-                                                    couriers.map((courier) => (
+                                                {eligibleCouriers.length > 0 ? (
+                                                    eligibleCouriers.map((courier) => (
                                                         <option key={courier.id} value={courier.id} className="text-gray-900">
                                                             {courier.name}
                                                         </option>
                                                     ))
                                                 ) : (
-                                                    <option disabled className="text-gray-500">No approved couriers available</option>
+                                                    <option disabled className="text-gray-500">
+                                                        {selectedParcels.length > 0 
+                                                            ? 'No couriers service the selected destinations' 
+                                                            : 'No approved couriers available'
+                                                        }
+                                                    </option>
                                                 )}
                                             </select>
 

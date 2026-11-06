@@ -25,12 +25,26 @@ class LoginResponse implements LoginResponseContract
                 ->withErrors(['email' => 'Please verify your email address before logging in.']);
         }
 
+        // Check if account is approved (for sellers and logistics)
+        if (in_array($user->account_type, ['seller', 'logistics']) && $user->status === 'pending') {
+            auth()->logout();
+            return redirect()->route('register.pending')
+                ->with('message', 'Your account is pending approval. You will receive an email once approved.');
+        }
+
+        // Check if account was rejected
+        if (in_array($user->account_type, ['seller', 'logistics']) && $user->status === 'rejected') {
+            auth()->logout();
+            return redirect()->route('login')
+                ->withErrors(['email' => 'Your account application was rejected. Please contact support for more information.']);
+        }
+
         // DEBUG: Show me exactly what's happening
         \Log::info('LOGIN REDIRECT DEBUG', [
             'user_id' => $user->id,
             'user_email' => $user->email,
             'account_type' => $user->account_type,
-            'account_type_raw' => $user->getRawOriginal('account_type'),
+            'status' => $user->status,
         ]);
 
         // Redirect based on account type
