@@ -24,6 +24,8 @@ class ShipmentAssignment extends Model
         'weight',
         'dimensions',
         'pickup_instructions',
+        'suggested_reason',
+        'match_score',
         // Pickup management fields
         'pickup_status',
         'scheduled_date',
@@ -47,6 +49,15 @@ class ShipmentAssignment extends Model
         'picked_up_at' => 'datetime',
         'last_attempt_at' => 'datetime',
     ];
+
+    /**
+     * Scope to only active assignments (pending or accepted, and not pickup-cancelled).
+     */
+    public function scopeActive($query)
+    {
+        return $query->whereIn('assignment_status', ['pending', 'accepted'])
+                     ->where('pickup_status', '<>', 'cancelled');
+    }
 
     /**
      * Check if assignment is pending.

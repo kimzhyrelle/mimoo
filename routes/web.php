@@ -693,13 +693,28 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
                     }
                 }
                 
-                // Extract barangay from shipping address
+                // Extract barangay AND municipality/city from shipping address
                 $address = $order->shipping_address ?? '';
                 $barangay = 'Unknown';
+                $city = 'Unknown';
+                
+                // Extract barangay
                 if (preg_match('/Brgy\.?\s+([^,]+)/i', $address, $matches)) {
                     $barangay = trim($matches[1]);
                 } elseif (preg_match('/Barangay\s+([^,]+)/i', $address, $matches)) {
                     $barangay = trim($matches[1]);
+                }
+                
+                // Extract city/municipality (usually the second-to-last or last part before region)
+                $addressParts = array_map('trim', explode(',', $address));
+                if (count($addressParts) >= 2) {
+                    // Try to find city/municipality (usually after barangay)
+                    // Format: Street, Barangay, City, Province/Region
+                    $city = $addressParts[count($addressParts) - 2] ?? 'Unknown'; // Second to last
+                    
+                    // Clean up common patterns
+                    $city = preg_replace('/^(City of|Municipality of)\s+/i', '', $city);
+                    $city = trim($city);
                 }
                 
                 // Normalize payment method (database stores "cod", "gcash", etc. in lowercase)
@@ -725,6 +740,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
                     'buyer_phone' => $order->shipping_phone ?? 'N/A',
                     'buyer_address' => $order->shipping_address ?? 'N/A',
                     'barangay' => $barangay,
+                    'city' => $city, // Add city/municipality for matching
                     'seller_name' => $sellerName,
                     'total_amount' => $order->total ?? 0,
                     'payment_method' => $paymentMethodDisplay,
@@ -736,7 +752,9 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
             });
         
         // Fetch approved courier/logistics companies with their service areas
+        // ONLY fetch users with role='courier' (not logistics_staff)
         $approvedCouriers = \App\Models\User::where('account_type', 'logistics')
+            ->where('role', 'courier') // Only couriers, not logistics_staff
             ->where('status', 'approved')
             ->orderBy('company_name')
             ->get()
@@ -778,6 +796,123 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
             'couriers' => $approvedCouriers,
         ]);
     })->name('logistics.sort-assign');
+    
+    // API: Assign parcels to courier
+    Route::post('/api/logistics/assign-to-courier', function (Illuminate\Http\Request $request) {
+        $validated = $request->validate([
+            'parcel_ids' => 'required|array|min:1',
+            'parcel_ids.*' => 'integer|exists:orders,id',
+            'courier_id' => 'required|integer|exists:users,id',
+        ]);
+        
+        $user = auth()->user();
+        $courierId = $validated['courier_id'];
+        $parcelIds = $validated['parcel_ids'];
+        
+        // Verify courier exists and is approved
+        $courier = \App\Models\User::where('id', $courierId)
+            ->where('account_type', 'logistics')
+            ->where('role', 'courier')
+            ->where('status', 'approved')
+            ->first();
+        
+        if (!$courier) {
+            return response()->json(['error' => 'Invalid courier selected'], 400);
+        }
+        
+        try {
+            DB::beginTransaction();
+            
+            $assignedCount = 0;
+            $skippedCount = 0;
+            $errors = [];
+            
+            foreach ($parcelIds as $orderId) {
+                $order = \App\Models\Order::find($orderId);
+                
+                if (!$order) {
+                    $errors[] = "Order #$orderId not found";
+                    $skippedCount++;
+                    continue;
+                }
+                
+                // Check if order is in correct status (shipped = confirmed at logistics hub)
+                if ($order->status !== 'shipped') {
+                    $errors[] = "Order {$order->waybill_number} is not ready for assignment (status: {$order->status})";
+                    $skippedCount++;
+                    continue;
+                }
+                
+                // Check if already assigned
+                $existingAssignment = \App\Models\ShipmentAssignment::where('order_id', $orderId)
+                    ->active()
+                    ->first();
+                
+                if ($existingAssignment) {
+                    $errors[] = "Order {$order->waybill_number} is already assigned";
+                    $skippedCount++;
+                    continue;
+                }
+                
+                // Create shipment assignment
+                $assignment = \App\Models\ShipmentAssignment::create([
+                    'order_id' => $orderId,
+                    'courier_id' => $courierId,
+                    'assigned_by' => $user->id,
+                    'assigned_at' => now(),
+                    'assignment_status' => 'pending', // Courier needs to accept/reject
+                    'acceptance_deadline' => now()->addHours(24), // 24 hours to accept
+                    'pickup_status' => 'pending_pickup',
+                    'weight' => $order->items->sum(function ($item) {
+                        return $item->quantity * 0.3; // Estimated weight
+                    }),
+                ]);
+                
+                // Add history
+                $assignment->addHistory('assigned', $user->id, "Assigned to {$courier->company_name}");
+                
+                // Update order status to 'in_transit' (assigned to courier)
+                $order->update(['status' => 'in_transit']);
+                
+                $assignedCount++;
+                
+                \Log::info('Parcel assigned to courier', [
+                    'order_id' => $orderId,
+                    'waybill_number' => $order->waybill_number,
+                    'courier_id' => $courierId,
+                    'courier_name' => $courier->company_name,
+                    'assigned_by' => $user->id,
+                ]);
+            }
+            
+            DB::commit();
+            
+            $message = "Successfully assigned $assignedCount parcel(s) to {$courier->company_name}";
+            if ($skippedCount > 0) {
+                $message .= " ($skippedCount skipped)";
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'assigned_count' => $assignedCount,
+                'skipped_count' => $skippedCount,
+                'errors' => $errors,
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Failed to assign parcels to courier', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'error' => 'Failed to assign parcels: ' . $e->getMessage(),
+            ], 500);
+        }
+    });
+
     
     // Logistics Delivery Monitoring
     Route::get('/logistics/delivery-monitoring', function () {

@@ -75,7 +75,7 @@ class TestCreateShipmentAssignments extends Command
 
         // Get or create orders with waybills
         $orders = Order::whereNotNull('waybill_number')
-            ->whereDoesntHave('shipmentAssignment')
+            ->whereDoesntHave('activeAssignment')
             ->limit($this->option('count'))
             ->get();
 

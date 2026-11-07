@@ -427,52 +427,65 @@ function ProductInfo({
       )}
 
       {role === "buyer" && effectiveStock > 0 && (
-        <div className="flex gap-2">
-          <button
-            onClick={toggleWishlist}
-            disabled={wishlistLoading || (product.has_variants && !isVariantComplete)}
-            className={`flex items-center justify-center rounded-lg border p-2.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-              inWishlist
-                ? 'border-red-500 bg-red-50 text-red-600 hover:bg-red-100'
-                : 'border-neutral-300 text-neutral-600 hover:bg-neutral-50'
-            }`}
-            aria-label={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
-          >
-            {wishlistLoading ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            ) : (
-              <Heart className={`h-4 w-4 ${inWishlist ? 'fill-current' : ''}`} />
-            )}
-          </button>
-          <button 
-            onClick={handleAddToCart}
-            disabled={!isVariantComplete}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-violet-900 py-2.5 text-sm font-semibold text-violet-900 transition-colors hover:bg-violet-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ShoppingCart className="h-4 w-4" />
-            Add to cart
-          </button>
-          <button 
-            onClick={async () => {
-              if (product.has_variants && !isVariantComplete) {
-                toast.error('Please select all options');
-                return;
-              }
-              // Add to cart with REPLACE mode (for Buy Now)
-              const cartItemData = await onAddToCart(quantity, currentVariant?.id, true);
-              
-              if (cartItemData && cartItemData.id) {
-                // Redirect to checkout with only this item selected
-                setTimeout(() => {
-                  router.visit(`/checkout?items=${cartItemData.id}`);
-                }, 500);
-              }
-            }}
-            disabled={!isVariantComplete}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-violet-900 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-800 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Buy now
-          </button>
+        <div className="space-y-3">
+          {/* Warning message if variants not selected */}
+          {product.has_variants && !isVariantComplete && (
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+              <p className="text-sm font-medium text-amber-800">
+                ⚠️ Please select all product options above before adding to cart
+              </p>
+            </div>
+          )}
+          
+          <div className="flex gap-2">
+            <button
+              onClick={toggleWishlist}
+              disabled={wishlistLoading || (product.has_variants && !isVariantComplete)}
+              className={`flex items-center justify-center rounded-lg border p-2.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                inWishlist
+                  ? 'border-red-500 bg-red-50 text-red-600 hover:bg-red-100'
+                  : 'border-neutral-300 text-neutral-600 hover:bg-neutral-50'
+              }`}
+              aria-label={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+            >
+              {wishlistLoading ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                <Heart className={`h-4 w-4 ${inWishlist ? 'fill-current' : ''}`} />
+              )}
+            </button>
+            <button 
+              onClick={handleAddToCart}
+              disabled={!isVariantComplete}
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-violet-900 py-2.5 text-sm font-semibold text-violet-900 transition-colors hover:bg-violet-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              title={!isVariantComplete ? 'Please select all product options first' : 'Add to cart'}
+            >
+              <ShoppingCart className="h-4 w-4" />
+              Add to cart
+            </button>
+            <button 
+              onClick={async () => {
+                if (product.has_variants && !isVariantComplete) {
+                  toast.error('Please select all options first');
+                  return;
+                }
+                // Add to cart with REPLACE mode (for Buy Now)
+                const cartItemData = await onAddToCart(quantity, currentVariant?.id, true);
+                
+                if (cartItemData && cartItemData.id) {
+                  // Redirect to checkout with only this item selected
+                  setTimeout(() => {
+                    router.visit(`/checkout?items=${cartItemData.id}`);
+                  }, 500);
+                }
+              }}
+              disabled={!isVariantComplete}
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-violet-900 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              title={!isVariantComplete ? 'Please select all product options first' : 'Buy now'}
+            >
+              Buy now
+            </button>
+          </div>
         </div>
       )}
 

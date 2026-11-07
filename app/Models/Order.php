@@ -24,12 +24,15 @@ class Order extends Model
         'waybill_number',
         'waybill_generated_at',
         'waybill_printed_at',
+        'verified_at',
+        'verified_by',
     ];
 
     protected $casts = [
         'total' => 'decimal:2',
         'waybill_generated_at' => 'datetime',
         'waybill_printed_at' => 'datetime',
+        'verified_at' => 'datetime',
     ];
 
     /**
@@ -67,10 +70,41 @@ class Order extends Model
 
     /**
      * Get the shipment assignment for this order.
+     * NOTE: Use activeAssignment() instead for the current active assignment.
+     * This returns the most recent active assignment, or null if none exists.
      */
     public function shipmentAssignment()
     {
-        return $this->hasOne(ShipmentAssignment::class);
+        return $this->hasOne(ShipmentAssignment::class)
+            ->active()
+            ->latest('id');
+    }
+
+    /**
+     * Get the active shipment assignment for this order.
+     * Returns only pending or accepted assignments that are not pickup-cancelled.
+     */
+    public function activeAssignment()
+    {
+        return $this->hasOne(ShipmentAssignment::class)
+            ->active()
+            ->latest('id');
+    }
+
+    /**
+     * Get all shipment assignments for this order (including rejected).
+     */
+    public function shipmentAssignments()
+    {
+        return $this->hasMany(ShipmentAssignment::class);
+    }
+
+    /**
+     * Get the logistics staff who verified this order.
+     */
+    public function verifier()
+    {
+        return $this->belongsTo(User::class, 'verified_by');
     }
 
     /**
