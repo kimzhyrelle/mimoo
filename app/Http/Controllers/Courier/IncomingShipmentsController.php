@@ -331,7 +331,8 @@ class IncomingShipmentsController extends Controller
     {
         $user = auth()->user();
 
-        $assignment = ShipmentAssignment::where('courier_id', $user->id)
+        $assignment = ShipmentAssignment::with('order')
+            ->where('courier_id', $user->id)
             ->findOrFail($id);
 
         if (!$assignment->isPending()) {
@@ -349,6 +350,11 @@ class IncomingShipmentsController extends Controller
                 'message' => 'Failed to accept assignment.',
             ], 500);
         }
+
+        // Update order tracking status for buyer visibility
+        $order = $assignment->order;
+        $order->update(['courier_accepted_at' => now()]);
+        $order->updateTracking('accepted_courier', 'Accepted by courier, in transit to nearest sorting hub');
 
         return response()->json([
             'success' => true,

@@ -26,6 +26,13 @@ class Order extends Model
         'waybill_printed_at',
         'verified_at',
         'verified_by',
+        'tracking_status',
+        'tracking_message',
+        'tracking_updated_at',
+        'assigned_courier_id',
+        'courier_assigned_at',
+        'courier_accepted_at',
+        'current_facility_id',
     ];
 
     protected $casts = [
@@ -33,6 +40,9 @@ class Order extends Model
         'waybill_generated_at' => 'datetime',
         'waybill_printed_at' => 'datetime',
         'verified_at' => 'datetime',
+        'tracking_updated_at' => 'datetime',
+        'courier_assigned_at' => 'datetime',
+        'courier_accepted_at' => 'datetime',
     ];
 
     /**
@@ -105,6 +115,34 @@ class Order extends Model
     public function verifier()
     {
         return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    /**
+     * Get the assigned courier for this order.
+     */
+    public function assignedCourier()
+    {
+        return $this->belongsTo(User::class, 'assigned_courier_id');
+    }
+
+    /**
+     * Get the current facility where this order is located.
+     */
+    public function currentFacility()
+    {
+        return $this->belongsTo(CourierFacility::class, 'current_facility_id');
+    }
+
+    /**
+     * Update tracking status for buyer visibility.
+     */
+    public function updateTracking(string $status, string $message): void
+    {
+        $this->update([
+            'tracking_status' => $status,
+            'tracking_message' => $message,
+            'tracking_updated_at' => now(),
+        ]);
     }
 
     /**

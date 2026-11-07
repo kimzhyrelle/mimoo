@@ -52,6 +52,7 @@ class FacilityController extends Controller
             'company' => [
                 'name' => $courier->company_name ?? $courier->business_name ?? 'Courier Company',
                 'contact_person' => $courier->first_name . ' ' . $courier->last_name,
+                'service_areas' => $courier->cities_served ?? [],
             ],
             'facilities' => $facilities,
         ]);
@@ -205,6 +206,66 @@ class FacilityController extends Controller
         $facility->delete();
 
         return redirect()->back()->with('success', 'Facility deleted successfully.');
+    }
+
+    /**
+     * Auto-generate branches from courier's registered service areas
+     */
+    public function generateFromServiceAreas(Request $request)
+    {
+        $courier = Auth::user();
+        
+        // Get courier's registered service areas from courier_companies table or registration data
+        // For now, we'll accept cities from the request
+        $validated = $request->validate([
+            'cities' => ['required', 'array', 'min:1'],
+            'cities.*' => ['required', 'string'],
+            'parent_facility_id' => ['nullable', 'exists:courier_facilities,id'],
+            'region' => ['required', 'string'],
+            'province' => ['nullable', 'string'],
+        ]);
+
+        $createdBranches = [];
+        $skippedCities = [];
+        
+        foreach ($validated['cities'] as $city) {
+            // Check if branch already exists for this city
+            $existingBranch = CourierFacility::where('courier_id', $courier->id)
+                ->where('city', $city)
+                ->first();
+                
+            if ($existingBranch) {
+                $skippedCities[] = $city;
+                continue;
+            }
+            
+            // Generate facility code
+            $facilityCode = $this->generateFacilityCode($courier->id, 'Branch');
+            
+            // Create branch
+            $branch = CourierFacility::create([
+                'courier_id' => $courier->id,
+                'facility_name' => $city . ' Branch',
+                'facility_code' => $facilityCode,
+                'facility_type' => 'Branch',
+                'parent_facility_id' => $validated['parent_facility_id'],
+                'status' => 'Active',
+                'region' => $validated['region'],
+                'province' => $validated['province'],
+                'city' => $city,
+                'address' => 'To be updated - ' . $city,
+                'manager_name' => 'To be assigned',
+                'contact_number' => '09000000000',
+                'coverage_cities' => [$city], // Default coverage is the city itself
+            ]);
+            
+            $createdBranches[] = $city;
+        }
+        
+        return redirect()->back()->with('success', 
+            'Generated ' . count($createdBranches) . ' branches successfully.' . 
+            (count($skippedCities) > 0 ? ' Skipped ' . count($skippedCities) . ' cities (already have branches).' : '')
+        );
     }
 
     /**

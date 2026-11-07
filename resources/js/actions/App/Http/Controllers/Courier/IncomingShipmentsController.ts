@@ -250,7 +250,7 @@ accept.post = (args: { id: string | number } | [id: string | number ] | string |
     accept.form = acceptForm
 /**
 * @see \App\Http\Controllers\Courier\IncomingShipmentsController::reject
- * @see app/Http/Controllers/Courier/IncomingShipmentsController.php:367
+ * @see app/Http/Controllers/Courier/IncomingShipmentsController.php:373
  * @route '/api/courier/shipments/{id}/reject'
  */
 export const reject = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -265,7 +265,7 @@ reject.definition = {
 
 /**
 * @see \App\Http\Controllers\Courier\IncomingShipmentsController::reject
- * @see app/Http/Controllers/Courier/IncomingShipmentsController.php:367
+ * @see app/Http/Controllers/Courier/IncomingShipmentsController.php:373
  * @route '/api/courier/shipments/{id}/reject'
  */
 reject.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -293,7 +293,7 @@ reject.url = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Courier\IncomingShipmentsController::reject
- * @see app/Http/Controllers/Courier/IncomingShipmentsController.php:367
+ * @see app/Http/Controllers/Courier/IncomingShipmentsController.php:373
  * @route '/api/courier/shipments/{id}/reject'
  */
 reject.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -303,7 +303,7 @@ reject.post = (args: { id: string | number } | [id: string | number ] | string |
 
     /**
 * @see \App\Http\Controllers\Courier\IncomingShipmentsController::reject
- * @see app/Http/Controllers/Courier/IncomingShipmentsController.php:367
+ * @see app/Http/Controllers/Courier/IncomingShipmentsController.php:373
  * @route '/api/courier/shipments/{id}/reject'
  */
     const rejectForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -313,7 +313,7 @@ reject.post = (args: { id: string | number } | [id: string | number ] | string |
 
             /**
 * @see \App\Http\Controllers\Courier\IncomingShipmentsController::reject
- * @see app/Http/Controllers/Courier/IncomingShipmentsController.php:367
+ * @see app/Http/Controllers/Courier/IncomingShipmentsController.php:373
  * @route '/api/courier/shipments/{id}/reject'
  */
         rejectForm.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

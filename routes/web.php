@@ -146,8 +146,276 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     // Courier - Branch & Facility
     Route::get('/courier/branch-facility', [\App\Http\Controllers\Courier\FacilityController::class, 'index'])->name('courier.branch-facility')->middleware('role:courier');
     Route::post('/courier/branch-facility', [\App\Http\Controllers\Courier\FacilityController::class, 'store'])->name('courier.facility.store')->middleware('role:courier');
+    Route::post('/courier/branch-facility/generate', [\App\Http\Controllers\Courier\FacilityController::class, 'generateFromServiceAreas'])->name('courier.facility.generate')->middleware('role:courier');
     Route::put('/courier/branch-facility/{facility}', [\App\Http\Controllers\Courier\FacilityController::class, 'update'])->name('courier.facility.update')->middleware('role:courier');
     Route::delete('/courier/branch-facility/{facility}', [\App\Http\Controllers\Courier\FacilityController::class, 'destroy'])->name('courier.facility.destroy')->middleware('role:courier');
+    
+    // Courier - Parcel Scanning
+    Route::get('/courier/parcel-scanning', function () {
+        $courier = auth()->user();
+        
+        $facilities = \App\Models\CourierFacility::where('courier_id', $courier->id)
+            ->where('status', 'Active')
+            ->orderBy('facility_type', 'asc')
+            ->orderBy('facility_name', 'asc')
+            ->get()
+            ->map(function ($facility) {
+                return [
+                    'id' => $facility->id,
+                    'facility_name' => $facility->facility_name,
+                    'facility_code' => $facility->facility_code,
+                    'facility_type' => $facility->facility_type,
+                    'city' => $facility->city,
+                    'region' => $facility->region,
+                ];
+            });
+        
+        return inertia('courier/ParcelScanning', [
+            'auth' => [
+                'user' => [
+                    'id' => $courier->id,
+                    'name' => $courier->first_name . ' ' . $courier->last_name,
+                    'email' => $courier->email,
+                    'account_type' => $courier->account_type,
+                ],
+            ],
+            'company' => [
+                'name' => $courier->company_name ?? $courier->business_name ?? 'Courier Company',
+                'contact_person' => $courier->first_name . ' ' . $courier->last_name,
+            ],
+            'facilities' => $facilities,
+        ]);
+    })->name('courier.parcel-scanning')->middleware('role:courier');
+    
+    // API: Get parcel details by waybill number (for courier scanner)
+    Route::get('/api/courier/parcel/{waybillNumber}', function ($waybillNumber) {
+        \Log::info('Courier scanning waybill: ' . $waybillNumber);
+        
+        // Find order by waybill number
+        $order = \App\Models\Order::where('waybill_number', $waybillNumber)
+            ->with(['buyer', 'items.product'])
+            ->first();
+        
+        if (!$order) {
+            return response()->json([
+                'error' => 'Parcel not found',
+                'message' => 'No parcel found with waybill number: ' . $waybillNumber
+            ], 404);
+        }
+        
+        // Calculate total weight from order items
+        $totalWeight = $order->items->sum(function ($item) {
+            return ($item->product->weight ?? 0) * $item->quantity;
+        });
+        
+        return response()->json([
+            'waybill_number' => $order->waybill_number,
+            'order_number' => 'ORD-' . str_pad($order->id, 8, '0', STR_PAD_LEFT),
+            'buyer_name' => $order->shipping_name ?? $order->buyer->name ?? 'Unknown',
+            'buyer_address' => $order->shipping_address,
+            'buyer_city' => $order->shipping_municipality_city,
+            'buyer_barangay' => $order->shipping_barangay,
+            'buyer_phone' => $order->shipping_phone,
+            'seller_name' => $order->items->first()->product->seller->business_name ?? $order->items->first()->product->seller->name ?? 'Unknown Seller',
+            'weight' => round($totalWeight, 2),
+            'payment_method' => strtoupper($order->payment_method),
+            'total_amount' => $order->total,
+            'destination' => $order->shipping_municipality_city . ', ' . $order->shipping_province,
+            'status' => $order->status,
+        ]);
+    })->middleware('role:courier');
+    
+    // API: Scan and receive parcel at facility
+    Route::post('/api/courier/scan-parcel', function (Illuminate\Http\Request $request) {
+        $validated = $request->validate([
+            'waybill_number' => 'required|string',
+            'facility_id' => 'required|exists:courier_facilities,id',
+        ]);
+        
+        $courier = auth()->user();
+        $facility = \App\Models\CourierFacility::findOrFail($validated['facility_id']);
+        
+        // Verify facility belongs to this courier
+        if ($facility->courier_id !== $courier->id) {
+            return response()->json([
+                'error' => 'Unauthorized',
+                'message' => 'This facility does not belong to your company.'
+            ], 403);
+        }
+        
+        // Find order by waybill
+        $order = \App\Models\Order::where('waybill_number', $validated['waybill_number'])->first();
+        
+        if (!$order) {
+            \Log::warning('Parcel scan failed - waybill not found', [
+                'waybill_number' => $validated['waybill_number'],
+                'courier_id' => $courier->id,
+                'facility_id' => $validated['facility_id'],
+            ]);
+            
+            return response()->json([
+                'error' => 'Parcel not found',
+                'message' => 'No parcel found with waybill number: ' . $validated['waybill_number'] . '. Please verify the waybill number and try again.'
+            ], 404);
+        }
+        
+        // Verify order is assigned to this courier
+        if ($order->assigned_courier_id && $order->assigned_courier_id !== $courier->id) {
+            return response()->json([
+                'error' => 'Unauthorized',
+                'message' => 'This parcel is assigned to a different courier company.'
+            ], 403);
+        }
+        
+        // Create scan record
+        \App\Models\ShipmentScan::create([
+            'order_id' => $order->id,
+            'waybill_number' => $validated['waybill_number'],
+            'courier_id' => $courier->id,
+            'facility_id' => $validated['facility_id'],
+            'scan_type' => 'received',
+            'scanned_by' => $courier->first_name . ' ' . $courier->last_name,
+        ]);
+        
+        // Update order tracking status and current location
+        $facilityType = $facility->facility_type;
+        $facilityTypeLabel = match($facilityType) {
+            'main_hub' => 'Main Hub',
+            'sorting_hub' => 'Sorting Hub',
+            'branch' => 'Branch',
+            default => ucfirst(str_replace('_', ' ', $facilityType)),
+        };
+        
+        $trackingMessage = "Parcel scanned at {$facility->facility_name} ({$facilityTypeLabel})";
+        if ($facility->municipality_city) {
+            $trackingMessage .= " in {$facility->municipality_city}";
+        }
+        
+        $order->update([
+            'current_facility_id' => $validated['facility_id'],
+        ]);
+        
+        $order->updateTracking('scanned_at_facility', $trackingMessage);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Parcel received successfully at ' . $facility->facility_name,
+            'order_id' => $order->id,
+            'waybill_number' => $order->waybill_number,
+        ]);
+    })->middleware('role:courier');
+    
+    // API: Get received parcels for a facility
+    Route::get('/api/courier/facility/{facilityId}/received-parcels', function ($facilityId) {
+        $courier = auth()->user();
+        $facility = \App\Models\CourierFacility::findOrFail($facilityId);
+        
+        // Verify facility belongs to this courier
+        if ($facility->courier_id !== $courier->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        
+        // Get latest scan per waybill at this facility
+        $receivedScans = \App\Models\ShipmentScan::where('facility_id', $facilityId)
+            ->where('scan_type', 'received')
+            ->with(['order.buyer', 'order.items.product'])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->groupBy('waybill_number')
+            ->map(function ($scans) {
+                $latestScan = $scans->first();
+                
+                // Check if parcel was scanned at another facility after this one
+                $laterScan = \App\Models\ShipmentScan::where('waybill_number', $latestScan->waybill_number)
+                    ->where('facility_id', '!=', $latestScan->facility_id)
+                    ->where('created_at', '>', $latestScan->created_at)
+                    ->exists();
+                
+                if ($laterScan) {
+                    return null; // Parcel moved to another facility (archived)
+                }
+                
+                $order = $latestScan->order;
+                $totalWeight = $order->items->sum(function ($item) {
+                    return ($item->product->weight ?? 0) * $item->quantity;
+                });
+                
+                return [
+                    'id' => $latestScan->id,
+                    'waybill_number' => $latestScan->waybill_number,
+                    'order_number' => 'ORD-' . str_pad($order->id, 8, '0', STR_PAD_LEFT),
+                    'buyer_name' => $order->shipping_name ?? $order->buyer->name ?? 'Unknown',
+                    'buyer_address' => $order->shipping_address,
+                    'destination' => $order->shipping_municipality_city,
+                    'weight' => round($totalWeight, 2),
+                    'payment_method' => strtoupper($order->payment_method),
+                    'total_amount' => $order->total,
+                    'status' => $order->status,
+                    'received_at' => $latestScan->created_at->format('M d, Y h:i A'),
+                    'scanned_by' => $latestScan->scanned_by,
+                ];
+            })
+            ->filter() // Remove nulls (archived parcels)
+            ->values();
+        
+        return response()->json($receivedScans);
+    })->middleware('role:courier');
+    
+    // API: Get archived parcels for a facility
+    Route::get('/api/courier/facility/{facilityId}/archived-parcels', function ($facilityId) {
+        $courier = auth()->user();
+        $facility = \App\Models\CourierFacility::findOrFail($facilityId);
+        
+        // Verify facility belongs to this courier
+        if ($facility->courier_id !== $courier->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        
+        // Get parcels that were received at this facility but later scanned elsewhere
+        $archivedScans = \App\Models\ShipmentScan::where('facility_id', $facilityId)
+            ->where('scan_type', 'received')
+            ->with(['order.buyer', 'order.items.product'])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->groupBy('waybill_number')
+            ->map(function ($scans) use ($facilityId) {
+                $facilityReceiveScan = $scans->first();
+                
+                // Find scan at another facility after this one
+                $transferScan = \App\Models\ShipmentScan::where('waybill_number', $facilityReceiveScan->waybill_number)
+                    ->where('facility_id', '!=', $facilityId)
+                    ->where('created_at', '>', $facilityReceiveScan->created_at)
+                    ->with('facility')
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+                
+                if (!$transferScan) {
+                    return null; // Still at this facility (not archived)
+                }
+                
+                $order = $facilityReceiveScan->order;
+                $totalWeight = $order->items->sum(function ($item) {
+                    return ($item->product->weight ?? 0) * $item->quantity;
+                });
+                
+                return [
+                    'id' => $facilityReceiveScan->id,
+                    'waybill_number' => $facilityReceiveScan->waybill_number,
+                    'order_number' => 'ORD-' . str_pad($order->id, 8, '0', STR_PAD_LEFT),
+                    'buyer_name' => $order->shipping_name ?? $order->buyer->name ?? 'Unknown',
+                    'destination' => $order->shipping_municipality_city,
+                    'weight' => round($totalWeight, 2),
+                    'status' => $order->status,
+                    'received_at' => $facilityReceiveScan->created_at->format('M d, Y h:i A'),
+                    'transferred_to' => $transferScan->facility->facility_name,
+                    'transferred_at' => $transferScan->created_at->format('M d, Y h:i A'),
+                ];
+            })
+            ->filter() // Remove nulls (still at facility)
+            ->values();
+        
+        return response()->json($archivedScans);
+    })->middleware('role:courier');
     
     // Courier - Rider Management
     Route::get('/courier/rider-management', function () {
@@ -389,6 +657,9 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
         
         // Update order status to shipped (in transit to buyer)
         $order->update(['status' => 'shipped']);
+        
+        // Update tracking status for buyer visibility
+        $order->updateTracking('received_logistics', 'Parcel received by logistics');
         
         \Log::info('Parcel confirmed received at logistics hub', [
             'order_id' => $order->id,
@@ -882,7 +1153,15 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
                 $assignment->addHistory('assigned', $user->id, "Assigned to {$courier->company_name}");
                 
                 // Update order status to 'in_transit' (assigned to courier)
-                $order->update(['status' => 'in_transit']);
+                $order->update([
+                    'status' => 'in_transit',
+                    'assigned_courier_id' => $courierId,
+                    'courier_assigned_at' => now(),
+                ]);
+                
+                // Update tracking status for buyer visibility
+                $courierName = $courier->company_name ?? $courier->business_name ?? 'courier';
+                $order->updateTracking('assigned_courier', "Parcel assigned to {$courierName}");
                 
                 $assignedCount++;
                 
