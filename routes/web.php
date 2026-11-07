@@ -507,6 +507,19 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
             ->where('id', $id)
             ->firstOrFail();
         
+        // Helper to parse legacy service_areas if new fields are empty
+        $serviceAreas = $courier->service_areas ?? [];
+        $regionsServed = $courier->regions_served;
+        $provincesServed = $courier->provinces_served;
+        $citiesServed = $courier->cities_served;
+        
+        // If new fields are empty but legacy service_areas exists, parse it
+        if (empty($regionsServed) && empty($provincesServed) && empty($citiesServed) && !empty($serviceAreas)) {
+            $regionsServed = \App\Helpers\ServiceAreaParser::extractRegions($serviceAreas);
+            $provincesServed = \App\Helpers\ServiceAreaParser::extractProvinces($serviceAreas);
+            $citiesServed = \App\Helpers\ServiceAreaParser::extractCities($serviceAreas);
+        }
+        
         // NEW fields have priority, fall back to old for backward compat
         $application = [
             // Basic info
@@ -545,10 +558,10 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
             'rep_valid_id' => $courier->valid_id,
             'proof_of_address' => $courier->proof_of_address,
             
-            // Step 4: Service Coverage - NEW separate fields
-            'regions_served' => $courier->regions_served ?? [],
-            'provinces_served' => $courier->provinces_served ?? [],
-            'cities_served' => $courier->cities_served ?? [],
+            // Step 4: Service Coverage - Handle both new and legacy formats
+            'regions_served' => $regionsServed ?? [],
+            'provinces_served' => $provincesServed ?? [],
+            'cities_served' => $citiesServed ?? [],
             'delivery_services' => $courier->delivery_services ?? [], // Cast handles old comma strings
             'pickup_available' => $courier->pickup_available ?? 'Not specified',
             'estimated_delivery_time' => $courier->estimated_delivery_time ?? 'Not specified',

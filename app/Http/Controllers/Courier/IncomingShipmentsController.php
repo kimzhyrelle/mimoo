@@ -47,9 +47,7 @@ class IncomingShipmentsController extends Controller
         if ($request->filled('destination')) {
             $destination = $request->destination;
             $query->whereHas('order', function ($q) use ($destination) {
-                $q->where('shipping_municipality_city', 'like', "%{$destination}%")
-                  ->orWhere('shipping_province', 'like', "%{$destination}%")
-                  ->orWhere('shipping_region', 'like', "%{$destination}%");
+                $q->where('shipping_address', 'like', "%{$destination}%");
             });
         }
 
