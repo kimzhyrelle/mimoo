@@ -540,7 +540,7 @@ export default function PickupManagement({ auth, company, pickups: initialPickup
                     </div>
                 )}
 
-                {/* Summary Cards */}
+                {/* Summary Cards - Keep Purple Theme */}
                 <div className="grid grid-cols-5 gap-6">
                     <button
                         onClick={() => handleCardFilter('pending_pickup')}
@@ -684,10 +684,10 @@ export default function PickupManagement({ auth, company, pickups: initialPickup
                     </div>
                 </div>
 
-                {/* Pickups Table */}
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                {/* Pickups - CARD GRID LAYOUT (Different from Incoming Shipments Table) */}
+                <div className="space-y-4">
                     {pickups.length === 0 ? (
-                        <div className="text-center py-12 text-gray-400">
+                        <div className="bg-white rounded-xl border border-gray-200 text-center py-12 text-gray-400">
                             <svg className="w-12 h-12 mx-auto mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
                             </svg>
@@ -698,140 +698,148 @@ export default function PickupManagement({ auth, company, pickups: initialPickup
                             </p>
                         </div>
                     ) : (
-                        <>
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-gray-50 border-b border-gray-200">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Waybill</th>
-                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Seller</th>
-                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Pickup Address</th>
-                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</th>
-                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Scheduled</th>
-                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Personnel</th>
-                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
-                                        {pickups.map((pickup) => (
-                                            <tr key={pickup.id} className="hover:bg-gray-50 transition">
-                                                <td className="px-6 py-4 text-sm text-gray-900 font-medium">{pickup.waybill_number}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-900">{pickup.seller_name}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{pickup.pickup_address}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-600">{pickup.seller_contact}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-600">
-                                                    {pickup.scheduled_date ? (
-                                                        <div>
-                                                            <div>{pickup.scheduled_date}</div>
-                                                            <div className="text-xs text-gray-400">{pickup.scheduled_time_window}</div>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-gray-400">Not scheduled</span>
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-gray-600">
-                                                    {pickup.assigned_personnel === 'Not assigned' ? (
-                                                        <span className="text-gray-400">{pickup.assigned_personnel}</span>
-                                                    ) : pickup.assigned_personnel}
-                                                </td>
-                                                <td className="px-6 py-4">{getStatusBadge(pickup.pickup_status, pickup.attempt_count)}</td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="grid gap-4">
+                            {pickups.map((pickup) => (
+                                <div 
+                                    key={pickup.id} 
+                                    className="bg-white rounded-xl border border-gray-200 hover:border-[#3B1F6B] hover:shadow-lg transition p-6"
+                                >
+                                    <div className="flex items-start justify-between gap-4">
+                                        {/* Left Section - Main Info */}
+                                        <div className="flex-1 grid grid-cols-3 gap-6">
+                                            {/* Column 1 - Waybill & Seller */}
+                                            <div>
+                                                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Waybill</div>
+                                                <div className="text-sm font-bold text-[#3B1F6B] mb-3">{pickup.waybill_number}</div>
+                                                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Seller</div>
+                                                <div className="text-sm text-gray-900 font-medium">{pickup.seller_name}</div>
+                                                <div className="text-xs text-gray-500 mt-1">{pickup.seller_contact}</div>
+                                            </div>
+                                            
+                                            {/* Column 2 - Pickup Details */}
+                                            <div>
+                                                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Pickup Address</div>
+                                                <div className="text-sm text-gray-700 mb-3">{pickup.pickup_address}</div>
+                                                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Service Area</div>
+                                                <div className="text-sm text-gray-700">{pickup.service_area}</div>
+                                            </div>
+                                            
+                                            {/* Column 3 - Schedule & Personnel */}
+                                            <div>
+                                                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Scheduled</div>
+                                                {pickup.scheduled_date ? (
+                                                    <div className="mb-3">
+                                                        <div className="text-sm font-medium text-gray-900">{pickup.scheduled_date}</div>
+                                                        <div className="text-xs text-gray-500">{pickup.scheduled_time_window}</div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-sm text-gray-400 italic mb-3">Not scheduled</div>
+                                                )}
+                                                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Personnel</div>
+                                                {pickup.assigned_personnel === 'Not assigned' ? (
+                                                    <div className="text-sm text-gray-400 italic">{pickup.assigned_personnel}</div>
+                                                ) : (
+                                                    <div className="text-sm font-medium text-gray-900">{pickup.assigned_personnel}</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Right Section - Status & Actions */}
+                                        <div className="flex flex-col items-end gap-3 min-w-[200px]">
+                                            {getStatusBadge(pickup.pickup_status, pickup.attempt_count)}
+                                            <div className="flex flex-wrap items-center justify-end gap-2">
+                                                <button
+                                                    onClick={() => fetchPickupDetails(pickup.id)}
+                                                    className="px-4 py-2 bg-[#3B1F6B] text-white text-xs font-semibold rounded-lg hover:bg-[#2d1850] transition shadow-sm"
+                                                >
+                                                    View Details
+                                                </button>
+                                                {pickup.pickup_status === 'pending_pickup' && (
+                                                    <button
+                                                        onClick={() => openScheduleModal(pickup)}
+                                                        className="px-4 py-2 bg-blue-500 text-white text-xs font-semibold rounded-lg hover:bg-blue-600 transition shadow-sm"
+                                                    >
+                                                        Schedule
+                                                    </button>
+                                                )}
+                                                {(pickup.pickup_status === 'pending_pickup' || pickup.pickup_status === 'scheduled') && pickup.assigned_personnel === 'Not assigned' && (
+                                                    <button
+                                                        onClick={() => openAssignModal(pickup)}
+                                                        className="px-4 py-2 bg-purple-500 text-white text-xs font-semibold rounded-lg hover:bg-purple-600 transition shadow-sm"
+                                                    >
+                                                        Assign
+                                                    </button>
+                                                )}
+                                                {pickup.pickup_status === 'scheduled' && (
+                                                    <>
                                                         <button
-                                                            onClick={() => fetchPickupDetails(pickup.id)}
-                                                            className="text-sm text-[#3B1F6B] hover:underline"
+                                                            onClick={() => openRescheduleModal(pickup)}
+                                                            className="px-4 py-2 bg-orange-500 text-white text-xs font-semibold rounded-lg hover:bg-orange-600 transition shadow-sm"
                                                         >
-                                                            View
+                                                            Reschedule
                                                         </button>
-                                                        {pickup.pickup_status === 'pending_pickup' && (
-                                                            <button
-                                                                onClick={() => openScheduleModal(pickup)}
-                                                                className="text-sm text-blue-600 hover:underline"
-                                                            >
-                                                                Schedule
-                                                            </button>
-                                                        )}
-                                                        {(pickup.pickup_status === 'pending_pickup' || pickup.pickup_status === 'scheduled') && pickup.assigned_personnel === 'Not assigned' && (
-                                                            <button
-                                                                onClick={() => openAssignModal(pickup)}
-                                                                className="text-sm text-purple-600 hover:underline"
-                                                            >
-                                                                Assign
-                                                            </button>
-                                                        )}
-                                                        {pickup.pickup_status === 'scheduled' && (
-                                                            <>
-                                                                <button
-                                                                    onClick={() => openRescheduleModal(pickup)}
-                                                                    className="text-sm text-orange-600 hover:underline"
-                                                                >
-                                                                    Reschedule
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => openConfirmModal(pickup)}
-                                                                    className="text-sm text-green-600 hover:underline"
-                                                                >
-                                                                    Confirm
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => openFailedModal(pickup)}
-                                                                    className="text-sm text-red-600 hover:underline"
-                                                                >
-                                                                    Failed
-                                                                </button>
-                                                            </>
-                                                        )}
-                                                        {pickup.pickup_status === 'failed' && (
-                                                            <button
-                                                                onClick={() => openRescheduleModal(pickup)}
-                                                                className="text-sm text-orange-600 hover:underline"
-                                                            >
-                                                                Retry
+                                                        <button
+                                                            onClick={() => openConfirmModal(pickup)}
+                                                            className="px-4 py-2 bg-green-500 text-white text-xs font-semibold rounded-lg hover:bg-green-600 transition shadow-sm"
+                                                        >
+                                                            Confirm Pickup
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openFailedModal(pickup)}
+                                                            className="px-4 py-2 bg-red-500 text-white text-xs font-semibold rounded-lg hover:bg-red-600 transition shadow-sm"
+                                                        >
+                                                            Mark Failed
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {pickup.pickup_status === 'failed' && (
+                                                    <button
+                                                        onClick={() => openRescheduleModal(pickup)}
+                                                        className="px-4 py-2 bg-orange-500 text-white text-xs font-semibold rounded-lg hover:bg-orange-600 transition shadow-sm"
+                                                    >
+                                                        Retry Pickup
                                                             </button>
                                                         )}
                                                         {(pickup.pickup_status === 'pending_pickup' || pickup.pickup_status === 'scheduled' || pickup.pickup_status === 'failed') && (
                                                             <button
                                                                 onClick={() => openCancelModal(pickup)}
-                                                                className="text-sm text-gray-600 hover:underline"
+                                                                className="text-sm text-gray-600 hover:underline font-medium"
                                                             >
                                                                 Cancel
                                                             </button>
                                                         )}
                                                     </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                        </div>
+                    )}
+                    
+                    {/* Pagination */}
+                    {pickups.length > 0 && pagination.last_page > 1 && (
+                        <div className="bg-white rounded-xl border border-gray-200 px-6 py-4 flex items-center justify-between">
+                            <div className="text-sm text-gray-600">
+                                Showing {((pagination.current_page - 1) * pagination.per_page) + 1} to {Math.min(pagination.current_page * pagination.per_page, pagination.total)} of {pagination.total} results
                             </div>
-
-                            {/* Pagination */}
-                            {pagination.last_page > 1 && (
-                                <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                                    <div className="text-sm text-gray-600">
-                                        Showing {((pagination.current_page - 1) * pagination.per_page) + 1} to {Math.min(pagination.current_page * pagination.per_page, pagination.total)} of {pagination.total} results
-                                    </div>
-                                    <div className="flex gap-2">
-                                        {pagination.links.map((link, index) => (
-                                            <button
-                                                key={index}
-                                                onClick={() => link.url && router.get(link.url)}
-                                                disabled={!link.url}
-                                                className={`px-3 py-1 text-sm rounded ${link.active ? 'bg-[#3B1F6B] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'} disabled:opacity-50 disabled:cursor-not-allowed`}
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </>
+                            <div className="flex gap-2">
+                                {pagination.links.map((link, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => link.url && router.get(link.url)}
+                                        disabled={!link.url}
+                                        className={`px-3 py-1 text-sm rounded ${link.active ? 'bg-[#3B1F6B] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
                     )}
                 </div>
 
                 {/* Details Modal */}
                 {showDetailsModal && selectedPickup && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                             <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
                                 <h2 className="text-xl font-bold text-gray-900" style={fontSyncopate}>Pickup Details</h2>
@@ -994,7 +1002,7 @@ export default function PickupManagement({ auth, company, pickups: initialPickup
 
                 {/* Schedule Modal */}
                 {showScheduleModal && selectedPickup && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-xl max-w-md w-full">
                             <div className="p-6 border-b border-gray-200">
                                 <h2 className="text-xl font-bold text-gray-900" style={fontSyncopate}>Schedule Pickup</h2>
@@ -1060,7 +1068,7 @@ export default function PickupManagement({ auth, company, pickups: initialPickup
 
                 {/* Assign Personnel Modal */}
                 {showAssignModal && selectedPickup && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-xl max-w-md w-full">
                             <div className="p-6 border-b border-gray-200">
                                 <h2 className="text-xl font-bold text-gray-900" style={fontSyncopate}>Assign Personnel</h2>
@@ -1127,7 +1135,7 @@ export default function PickupManagement({ auth, company, pickups: initialPickup
 
                 {/* Reschedule Modal */}
                 {showRescheduleModal && selectedPickup && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-xl max-w-md w-full">
                             <div className="p-6 border-b border-gray-200">
                                 <h2 className="text-xl font-bold text-gray-900" style={fontSyncopate}>Reschedule Pickup</h2>
@@ -1204,7 +1212,7 @@ export default function PickupManagement({ auth, company, pickups: initialPickup
 
                 {/* Cancel Modal */}
                 {showCancelModal && selectedPickup && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-xl max-w-md w-full">
                             <div className="p-6 border-b border-gray-200">
                                 <h2 className="text-xl font-bold text-gray-900" style={fontSyncopate}>Cancel Pickup</h2>
@@ -1270,7 +1278,7 @@ export default function PickupManagement({ auth, company, pickups: initialPickup
 
                 {/* Record Failed Modal */}
                 {showFailedModal && selectedPickup && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-xl max-w-md w-full">
                             <div className="p-6 border-b border-gray-200">
                                 <h2 className="text-xl font-bold text-gray-900" style={fontSyncopate}>Record Failed Attempt</h2>
@@ -1336,7 +1344,7 @@ export default function PickupManagement({ auth, company, pickups: initialPickup
 
                 {/* Confirm Pickup Modal */}
                 {showConfirmModal && selectedPickup && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-xl max-w-md w-full">
                             <div className="p-6 border-b border-gray-200">
                                 <h2 className="text-xl font-bold text-gray-900" style={fontSyncopate}>Confirm Pickup</h2>
@@ -1397,3 +1405,4 @@ export default function PickupManagement({ auth, company, pickups: initialPickup
 }
 
 PickupManagement.layout = (page: ReactNode) => page;
+

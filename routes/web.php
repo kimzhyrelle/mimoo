@@ -144,13 +144,10 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     })->name('courier.sorting-transfers')->middleware('role:courier');
     
     // Courier - Branch & Facility
-    Route::get('/courier/branch-facility', function () {
-        $user = auth()->user();
-        return Inertia::render('courier/BranchFacility', [
-            'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
-            'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
-        ]);
-    })->name('courier.branch-facility')->middleware('role:courier');
+    Route::get('/courier/branch-facility', [\App\Http\Controllers\Courier\FacilityController::class, 'index'])->name('courier.branch-facility')->middleware('role:courier');
+    Route::post('/courier/branch-facility', [\App\Http\Controllers\Courier\FacilityController::class, 'store'])->name('courier.facility.store')->middleware('role:courier');
+    Route::put('/courier/branch-facility/{facility}', [\App\Http\Controllers\Courier\FacilityController::class, 'update'])->name('courier.facility.update')->middleware('role:courier');
+    Route::delete('/courier/branch-facility/{facility}', [\App\Http\Controllers\Courier\FacilityController::class, 'destroy'])->name('courier.facility.destroy')->middleware('role:courier');
     
     // Courier - Rider Management
     Route::get('/courier/rider-management', function () {
