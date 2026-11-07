@@ -18,8 +18,8 @@ interface MultiSelectChipsProps {
 export default function MultiSelectChips({
     label,
     required,
-    options,
-    selected,
+    options = [],
+    selected = [],
     onChange,
     placeholder = 'Search or select...',
     helperText,
@@ -73,8 +73,10 @@ export default function MultiSelectChips({
     };
 
     const handleAddCustom = () => {
-        if (customValue.trim() && !selected.includes(customValue.trim())) {
-            onChange([...selected, customValue.trim()]);
+        const trimmed = customValue.trim();
+        // Keep custom entries with commas as ONE item (don't split)
+        if (trimmed && !selected.includes(trimmed)) {
+            onChange([...selected, trimmed]);
             setCustomValue('');
             setShowCustomInput(false);
         }

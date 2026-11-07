@@ -4,6 +4,7 @@ namespace App\Models;
 
 // Uncomment the line below once you want email verification enforced:
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Casts\DeliveryServicesCast;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -62,6 +63,7 @@ use Illuminate\Support\Carbon;
     'tin',
     'birthday',
     'account_type',
+    'role',
     'region',
     'province',
     'district',
@@ -82,16 +84,26 @@ use Illuminate\Support\Carbon;
     'trade_name',
     'company_website',
     'company_logo',
+    'company_contact_number',
+    'rep_contact_number',
+    'business_email',
+    'username',
+    'business_address',
+    'rep_full_name',
     'sec_registration_no',
     'contact_first_name',
     'contact_last_name',
     'contact_position',
     'service_areas',
+    'regions_served',
+    'provinces_served',
+    'cities_served',
     'delivery_services',
     'pickup_available',
     'estimated_delivery_time',
     'valid_id',
     'proof_of_address',
+    'operating_permits',
     // System fields
     'privacy_policy_accepted',
     'status',
@@ -119,6 +131,11 @@ class User extends Authenticatable
             'approved_at'       => 'datetime',
             'birthday'          => 'date',
             'password'          => 'hashed',
+            'service_areas'     => 'array',
+            'regions_served'    => 'array',
+            'provinces_served'  => 'array',
+            'cities_served'     => 'array',
+            'delivery_services' => DeliveryServicesCast::class,
         ];
     }
 

@@ -25,14 +25,17 @@ Route::get('/logistics', function () {
 })->name('logistics.landing');
 
 Route::middleware(['auth', 'verified', 'approved'])->group(function () {
-    // Generic dashboard - redirect based on account type
+    // Generic dashboard - redirect based on role
     Route::get('dashboard', function () {
         $user = auth()->user();
         
-        return match ($user->account_type) {
+        return match ($user->role ?? $user->account_type) {
             'seller' => redirect()->route('seller.dashboard'),
-            'logistics' => redirect()->route('logistics.dashboard'),
-            default => redirect('/homepage'), // Buyers go to homepage
+            'logistics_staff' => redirect()->route('logistics.dashboard'),
+            'courier' => redirect()->route('courier.dashboard'),
+            'admin' => redirect()->route('admin.dashboard'),
+            'buyer' => redirect('/homepage'),
+            default => redirect('/homepage'),
         };
     })->name('dashboard');
     
@@ -74,16 +77,11 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
                 'contact_person' => trim($user->contact_first_name . ' ' . $user->contact_last_name),
             ],
         ]);
-    })->name('logistics.dashboard');
+    })->name('logistics.dashboard')->middleware('role:logistics_staff');
     
-    // Courier Dashboard - for approved courier/logistics users ONLY
+    // Courier Dashboard - for approved courier companies ONLY
     Route::get('/courier/dashboard', function () {
         $user = auth()->user();
-        
-        // Access control: Only approved courier/logistics accounts can access
-        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
-            abort(403, 'Access denied. Only approved courier companies can access this dashboard.');
-        }
         
         // Mock stats for now - replace with real data later
         $stats = [
@@ -109,143 +107,113 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
             ],
             'stats' => $stats,
         ]);
-    })->name('courier.dashboard');
+    })->name('courier.dashboard')->middleware('role:courier');
     
     // Courier - Incoming Shipments (with full functionality)
-    Route::get('/courier/incoming-shipments', [\App\Http\Controllers\Courier\IncomingShipmentsController::class, 'index'])->name('courier.incoming-shipments');
-    Route::get('/api/courier/shipments/{id}', [\App\Http\Controllers\Courier\IncomingShipmentsController::class, 'show']);
-    Route::post('/api/courier/shipments/{id}/accept', [\App\Http\Controllers\Courier\IncomingShipmentsController::class, 'accept']);
-    Route::post('/api/courier/shipments/{id}/reject', [\App\Http\Controllers\Courier\IncomingShipmentsController::class, 'reject']);
+    Route::get('/courier/incoming-shipments', [\App\Http\Controllers\Courier\IncomingShipmentsController::class, 'index'])->name('courier.incoming-shipments')->middleware('role:courier');
+    Route::get('/api/courier/shipments/{id}', [\App\Http\Controllers\Courier\IncomingShipmentsController::class, 'show'])->middleware('role:courier');
+    Route::post('/api/courier/shipments/{id}/accept', [\App\Http\Controllers\Courier\IncomingShipmentsController::class, 'accept'])->middleware('role:courier');
+    Route::post('/api/courier/shipments/{id}/reject', [\App\Http\Controllers\Courier\IncomingShipmentsController::class, 'reject'])->middleware('role:courier');
     
     // Courier - Pickup Management (with full functionality)
-    Route::get('/courier/pickup-management', [\App\Http\Controllers\Courier\PickupManagementController::class, 'index'])->name('courier.pickup-management');
-    Route::get('/api/courier/pickups/{id}', [\App\Http\Controllers\Courier\PickupManagementController::class, 'show']);
-    Route::post('/api/courier/pickups/{id}/schedule', [\App\Http\Controllers\Courier\PickupManagementController::class, 'schedule']);
-    Route::post('/api/courier/pickups/{id}/assign-personnel', [\App\Http\Controllers\Courier\PickupManagementController::class, 'assignPersonnel']);
-    Route::post('/api/courier/pickups/{id}/reschedule', [\App\Http\Controllers\Courier\PickupManagementController::class, 'reschedule']);
-    Route::post('/api/courier/pickups/{id}/cancel', [\App\Http\Controllers\Courier\PickupManagementController::class, 'cancel']);
-    Route::post('/api/courier/pickups/{id}/record-failed', [\App\Http\Controllers\Courier\PickupManagementController::class, 'recordFailed']);
-    Route::post('/api/courier/pickups/{id}/confirm', [\App\Http\Controllers\Courier\PickupManagementController::class, 'confirmPickup']);
+    Route::get('/courier/pickup-management', [\App\Http\Controllers\Courier\PickupManagementController::class, 'index'])->name('courier.pickup-management')->middleware('role:courier');
+    Route::get('/api/courier/pickups/{id}', [\App\Http\Controllers\Courier\PickupManagementController::class, 'show'])->middleware('role:courier');
+    Route::post('/api/courier/pickups/{id}/schedule', [\App\Http\Controllers\Courier\PickupManagementController::class, 'schedule'])->middleware('role:courier');
+    Route::post('/api/courier/pickups/{id}/assign-personnel', [\App\Http\Controllers\Courier\PickupManagementController::class, 'assignPersonnel'])->middleware('role:courier');
+    Route::post('/api/courier/pickups/{id}/reschedule', [\App\Http\Controllers\Courier\PickupManagementController::class, 'reschedule'])->middleware('role:courier');
+    Route::post('/api/courier/pickups/{id}/cancel', [\App\Http\Controllers\Courier\PickupManagementController::class, 'cancel'])->middleware('role:courier');
+    Route::post('/api/courier/pickups/{id}/record-failed', [\App\Http\Controllers\Courier\PickupManagementController::class, 'recordFailed'])->middleware('role:courier');
+    Route::post('/api/courier/pickups/{id}/confirm', [\App\Http\Controllers\Courier\PickupManagementController::class, 'confirmPickup'])->middleware('role:courier');
     
     // Courier - Parcel Scanning
     Route::get('/courier/parcel-scanning', function () {
         $user = auth()->user();
-        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
-            abort(403);
-        }
         return Inertia::render('courier/ParcelScanning', [
             'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
             'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
         ]);
-    })->name('courier.parcel-scanning');
+    })->name('courier.parcel-scanning')->middleware('role:courier');
     
     // Courier - Sorting & Transfers
     Route::get('/courier/sorting-transfers', function () {
         $user = auth()->user();
-        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
-            abort(403);
-        }
         return Inertia::render('courier/SortingTransfers', [
             'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
             'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
         ]);
-    })->name('courier.sorting-transfers');
+    })->name('courier.sorting-transfers')->middleware('role:courier');
     
     // Courier - Branch & Facility
     Route::get('/courier/branch-facility', function () {
         $user = auth()->user();
-        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
-            abort(403);
-        }
         return Inertia::render('courier/BranchFacility', [
             'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
             'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
         ]);
-    })->name('courier.branch-facility');
+    })->name('courier.branch-facility')->middleware('role:courier');
     
     // Courier - Rider Management
     Route::get('/courier/rider-management', function () {
         $user = auth()->user();
-        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
-            abort(403);
-        }
         return Inertia::render('courier/RiderManagement', [
             'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
             'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
         ]);
-    })->name('courier.rider-management');
+    })->name('courier.rider-management')->middleware('role:courier');
     
     // Courier - Delivery Management
     Route::get('/courier/delivery-management', function () {
         $user = auth()->user();
-        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
-            abort(403);
-        }
         return Inertia::render('courier/DeliveryManagement', [
             'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
             'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
         ]);
-    })->name('courier.delivery-management');
+    })->name('courier.delivery-management')->middleware('role:courier');
     
     // Courier - COD & Remittance
     Route::get('/courier/cod-remittance', function () {
         $user = auth()->user();
-        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
-            abort(403);
-        }
         return Inertia::render('courier/CODRemittance', [
             'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
             'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
         ]);
-    })->name('courier.cod-remittance');
+    })->name('courier.cod-remittance')->middleware('role:courier');
     
     // Courier - Reports
     Route::get('/courier/reports', function () {
         $user = auth()->user();
-        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
-            abort(403);
-        }
         return Inertia::render('courier/Reports', [
             'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
             'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
         ]);
-    })->name('courier.reports');
+    })->name('courier.reports')->middleware('role:courier');
     
     // Courier - Support
     Route::get('/courier/support', function () {
         $user = auth()->user();
-        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
-            abort(403);
-        }
         return Inertia::render('courier/Support', [
             'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
             'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
         ]);
-    })->name('courier.support');
+    })->name('courier.support')->middleware('role:courier');
     
     // Courier - Messages
     Route::get('/courier/messages', function () {
         $user = auth()->user();
-        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
-            abort(403);
-        }
         return Inertia::render('courier/Messages', [
             'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
             'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
         ]);
-    })->name('courier.messages');
+    })->name('courier.messages')->middleware('role:courier');
     
     // Courier - Company Settings
     Route::get('/courier/settings', function () {
         $user = auth()->user();
-        if ($user->account_type !== 'logistics' || $user->status !== 'approved') {
-            abort(403);
-        }
         return Inertia::render('courier/CompanySettings', [
             'auth' => ['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'account_type' => $user->account_type]],
             'company' => ['name' => $user->company_name ?? $user->business_name ?? 'Courier Company', 'contact_person' => trim(($user->contact_first_name ?? '') . ' ' . ($user->contact_last_name ?? ''))],
         ]);
-    })->name('courier.settings');
+    })->name('courier.settings')->middleware('role:courier');
     
     // Logistics Incoming Parcels
     Route::get('/logistics/incoming-parcels', function () {
@@ -486,35 +454,34 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::get('/logistics/courier-applications', function () {
         $user = auth()->user();
         
-        // Fetch real courier applications from users table
+        // Fetch courier applications only (not logistics staff)
         $applications = \App\Models\User::where('account_type', 'logistics')
+            ->where('role', 'courier')
             ->orderByRaw("FIELD(status, 'pending', 'approved', 'rejected')")
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($courier) {
-                // Build full name
-                $fullName = trim(($courier->first_name ?? '') . ' ' . ($courier->last_name ?? ''));
-                if (empty($fullName)) {
-                    $fullName = $courier->name;
-                }
+                // Build full name (prefer rep_full_name, fall back to split)
+                $fullName = $courier->rep_full_name 
+                    ?? trim(($courier->first_name ?? '') . ' ' . ($courier->last_name ?? '')) 
+                    ?: $courier->name 
+                    ?: 'Not provided';
                 
                 // Get company name with fallbacks
                 $companyName = $courier->company_name 
                     ?? $courier->trade_name 
                     ?? $courier->business_name 
-                    ?? $fullName 
-                    ?? 'Unnamed Company';
+                    ?? $fullName;
                 
                 return [
                     'id' => $courier->id,
                     'company_name' => $companyName,
-                    'trade_name' => $courier->trade_name ?? $courier->company_name ?? $companyName,
-                    'business_email' => $courier->email,
+                    'trade_name' => $courier->trade_name ?? $courier->company_name ?? 'Not provided',
+                    'business_email' => $courier->business_email ?? $courier->email,
                     'rep_full_name' => $fullName,
-                    'rep_position' => $courier->contact_position ?? 'Representative',
-                    'status' => $courier->status, // pending, approved, rejected
+                    'rep_position' => $courier->contact_position ?? 'Not provided',
+                    'status' => $courier->status,
                     'submitted_at' => $courier->created_at->format('M d, Y'),
-                    'contact_number' => $courier->contact_number,
                 ];
             });
         
@@ -528,10 +495,6 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
                 ],
             ],
             'applications' => $applications,
-            'debug' => [
-                'total_count' => $applications->count(),
-                'timestamp' => now()->toDateTimeString(),
-            ],
         ]);
     })->name('logistics.courier-applications');
     
@@ -540,39 +503,11 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
         $user = auth()->user();
         
         $courier = \App\Models\User::where('account_type', 'logistics')
+            ->where('role', 'courier')
             ->where('id', $id)
             ->firstOrFail();
         
-        // Decode service_areas JSON
-        $serviceAreas = [];
-        if ($courier->service_areas) {
-            $decoded = json_decode($courier->service_areas, true);
-            $serviceAreas = is_array($decoded) ? $decoded : [];
-        }
-        
-        // Parse service areas into regions, provinces, cities
-        $regions = [];
-        $provinces = [];
-        $cities = [];
-        
-        foreach ($serviceAreas as $area) {
-            // Simple heuristic: regions have "Region" in name, cities have "City" or common city names
-            if (stripos($area, 'Region') !== false || stripos($area, 'NCR') !== false || stripos($area, 'CAR') !== false || stripos($area, 'BARMM') !== false || stripos($area, 'MIMAROPA') !== false) {
-                $regions[] = $area;
-            } elseif (stripos($area, 'City') !== false || stripos($area, 'Municipality') !== false || stripos($area, 'Manila') !== false || stripos($area, 'Quezon') !== false || stripos($area, 'Makati') !== false || stripos($area, 'Taguig') !== false || stripos($area, 'Pasig') !== false) {
-                $cities[] = $area;
-            } else {
-                // Likely a province
-                $provinces[] = $area;
-            }
-        }
-        
-        // Build full name
-        $fullName = trim(($courier->first_name ?? '') . ' ' . ($courier->last_name ?? ''));
-        if (empty($fullName)) {
-            $fullName = $courier->name ?? 'Unknown';
-        }
-        
+        // NEW fields have priority, fall back to old for backward compat
         $application = [
             // Basic info
             'id' => $courier->id,
@@ -582,50 +517,51 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
             'approved_at' => $courier->approved_at ? $courier->approved_at->format('F d, Y g:i A') : null,
             
             // Step 1: Company Information
-            'company_name' => $courier->company_name ?? $courier->trade_name ?? $fullName,
-            'trade_name' => $courier->trade_name ?? $courier->company_name,
-            'business_registration_number' => $courier->sec_registration_no,
-            'business_address' => $courier->street_address,
-            'business_email' => $courier->email,
-            'company_contact_number' => $courier->contact_number,
-            'company_website' => $courier->company_website,
+            'company_name' => $courier->company_name ?? 'Not provided',
+            'trade_name' => $courier->trade_name ?? 'Not provided',
+            'business_registration_number' => $courier->sec_registration_no ?? 'Not provided',
+            'business_address' => $courier->business_address ?? $courier->street_address ?? 'Not provided',
+            'business_email' => $courier->business_email ?? 'Not provided',
+            'company_contact_number' => $courier->company_contact_number ?? 'Not provided',
+            'rep_contact_number' => $courier->rep_contact_number ?? 'Not provided',
+            'company_website' => $courier->company_website ?? 'Not provided',
             'company_logo' => $courier->company_logo,
             
             // Step 2: Authorized Representative
-            'rep_full_name' => $fullName,
-            'rep_first_name' => $courier->first_name ?? $courier->contact_first_name,
-            'rep_last_name' => $courier->last_name ?? $courier->contact_last_name,
-            'rep_position' => $courier->contact_position ?? 'Representative',
+            'rep_full_name' => $courier->rep_full_name ?? trim(($courier->first_name ?? '') . ' ' . ($courier->last_name ?? '')) ?: 'Not provided',
+            'rep_first_name' => $courier->contact_first_name ?? $courier->first_name ?? 'Not provided',
+            'rep_last_name' => $courier->contact_last_name ?? $courier->last_name ?? 'Not provided',
+            'rep_position' => $courier->contact_position ?? 'Not provided',
             'rep_email' => $courier->email,
-            'rep_contact_number' => $courier->contact_number,
+            'rep_contact_number' => $courier->rep_contact_number ?? $courier->contact_number ?? 'Not provided',
             'rep_sex' => $courier->sex ?? 'Not specified',
-            'rep_birthday' => $courier->birthday,
+            'rep_birthday' => $courier->birthday ?? 'Not provided',
+            'username' => $courier->username ?? 'Not provided',
             
             // Step 3: Business Documents
             'dti_sec_certificate' => $courier->sec_certificate,
             'mayors_permit' => $courier->business_permit,
-            'operating_permits' => $courier->bir_2303,
+            'operating_permits' => $courier->operating_permits,
             'rep_valid_id' => $courier->valid_id,
-            'id_document' => $courier->id_document,
             'proof_of_address' => $courier->proof_of_address,
             
-            // Step 4: Service Coverage
-            'regions_served' => $regions,
-            'provinces_served' => $provinces,
-            'cities_served' => $cities,
-            'service_areas_raw' => $serviceAreas,
-            'delivery_services' => $courier->delivery_services,
-            'pickup_available' => $courier->pickup_available,
-            'estimated_delivery_time' => $courier->estimated_delivery_time,
+            // Step 4: Service Coverage - NEW separate fields
+            'regions_served' => $courier->regions_served ?? [],
+            'provinces_served' => $courier->provinces_served ?? [],
+            'cities_served' => $courier->cities_served ?? [],
+            'delivery_services' => $courier->delivery_services ?? [], // Cast handles old comma strings
+            'pickup_available' => $courier->pickup_available ?? 'Not specified',
+            'estimated_delivery_time' => $courier->estimated_delivery_time ?? 'Not specified',
             
-            // Address details
-            'region' => $courier->region ?? 'Not specified',
-            'province' => $courier->province,
-            'municipality_city' => $courier->municipality_city ?? 'Not specified',
-            'barangay' => $courier->barangay ?? 'Not specified',
-            'postal_code' => $courier->postal_code,
+            // Legacy service_areas (for old records)
+            'service_areas_legacy' => $courier->service_areas ?? [],
             
             // Other
+            'region' => $courier->region ?? 'Not provided',
+            'province' => $courier->province ?? null,
+            'municipality_city' => $courier->municipality_city ?? 'Not provided',
+            'barangay' => $courier->barangay ?? 'Not provided',
+            'postal_code' => $courier->postal_code ?? null,
             'privacy_policy_accepted' => $courier->privacy_policy_accepted ?? false,
             'verification_status' => $courier->verification_status ?? 'unverified',
         ];

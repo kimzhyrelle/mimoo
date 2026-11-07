@@ -25,15 +25,14 @@ interface Application {
     rep_position: string | null;
     rep_email: string;
     rep_contact_number: string;
-    rep_sex: string;
-    rep_birthday: string;
+    rep_sex: string | null;
+    rep_birthday: string | null;
     
     // Step 3
     dti_sec_certificate: string | null;
     mayors_permit: string | null;
     operating_permits: string | null;
     rep_valid_id: string | null;
-    id_document: string | null;
     proof_of_address: string | null;
     
     // Step 4
@@ -41,7 +40,7 @@ interface Application {
     provinces_served: string[];
     cities_served: string[];
     service_areas_raw: string[];
-    delivery_services: string | null;
+    delivery_services: string[] | null;
     pickup_available: string | null;
     estimated_delivery_time: string | null;
     
@@ -188,10 +187,12 @@ export default function CourierApplicationDetail({ auth, application }: Props) {
     const [isApproving, setIsApproving] = useState(false);
     const [isRejecting, setIsRejecting] = useState(false);
     
-    // Parse delivery services
-    const deliveryServicesList = application.delivery_services 
-        ? application.delivery_services.split(',').map(s => s.trim()).filter(Boolean)
-        : [];
+    // Parse delivery services - handle both array (new format) and string (legacy format)
+    const deliveryServicesList = Array.isArray(application.delivery_services)
+        ? application.delivery_services
+        : application.delivery_services 
+            ? application.delivery_services.split(',').map(s => s.trim()).filter(Boolean)
+            : [];
     
     const handleApprove = async () => {
         if (!confirm(`Are you sure you want to APPROVE ${application.company_name}?\n\nThis will give them access to the courier dashboard.`)) {
@@ -326,13 +327,13 @@ export default function CourierApplicationDetail({ auth, application }: Props) {
                         <Section title="Application Information">
                             <dl className="divide-y divide-gray-100">
                                 <Field label="Application ID" value={`#${application.id}`} />
-                                <Field label="Status" value={application.status.charAt(0).toUpperCase() + application.status.slice(1)} />
+                                <Field label="Status" value={application.status ? application.status.charAt(0).toUpperCase() + application.status.slice(1) : null} />
                                 <Field label="Submitted" value={application.submitted_at} />
                                 <Field label="Last Updated" value={application.updated_at} />
                                 {application.approved_at && (
                                     <Field label="Approved" value={application.approved_at} />
                                 )}
-                                <Field label="Email Verification" value={application.verification_status.charAt(0).toUpperCase() + application.verification_status.slice(1)} />
+                                <Field label="Email Verification" value={application.verification_status ? application.verification_status.charAt(0).toUpperCase() + application.verification_status.slice(1) : null} />
                             </dl>
                         </Section>
                         
@@ -359,7 +360,7 @@ export default function CourierApplicationDetail({ auth, application }: Props) {
                                 <Field label="Position / Designation" value={application.rep_position} />
                                 <Field label="Email Address" value={application.rep_email} />
                                 <Field label="Contact Number" value={application.rep_contact_number} />
-                                <Field label="Sex" value={application.rep_sex.charAt(0).toUpperCase() + application.rep_sex.slice(1)} />
+                                <Field label="Sex" value={application.rep_sex ? application.rep_sex.charAt(0).toUpperCase() + application.rep_sex.slice(1) : null} />
                                 <Field label="Birthday" value={application.rep_birthday} />
                             </dl>
                         </Section>
@@ -371,7 +372,6 @@ export default function CourierApplicationDetail({ auth, application }: Props) {
                                 <FileField label="Mayor's Permit" path={application.mayors_permit} />
                                 <FileField label="Operating Permits" path={application.operating_permits} />
                                 <FileField label="Representative Valid ID" path={application.rep_valid_id} />
-                                <FileField label="ID Document" path={application.id_document} />
                                 <FileField label="Proof of Address" path={application.proof_of_address} />
                             </dl>
                         </Section>

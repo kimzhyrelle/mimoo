@@ -48,12 +48,25 @@ class LoginResponse implements LoginResponseContract
             'company_name' => $user->company_name ?? null,
         ]);
 
-        // Redirect based on account type
-        $home = match ($user->account_type) {
+        // Redirect based on role and status
+        $home = match ($user->role ?? $user->account_type) {
             'seller' => '/seller/dashboard',
-            'logistics' => '/courier/dashboard', // All logistics accounts are courier companies
+            'logistics_staff' => '/logistics/dashboard',
+            'courier' => match ($user->status) {
+                'approved' => '/courier/dashboard',
+                'pending' => redirect()->route('register.pending'),
+                'rejected' => redirect()->route('login')->withErrors(['email' => 'Your courier application was rejected.']),
+                default => '/login',
+            },
+            'admin' => '/admin/dashboard',
+            'buyer' => '/homepage',
             default => '/homepage',
         };
+
+        // If courier status returned a redirect, return it directly
+        if ($home instanceof \Illuminate\Http\RedirectResponse) {
+            return $home;
+        }
 
         \Log::info('REDIRECTING TO: ' . $home);
 

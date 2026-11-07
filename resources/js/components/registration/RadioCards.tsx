@@ -11,8 +11,8 @@ interface RadioCardsProps {
 export default function RadioCards({
     label,
     required,
-    options,
-    selected,
+    options = [],
+    selected = '',
     onChange,
     helperText,
     error,
