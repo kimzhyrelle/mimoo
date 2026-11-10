@@ -1,4 +1,4 @@
-﻿import { Link } from '@inertiajs/react';
+﻿import { Link, router } from '@inertiajs/react';
 import { FormEvent, ReactNode, useEffect, useRef, useState } from 'react';
 import StepProgress from '../../components/registration/StepProgress';
 import MultiSelectChips from '../../components/registration/MultiSelectChips';
@@ -10,7 +10,7 @@ const fontCalibri = { fontFamily: 'Calibri, sans-serif' };
 const fontPoppins = { fontFamily: 'Poppins, sans-serif' };
 const fontSFCompact = { fontFamily: "'SF Compact', -apple-system, BlinkMacSystemFont, sans-serif" };
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 5;
 const MAX_FILE_MB = 5;
 const PH_MOBILE_RE = /^(09|\+639)\d{9}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -18,7 +18,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SIDEBAR_STEPS = [
     'Personal information and contact details',
     'Account credentials and authentication',
-    'Branch assignment and employment',
     'Delivery vehicle and service areas',
     'Complete address information',
     'Upload documents and verification',
@@ -48,30 +47,30 @@ type FormShape = {
     password: string;
     password_confirmation: string;
     
-    // Step 3: Branch Assignment
-    courier_company_id: string;
-    assigned_branch_id: string;
-    employment_status: string;
-    
-    // Step 4: Delivery Info
+    // Step 3: Delivery Info (Service areas will determine branch assignment by courier)
     service_areas: string[];
     vehicle_type: string;
     plate_number: string;
     drivers_license_number: string;
     
-    // Step 5: Address
+    // Step 4: Address
     region: string;
     province: string;
     city_municipality: string;
     barangay: string;
     street_address: string;
     
-    // Step 6: Documents
+    // Step 5: Documents
     government_id: File | null;
     drivers_license: File | null;
     vehicle_or_cr: File | null;
     
     privacy_policy_accepted: boolean;
+    
+    // Backend will set these during approval:
+    // courier_company_id: from application context
+    // assigned_branch_id: courier assigns based on service_areas
+    // employment_status: set to 'active' upon approval
 };
 
 type FieldName = keyof FormShape;
@@ -80,10 +79,9 @@ type Errs = Partial<Record<FieldName, string>>;
 const FIELD_STEP: Partial<Record<FieldName, number>> = {
     first_name: 1, middle_name: 1, last_name: 1, suffix: 1, birthdate: 1, gender: 1, contact_number: 1, email: 1, profile_picture: 1,
     username: 2, password: 2, password_confirmation: 2,
-    courier_company_id: 3, assigned_branch_id: 3, employment_status: 3,
-    service_areas: 4, vehicle_type: 4, plate_number: 4, drivers_license_number: 4,
-    region: 5, province: 5, city_municipality: 5, barangay: 5, street_address: 5,
-    government_id: 6, drivers_license: 6, vehicle_or_cr: 6,
+    service_areas: 3, vehicle_type: 3, plate_number: 3, drivers_license_number: 3,
+    region: 4, province: 4, city_municipality: 4, barangay: 4, street_address: 4,
+    government_id: 5, drivers_license: 5, vehicle_or_cr: 5,
 };
 
 const FIELD_LABEL: Partial<Record<FieldName, string>> = {
@@ -99,9 +97,6 @@ const FIELD_LABEL: Partial<Record<FieldName, string>> = {
     username: 'Username',
     password: 'Password',
     password_confirmation: 'Confirm Password',
-    courier_company_id: 'Courier Company',
-    assigned_branch_id: 'Assigned Branch',
-    employment_status: 'Employment Status',
     service_areas: 'Service Areas',
     vehicle_type: 'Vehicle Type',
     plate_number: 'Plate Number',
@@ -195,7 +190,7 @@ function validate(step: number, d: FormShape): Errs {
             const hasUpper = /[A-Z]/.test(d.password);
             const hasLower = /[a-z]/.test(d.password);
             const hasNumber = /\d/.test(d.password);
-            const hasSpecial = /[^A-Za-z0-9]/.test(d.password);
+            const hasSpecial = /[@$!%*?&_#-]/.test(d.password);
             if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
                 e.password = 'Password must include uppercase, lowercase, number, and special character.';
             }
@@ -209,20 +204,6 @@ function validate(step: number, d: FormShape): Errs {
     }
     
     if (step === 3) {
-        if (!d.courier_company_id) {
-            e.courier_company_id = 'Select a courier company.';
-        }
-        
-        if (!d.assigned_branch_id) {
-            e.assigned_branch_id = 'Select your assigned branch.';
-        }
-        
-        if (!d.employment_status) {
-            e.employment_status = 'Select your employment status.';
-        }
-    }
-    
-    if (step === 4) {
         if (d.service_areas.length === 0) {
             e.service_areas = 'Select at least one service area.';
         }
@@ -242,7 +223,7 @@ function validate(step: number, d: FormShape): Errs {
         }
     }
     
-    if (step === 5) {
+    if (step === 4) {
         if (!d.region) {
             e.region = 'Select your region.';
         }
@@ -260,7 +241,7 @@ function validate(step: number, d: FormShape): Errs {
         }
     }
     
-    if (step === 6) {
+    if (step === 5) {
         const govIdErr = requiredFileError(d.government_id);
         if (govIdErr) e.government_id = govIdErr;
         
@@ -289,6 +270,11 @@ const inputCls = (err?: string) =>
         err ? 'border-red-400 bg-red-50' : 'border-[#DDD5EE]'
     }`;
 
+const selectCls = (err?: string, disabled?: boolean) =>
+    `w-full rounded-xl border px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#3B1F6B]/30 focus:border-[#3B1F6B] transition appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3cpolyline points="6 9 12 15 18 9"%3e%3c/polyline%3e%3c/svg%3e')] bg-[length:1rem] bg-[center_right_0.75rem] bg-no-repeat pr-10 ${
+        disabled ? 'bg-gray-50 text-gray-400 cursor-not-allowed border-gray-200' : 'text-gray-900 cursor-pointer hover:border-[#B4A7D6]'
+    } ${err ? 'border-red-400' : 'border-[#DDD5EE]'} [&>option]:text-sm [&>option]:py-2 [&>option]:px-3 [&>option:hover]:bg-[#F8F6FC] [&>option:checked]:bg-[#3B1F6B] [&>option:checked]:text-white`;
+
 function Field({
     label, htmlFor, required, error, hint, className = '', children,
 }: {
@@ -311,6 +297,88 @@ function Field({
     );
 }
 
+function CustomSelect({
+    id, value, onChange, options, placeholder, disabled, error
+}: {
+    id: string;
+    value: string;
+    onChange: (value: string) => void;
+    options: Array<{ value: string; label: string }>;
+    placeholder: string;
+    disabled?: boolean;
+    error?: string;
+}) {
+    const [isOpen, setIsOpen] = useState(false);
+    const selectRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (selectRef.current && !selectRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOpen]);
+
+    const selectedOption = options.find(opt => opt.value === value);
+
+    return (
+        <div ref={selectRef} className="relative">
+            <button
+                type="button"
+                id={id}
+                onClick={() => !disabled && setIsOpen(!isOpen)}
+                disabled={disabled}
+                aria-expanded={isOpen}
+                className={`w-full text-left rounded-xl border px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#9B5DE5]/20 focus:border-[#9B5DE5] transition flex items-center justify-between ${
+                    disabled ? 'bg-gray-50 text-gray-400 cursor-not-allowed border-gray-200' : 'cursor-pointer hover:border-[#B4A7D6]'
+                } ${error ? 'border-red-400' : 'border-[#DDD5EE]'} ${!value ? 'text-gray-400' : 'text-gray-900'}`}
+            >
+                <span className="block truncate">
+                    {selectedOption ? selectedOption.label : placeholder}
+                </span>
+                <svg
+                    className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+
+            {isOpen && !disabled && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-[#DDD5EE] rounded-xl shadow-lg max-h-60 overflow-auto">
+                    {options.map((option) => (
+                        <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => {
+                                onChange(option.value);
+                                setIsOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2.5 text-sm transition ${
+                                value === option.value
+                                    ? 'bg-[#F8F6FC] text-[#3B1F6B] font-medium'
+                                    : 'text-gray-900 hover:bg-[#F8F6FC]'
+                            } ${option.value === '' ? 'text-gray-500' : ''}`}
+                        >
+                            {option.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function PasswordInput({
     id, value, onChange, error, autoComplete,
 }: { id: string; value: string; onChange: (v: string) => void; error?: string; autoComplete: string }) {
@@ -318,7 +386,7 @@ function PasswordInput({
     const hasUpper = /[A-Z]/.test(value);
     const hasLower = /[a-z]/.test(value);
     const hasNumber = /\d/.test(value);
-    const hasSpecial = /[^A-Za-z0-9]/.test(value);
+    const hasSpecial = /[@$!%*?&_#-]/.test(value);
     const hasLength = value.length >= 8;
 
     return (
@@ -421,9 +489,6 @@ export default function RiderRegistration() {
         username: '',
         password: '',
         password_confirmation: '',
-        courier_company_id: '',
-        assigned_branch_id: '',
-        employment_status: '',
         service_areas: [],
         vehicle_type: '',
         plate_number: '',
@@ -442,7 +507,13 @@ export default function RiderRegistration() {
     const allErrors: Errs = { ...clientErrors };
     Object.keys(serverErrors).forEach((key) => {
         if (serverErrors[key] && serverErrors[key].length > 0) {
-            allErrors[key as FieldName] = serverErrors[key][0];
+            // Handle both string and array error formats
+            const errorValue = serverErrors[key];
+            if (Array.isArray(errorValue)) {
+                allErrors[key as FieldName] = errorValue[0];
+            } else if (typeof errorValue === 'string') {
+                allErrors[key as FieldName] = errorValue;
+            }
         }
     });
 
@@ -455,24 +526,9 @@ export default function RiderRegistration() {
     const [psgcCities, setPsgcCities] = useState<Array<{ name: string; code: string }>>([]);
     const [psgcBarangays, setPsgcBarangays] = useState<Array<{ name: string; code: string }>>([]);
 
-    // Mock courier/branch data - TODO: Replace with API
-    const courierCompanies = [
-        { id: '1', name: 'Fast Express Logistics' },
-        { id: '2', name: 'Metro Courier Services' },
-    ];
-
-    const branches = [
-        { id: '1', name: 'Manila Main Hub', code: 'MNL-001', courier_id: '1', coverage: ['Manila', 'Quezon City', 'Makati'] },
-        { id: '2', name: 'QC Branch', code: 'QC-002', courier_id: '1', coverage: ['Quezon City', 'Caloocan'] },
-    ];
-
-    const availableBranches = branches.filter(b => b.courier_id === data.courier_company_id);
-    const selectedBranch = branches.find(b => b.id === data.assigned_branch_id);
-    const availableAreas = selectedBranch?.coverage || [];
-
-    // Load PSGC data for Step 5
+    // Load PSGC data for Step 4 (Address Information)
     useEffect(() => {
-        if (step === 5 && psgcRegions.length === 0) {
+        if (step === 4 && psgcRegions.length === 0) {
             psgcApi.fetchRegions().then(({ data: apiData }) => {
                 setPsgcRegions(apiData);
             });
@@ -480,7 +536,7 @@ export default function RiderRegistration() {
     }, [step]);
 
     useEffect(() => {
-        if (step === 5 && data.region) {
+        if (step === 4 && data.region) {
             const r = psgcRegions.find(x => x.name === data.region);
             if (r) psgcApi.fetchProvinces([r.code]).then(({ data: apiData }) => {
                 setPsgcProvinces(apiData);
@@ -489,7 +545,7 @@ export default function RiderRegistration() {
     }, [step, data.region, psgcRegions]);
 
     useEffect(() => {
-        if (step === 5) {
+        if (step === 4) {
             if (data.region === 'National Capital Region (NCR)') {
                 const r = psgcRegions.find(x => x.name === data.region);
                 if (r) psgcApi.fetchCitiesByRegion([r.code]).then(({ data: apiData }) => {
@@ -505,11 +561,18 @@ export default function RiderRegistration() {
     }, [step, data.region, data.province, psgcRegions, psgcProvinces]);
 
     useEffect(() => {
-        if (step === 5 && data.city_municipality) {
+        if (step === 4 && data.city_municipality) {
             const c = psgcCities.find(x => x.name === data.city_municipality);
-            if (c) psgcApi.fetchBarangays([c.code]).then(({ data: apiData }) => {
-                setPsgcBarangays(apiData);
-            });
+            if (c) {
+                psgcApi.fetchBarangays([c.code])
+                    .then(({ data: apiData }) => {
+                        setPsgcBarangays(apiData);
+                    })
+                    .catch((error) => {
+                        console.error('[PSGC] Failed to fetch barangays:', error);
+                        setPsgcBarangays([]);
+                    });
+            }
         }
     }, [step, data.city_municipality, psgcCities]);
 
@@ -569,13 +632,83 @@ export default function RiderRegistration() {
         setSubmitting(true);
         setServerErrors({});
 
-        // TODO: Implement actual submission
-        console.log('Submitting rider registration:', data);
+        // Prepare FormData for file uploads
+        const formData = new FormData();
         
-        setTimeout(() => {
-            alert('Rider registration submitted! (UI Demo)');
-            setSubmitting(false);
-        }, 1500);
+        // Personal Information
+        formData.append('first_name', data.first_name);
+        formData.append('middle_name', data.middle_name);
+        formData.append('last_name', data.last_name);
+        formData.append('suffix', data.suffix);
+        formData.append('birthdate', data.birthdate);
+        formData.append('gender', data.gender);
+        formData.append('contact_number', data.contact_number);
+        formData.append('email', data.email);
+        if (data.profile_picture) {
+            formData.append('profile_picture', data.profile_picture);
+        }
+        
+        // Account Information
+        formData.append('username', data.username);
+        formData.append('password', data.password);
+        formData.append('password_confirmation', data.password_confirmation);
+        
+        // Delivery Information
+        data.service_areas.forEach((area, index) => {
+            formData.append(`service_areas[${index}]`, area);
+        });
+        formData.append('vehicle_type', data.vehicle_type);
+        formData.append('plate_number', data.plate_number);
+        formData.append('drivers_license_number', data.drivers_license_number);
+        
+        // Address Information
+        formData.append('region', data.region);
+        formData.append('province', data.province);
+        formData.append('city_municipality', data.city_municipality);
+        formData.append('barangay', data.barangay);
+        formData.append('street_address', data.street_address);
+        
+        // Supporting Documents
+        if (data.government_id) {
+            formData.append('government_id', data.government_id);
+        }
+        if (data.drivers_license) {
+            formData.append('drivers_license', data.drivers_license);
+        }
+        if (data.vehicle_or_cr) {
+            formData.append('vehicle_or_cr', data.vehicle_or_cr);
+        }
+        
+        // Privacy Policy
+        formData.append('privacy_policy_accepted', data.privacy_policy_accepted ? '1' : '0');
+
+        // Submit using Inertia router
+        router.post('/register/rider', formData, {
+            forceFormData: true,
+            onSuccess: () => {
+                // Redirect to pending page or show success message
+                alert('Rider registration submitted successfully! Your application is now pending approval.');
+                // Optionally redirect to a pending page
+                // router.visit('/register/rider/pending');
+            },
+            onError: (errors: any) => {
+                console.error('Validation errors:', errors);
+                setServerErrors(errors);
+                setSubmitting(false);
+                
+                // Scroll to first error
+                setTimeout(() => {
+                    const firstError = document.querySelector('[aria-invalid="true"]');
+                    if (firstError) {
+                        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        (firstError as HTMLElement).focus();
+                    }
+                }, 100);
+            },
+            onFinish: () => {
+                setSubmitting(false);
+            },
+        });
     };
 
     const goBack = () => {
@@ -595,7 +728,6 @@ export default function RiderRegistration() {
     const stepTitles = [
         'Personal Information',
         'Account Information',
-        'Branch Assignment',
         'Delivery Information',
         'Address Information',
         'Supporting Documents'
@@ -784,18 +916,19 @@ export default function RiderRegistration() {
                                     </Field>
 
                                     <Field label="Gender" htmlFor="gender" required error={err('gender')}>
-                                        <select
+                                        <CustomSelect
                                             id="gender"
                                             value={data.gender}
-                                            onChange={(e) => setData('gender', e.target.value)}
-                                            aria-invalid={!!err('gender')}
-                                            className={inputCls(err('gender'))}
-                                        >
-                                            <option value="">Select gender</option>
-                                            <option value="male">Male</option>
-                                            <option value="female">Female</option>
-                                            <option value="other">Other</option>
-                                        </select>
+                                            onChange={(value) => setData('gender', value)}
+                                            options={[
+                                                { value: '', label: 'Select gender' },
+                                                { value: 'male', label: 'Male' },
+                                                { value: 'female', label: 'Female' },
+                                                { value: 'other', label: 'Other' },
+                                            ]}
+                                            placeholder="Select gender"
+                                            error={err('gender')}
+                                        />
                                     </Field>
                                 </div>
 
@@ -880,90 +1013,33 @@ export default function RiderRegistration() {
                             </div>
                         )}
 
-                        {/* STEP 3: Branch Assignment */}
+                        {/* STEP 3: Delivery Information */}
                         {step === 3 && (
                             <div className="space-y-5">
                                 <div className="rounded-xl bg-blue-50 border border-blue-200 p-4 text-sm text-blue-900">
                                     <p className="font-semibold mb-1">ℹ️ Important</p>
-                                    <p>One rider = one primary branch. Your service areas will be restricted to municipalities covered by your assigned branch.</p>
+                                    <p>Select your service areas. The courier company will assign you to an appropriate branch based on your coverage.</p>
                                 </div>
 
-                                <Field label="Courier Company" htmlFor="courier_company_id" required error={err('courier_company_id')}>
-                                    <select
-                                        id="courier_company_id"
-                                        value={data.courier_company_id}
-                                        onChange={(e) => {
-                                            setData('courier_company_id', e.target.value);
-                                            setData('assigned_branch_id', '');
-                                            setData('service_areas', []);
-                                        }}
-                                        aria-invalid={!!err('courier_company_id')}
-                                        className={inputCls(err('courier_company_id'))}
-                                    >
-                                        <option value="">Select courier company</option>
-                                        {courierCompanies.map(c => (
-                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                        ))}
-                                    </select>
-                                </Field>
-
-                                <Field label="Assigned Branch" htmlFor="assigned_branch_id" required error={err('assigned_branch_id')} hint="Only branches from selected courier company">
-                                    <select
-                                        id="assigned_branch_id"
-                                        value={data.assigned_branch_id}
-                                        onChange={(e) => {
-                                            setData('assigned_branch_id', e.target.value);
-                                            setData('service_areas', []);
-                                        }}
-                                        disabled={!data.courier_company_id}
-                                        aria-invalid={!!err('assigned_branch_id')}
-                                        className={inputCls(err('assigned_branch_id'))}
-                                    >
-                                        <option value="">Select branch</option>
-                                        {availableBranches.map(b => (
-                                            <option key={b.id} value={b.id}>{b.name}</option>
-                                        ))}
-                                    </select>
-                                </Field>
-
-                                {selectedBranch && (
-                                    <div className="rounded-xl bg-[#F8F6FC] border border-[#DDD5EE] p-4">
-                                        <div className="text-xs font-medium text-gray-600 mb-1">Branch Code</div>
-                                        <div className="text-sm font-mono text-[#3B1F6B]">{selectedBranch.code}</div>
-                                    </div>
-                                )}
-
-                                <Field label="Employment Status" htmlFor="employment_status" required error={err('employment_status')}>
-                                    <select
-                                        id="employment_status"
-                                        value={data.employment_status}
-                                        onChange={(e) => setData('employment_status', e.target.value)}
-                                        aria-invalid={!!err('employment_status')}
-                                        className={inputCls(err('employment_status'))}
-                                    >
-                                        <option value="">Select status</option>
-                                        <option value="active">Active</option>
-                                        <option value="inactive">Inactive</option>
-                                        <option value="suspended">Suspended</option>
-                                    </select>
-                                </Field>
-                            </div>
-                        )}
-
-                        {/* STEP 4: Delivery Information */}
-                        {step === 4 && (
-                            <div className="space-y-5">
                                 <div>
-                                    <MultiSelectChips
-                                        label="Area of Service"
-                                        required={true}
-                                        options={availableAreas}
-                                        selected={data.service_areas}
-                                        onChange={(areas) => setData('service_areas', areas)}
-                                        placeholder="Select service areas"
-                                        error={err('service_areas')}
-                                        helperText="Select municipalities you can deliver to (restricted to branch coverage)"
+                                    <label className="text-sm font-medium text-gray-800 block mb-1.5">
+                                        Area of Service <span className="text-red-600">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g., Manila, Quezon City, Makati (separated by commas)"
+                                        value={data.service_areas.join(', ')}
+                                        onChange={(e) => {
+                                            const areas = e.target.value.split(',').map(a => a.trim()).filter(Boolean);
+                                            setData('service_areas', areas);
+                                        }}
+                                        aria-invalid={!!err('service_areas')}
+                                        className={inputCls(err('service_areas'))}
                                     />
+                                    {err('service_areas') && (
+                                        <span className="text-xs font-medium text-red-600 mt-1.5 block">{err('service_areas')}</span>
+                                    )}
+                                    <span className="text-xs text-gray-500 mt-1.5 block">Enter municipalities/cities where you can deliver</span>
                                 </div>
 
                                 <div>
@@ -1014,83 +1090,79 @@ export default function RiderRegistration() {
                             </div>
                         )}
 
-                        {/* STEP 5: Address Information */}
-                        {step === 5 && (
+                        {/* STEP 4: Address Information */}
+                        {step === 4 && (
                             <div className="space-y-5">
                                 <Field label="Region" htmlFor="region" required error={err('region')}>
-                                    <select
+                                    <CustomSelect
                                         id="region"
                                         value={data.region}
-                                        onChange={(e) => {
-                                            setData('region', e.target.value);
+                                        onChange={(value) => {
+                                            setData('region', value);
                                             setData('province', '');
                                             setData('city_municipality', '');
                                             setData('barangay', '');
                                         }}
-                                        aria-invalid={!!err('region')}
-                                        className={inputCls(err('region'))}
-                                    >
-                                        <option value="">Select region</option>
-                                        {psgcRegions.map(r => (
-                                            <option key={r.code} value={r.name}>{r.name}</option>
-                                        ))}
-                                    </select>
+                                        options={[
+                                            { value: '', label: 'Select region' },
+                                            ...psgcRegions.map(r => ({ value: r.name, label: r.name }))
+                                        ]}
+                                        placeholder="Select region"
+                                        error={err('region')}
+                                    />
                                 </Field>
 
                                 {data.region && data.region !== 'National Capital Region (NCR)' && (
                                     <Field label="Province" htmlFor="province" required error={err('province')}>
-                                        <select
+                                        <CustomSelect
                                             id="province"
                                             value={data.province}
-                                            onChange={(e) => {
-                                                setData('province', e.target.value);
+                                            onChange={(value) => {
+                                                setData('province', value);
                                                 setData('city_municipality', '');
                                                 setData('barangay', '');
                                             }}
-                                            aria-invalid={!!err('province')}
-                                            className={inputCls(err('province'))}
-                                        >
-                                            <option value="">Select province</option>
-                                            {psgcProvinces.map(p => (
-                                                <option key={p.code} value={p.name}>{p.name}</option>
-                                            ))}
-                                        </select>
+                                            options={[
+                                                { value: '', label: 'Select province' },
+                                                ...psgcProvinces.map(p => ({ value: p.name, label: p.name }))
+                                            ]}
+                                            placeholder="Select province"
+                                            error={err('province')}
+                                        />
                                     </Field>
                                 )}
 
                                 <Field label="City/Municipality" htmlFor="city_municipality" required error={err('city_municipality')}>
-                                    <select
+                                    <CustomSelect
                                         id="city_municipality"
                                         value={data.city_municipality}
-                                        onChange={(e) => {
-                                            setData('city_municipality', e.target.value);
+                                        onChange={(value) => {
+                                            setData('city_municipality', value);
                                             setData('barangay', '');
                                         }}
+                                        options={[
+                                            { value: '', label: 'Select city/municipality' },
+                                            ...psgcCities.map(c => ({ value: c.name, label: c.name }))
+                                        ]}
+                                        placeholder="Select city/municipality"
                                         disabled={!data.region || (data.region !== 'National Capital Region (NCR)' && !data.province)}
-                                        aria-invalid={!!err('city_municipality')}
-                                        className={inputCls(err('city_municipality'))}
-                                    >
-                                        <option value="">Select city/municipality</option>
-                                        {psgcCities.map(c => (
-                                            <option key={c.code} value={c.name}>{c.name}</option>
-                                        ))}
-                                    </select>
+                                        error={err('city_municipality')}
+                                    />
                                 </Field>
 
                                 <Field label="Barangay" htmlFor="barangay" required error={err('barangay')}>
-                                    <select
+                                    <CustomSelect
                                         id="barangay"
                                         value={data.barangay}
-                                        onChange={(e) => setData('barangay', e.target.value)}
+                                        onChange={(value) => setData('barangay', value)}
+                                        options={[
+                                            { value: '', label: 'Select barangay' },
+                                            ...psgcBarangays.map(b => ({ value: b.name, label: b.name }))
+                                        ]}
+                                        placeholder="Select barangay"
                                         disabled={!data.city_municipality}
-                                        aria-invalid={!!err('barangay')}
-                                        className={inputCls(err('barangay'))}
-                                    >
-                                        <option value="">Select barangay</option>
-                                        {psgcBarangays.map(b => (
-                                            <option key={b.code} value={b.name}>{b.name}</option>
-                                        ))}
-                                    </select>
+                                        error={err('barangay')}
+                                    />
                                 </Field>
 
                                 <Field label="Street / House Number" htmlFor="street_address" hint="Optional">
@@ -1106,8 +1178,8 @@ export default function RiderRegistration() {
                             </div>
                         )}
 
-                        {/* STEP 6: Supporting Documents */}
-                        {step === 6 && (
+                        {/* STEP 5: Supporting Documents */}
+                        {step === 5 && (
                             <div className="space-y-5">
                                 <FileField
                                     id="government_id"
